@@ -1,0 +1,9 @@
+node_modules/
+.next/
+.DS_Store
+*.local
+.env
+.env.local
+*.log
+ngrok_token.txt
+tsconfig.tsbuildinfo
