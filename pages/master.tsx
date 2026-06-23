@@ -274,7 +274,7 @@ export default function MasterPage() {
                   <div style={{ fontSize: 12, color: "#a1a1aa", marginBottom: 8 }}>
                     <p>📞 {order.client_phone}</p>
                     <p>📍 {order.address}</p>
-                    {order.metadata?.description && <p style={{ marginTop: 4, color: "#71717a" }}>{order.metadata.description}</p>}
+                    {order.metadata?.description && <p style={{ marginTop: 4, color: "#71717a" }}>{String(order.metadata.description)}</p>}
                   </div>
 
                   <div style={{ fontSize: 11, color: "#52525b", marginBottom: 8 }}>
