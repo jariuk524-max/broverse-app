@@ -7,3 +7,4 @@ node_modules/
 *.log
 ngrok_token.txt
 tsconfig.tsbuildinfo
+.vercel
