@@ -9,6 +9,24 @@ interface ServiceItem {
   price: string;
 }
 
+interface ConfiguratorObject {
+  id: string;
+  label: string;
+  price: number;
+}
+
+interface ConfiguratorMaterial {
+  id: string;
+  label: string;
+  multiplier: number;
+}
+
+interface Configurator {
+  title: string;
+  objects: ConfiguratorObject[];
+  materials: ConfiguratorMaterial[];
+}
+
 interface Service {
   id: string;
   slug: string;
@@ -18,7 +36,9 @@ interface Service {
   image: string;
   heroTitle: string;
   heroAccent: string;
+  heroDescription?: string;
   items: ServiceItem[];
+  configurator?: Configurator;
   infoTitle: string;
   infoItems: string[];
   buttonText: string;
@@ -52,10 +72,18 @@ export default function ServicePage() {
   const [service, setService] = useState<Service | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [selectedObject, setSelectedObject] = useState<string>("");
+  const [selectedMaterial, setSelectedMaterial] = useState<string>("");
+  const [quantity, setQuantity] = useState(1);
+
   const [showOrder, setShowOrder] = useState(false);
   const [orderForm, setOrderForm] = useState({ name: "", phone: "", address: "", description: "" });
   const [orderSending, setOrderSending] = useState(false);
   const [orderResult, setOrderResult] = useState<"ok" | "error" | "paused" | null>(null);
+
+  const cfgObj = service?.configurator?.objects.find((o) => o.id === selectedObject);
+  const cfgMat = service?.configurator?.materials.find((m) => m.id === selectedMaterial);
+  const totalPrice = cfgObj && cfgMat ? Math.round(cfgObj.price * cfgMat.multiplier * quantity) : 0;
 
   useEffect(() => {
     if (!slug) return;
@@ -88,6 +116,15 @@ export default function ServicePage() {
         // геолокация недоступна — продолжаем без координат
       }
 
+      const metadata: Record<string, unknown> = {};
+      if (orderForm.description) metadata.description = orderForm.description;
+      if (cfgObj) metadata.object = cfgObj.label;
+      if (cfgMat) metadata.material = cfgMat.label;
+      if (service.configurator) {
+        metadata.quantity = quantity;
+        metadata.totalPrice = totalPrice;
+      }
+
       const { data: created, error } = await supabase.from("orders").insert({
         service_name: service.label,
         client_name: orderForm.name,
@@ -95,7 +132,7 @@ export default function ServicePage() {
         address: orderForm.address,
         lat: lat,
         lng: lng,
-        metadata: orderForm.description ? { description: orderForm.description } : null,
+        metadata: Object.keys(metadata).length > 0 ? metadata : null,
       }).select().single();
 
       if (error) throw error;
@@ -108,6 +145,9 @@ export default function ServicePage() {
 
       setOrderResult("ok");
       setOrderForm({ name: "", phone: "", address: "", description: "" });
+      setSelectedObject("");
+      setSelectedMaterial("");
+      setQuantity(1);
     } catch (err) {
       if (isSupabasePaused(err)) {
         setOrderResult("paused");
@@ -167,7 +207,123 @@ export default function ServicePage() {
               {service.heroTitle}<br />
               <span style={{ color: "#34d399" }}>{service.heroAccent}</span>
             </h1>
+            {service.heroDescription && (
+              <p style={{ marginTop: 24, fontSize: 16, color: "#a1a1aa", maxWidth: 640, lineHeight: 1.6 }}>
+                {service.heroDescription}
+              </p>
+            )}
           </div>
+
+          {service.configurator && (
+            <div style={{ borderRadius: 24, border: "1px solid #27272a", backgroundColor: "rgba(24,24,27,0.6)", padding: 32 }}>
+              <h2 style={{ fontSize: 22, fontWeight: 900, marginBottom: 24 }}>{service.configurator.title}</h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div>
+                  <label style={LABEL_STYLE}>Тип мебели</label>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8 }}>
+                    {service.configurator.objects.map((o) => (
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={() => setSelectedObject(o.id)}
+                        style={{
+                          borderRadius: 12,
+                          border: `1px solid ${selectedObject === o.id ? "#34d399" : "#27272a"}`,
+                          backgroundColor: selectedObject === o.id ? "rgba(52,211,153,0.1)" : "#09090b",
+                          color: selectedObject === o.id ? "#34d399" : "#a1a1aa",
+                          padding: "12px 16px",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          textAlign: "center",
+                        }}
+                      >
+                        {o.label}
+                        <br />
+                        <span style={{ fontSize: 11, opacity: 0.7 }}>от {o.price} ₽</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label style={LABEL_STYLE}>Материал обивки</label>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8 }}>
+                    {service.configurator.materials.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setSelectedMaterial(m.id)}
+                        style={{
+                          borderRadius: 12,
+                          border: `1px solid ${selectedMaterial === m.id ? "#34d399" : "#27272a"}`,
+                          backgroundColor: selectedMaterial === m.id ? "rgba(52,211,153,0.1)" : "#09090b",
+                          color: selectedMaterial === m.id ? "#34d399" : "#a1a1aa",
+                          padding: "12px 16px",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          textAlign: "center",
+                        }}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label style={LABEL_STYLE}>Количество</label>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <button
+                      type="button"
+                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      style={{
+                        width: 40, height: 40, borderRadius: 12,
+                        border: "1px solid #27272a", backgroundColor: "#09090b",
+                        color: "#fff", fontSize: 18, cursor: "pointer",
+                      }}
+                    >
+                      –
+                    </button>
+                    <span style={{ fontSize: 18, fontWeight: 700, minWidth: 32, textAlign: "center" }}>{quantity}</span>
+                    <button
+                      type="button"
+                      onClick={() => setQuantity(quantity + 1)}
+                      style={{
+                        width: 40, height: 40, borderRadius: 12,
+                        border: "1px solid #27272a", backgroundColor: "#09090b",
+                        color: "#fff", fontSize: 18, cursor: "pointer",
+                      }}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {totalPrice > 0 && (
+                  <div style={{ borderTop: "1px solid #27272a", paddingTop: 16, marginTop: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: 14, color: "#a1a1aa" }}>Итого:</span>
+                      <span style={{ fontSize: 24, fontWeight: 900, color: "#34d399" }}>{totalPrice.toLocaleString()} ₽</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowOrder(true)}
+                      style={{
+                        marginTop: 16, width: "100%", borderRadius: 16,
+                        backgroundColor: "#10b981", padding: "16px 32px",
+                        fontSize: 14, fontWeight: 900, color: "#fff",
+                        border: "none", cursor: "pointer",
+                      }}
+                    >
+                      Заказать →
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {service.items.length > 0 && (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
