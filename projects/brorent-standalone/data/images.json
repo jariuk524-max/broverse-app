@@ -1,0 +1,89 @@
+{
+  "wash": {
+    "hero": "/hero/wash-hero.jpg",
+    "slider": [
+      "/hero/wash-slider-0.jpg",
+      "/hero/wash-slider-1.jpg",
+      "/hero/wash-slider-2.jpg",
+      "/hero/wash-slider-3.jpg",
+      "/hero/wash-slider-4.jpg",
+      "/hero/wash-slider-5.jpg"
+    ],
+    "services": {
+      "Тестовая услуга": [],
+      "Химчистка дивана": [
+        "/hero/wash-Химчистка_дивана-0.jpg",
+        "/hero/wash-Химчистка_дивана-1.jpg",
+        "/hero/wash-Химчистка_дивана-2.jpg",
+        "/hero/wash-Химчистка_дивана-3.jpg",
+        "/hero/wash-Химчистка_дивана-4.jpg",
+        "/hero/wash-Химчистка_дивана-5.jpg"
+      ],
+      "Химчистка кресла": [
+        "/hero/wash-Химчистка_кресла-0.jpg",
+        "/hero/wash-Химчистка_кресла-1.jpg",
+        "/hero/wash-Химчистка_кресла-2.jpg"
+      ],
+      "Test": [
+        "/hero/wash-Test-0.jpg",
+        "/hero/wash-Test-1.jpg"
+      ]
+    }
+  },
+  "move": {
+    "hero": "/hero/move-hero.jpg",
+    "slider": [
+      "/hero/move-slider-0.jpg",
+      "/hero/move-slider-1.jpg",
+      "/hero/move-slider-2.jpg",
+      "/hero/move-slider-3.jpg"
+    ]
+  },
+  "frame": {
+    "hero": "/hero/frame-hero.jpg",
+    "slider": [
+      "/hero/frame-slider-0.jpg",
+      "/hero/frame-slider-1.jpg",
+      "/hero/frame-slider-2.jpg",
+      "/hero/frame-slider-3.jpg",
+      "/hero/frame-slider-4.jpg",
+      "/hero/frame-slider-5.jpg",
+      "/hero/frame-slider-6.jpg"
+    ],
+    "services": {
+      "Чистка ноутбука": [
+        "/hero/frame-Чистка_ноутбука-0.jpg"
+      ]
+    }
+  },
+  "build": {
+    "hero": "/hero/build-hero.jpg",
+    "slider": [
+      "/hero/build-slider-0.jpg",
+      "/hero/build-slider-5.jpg",
+      "/hero/build-slider-2.jpg",
+      "/hero/build-slider-3.jpg",
+      "/hero/build-slider-4.jpg",
+      "/hero/build-slider-5.jpg",
+      "/hero/build-slider-6.jpg"
+    ]
+  },
+  "rent": {
+    "hero": "/hero/rent-hero.jpg",
+    "slider": [
+      "/hero/rent-slider-0.jpg",
+      "/hero/rent-slider-1.jpg",
+      "/hero/rent-slider-2.jpg",
+      "/hero/rent-slider-3.jpg",
+      "/hero/rent-slider-4.jpg"
+    ]
+  },
+  "verse": {
+    "hero": null,
+    "slider": []
+  },
+  "care": {
+    "hero": null,
+    "slider": []
+  }
+}

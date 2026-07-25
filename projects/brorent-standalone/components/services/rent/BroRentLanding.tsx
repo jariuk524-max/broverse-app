@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ChevronLeft, ChevronRight, Phone, MessageCircle } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Phone, MessageCircle, CheckCircle2, Clock } from 'lucide-react';
 import OrderModal, { type OrderServiceItem } from '@/components/OrderModal';
 import SmartSearch from '@/components/SmartSearch';
 
 const FALLBACK_SERVICES: OrderServiceItem[] = [
-  { name: 'Пылесос Karcher Puzzi 8/1', desc: 'Сдам в аренду моющий пылесос Karcher Puzzi 8/1. В комплекте порция моющего средства в подарок (которого хватит почистить кухонный уголок). Дополнительные средства есть в наличии. Будем с вами на связи на протяжении всего срока аренды.', price: '1000', domain: 'rent', brand: 'BroRent', color: '#00BCD4', icon: '🧹', time: '1000₽/день, 1200₽/сутки + доставка 700₽', image: 'https://bnopcchgcnkzcvduxwth.supabase.co/storage/v1/object/public/catalog-photos/browash-photo-1784878029979-0.jpg' },
+  { name: 'Пылесос Karcher Puzzi 8/1', desc: 'Сдам в аренду моющий пылесос Karcher Puzzi 8/1. В комплекте порция моющего средства в подарок (которого хватит почистить кухонный уголок). Дополнительные средства есть в наличии. Будем с вами на связи на протяжении всего срока аренды.', price: '1000', domain: 'rent', brand: 'BroRent', color: '#00BCD4', icon: '🧹', time: 'От 1 дня', image: 'https://bnopcchgcnkzcvduxwth.supabase.co/storage/v1/object/public/catalog-photos/browash-photo-1784878029979-0.jpg' },
   { name: 'Перфоратор Bosch', desc: 'Мощный перфоратор для демонтажа и сверления бетона', price: '500', domain: 'rent', brand: 'BroRent', color: '#00BCD4', icon: '🔨', time: 'От 1 дня', image: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=400' },
   { name: 'Парогенератор', desc: 'Для детейлинга мебели и текстиля', price: '600', domain: 'rent', brand: 'BroRent', color: '#00BCD4', icon: '♨️', time: 'От 1 дня', image: 'https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=400' },
   { name: 'Мойка высокого давления', desc: 'Karcher для фасадов, заборов, площадок', price: '700', domain: 'rent', brand: 'BroRent', color: '#00BCD4', icon: '💦', time: 'От 1 дня', image: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=400' },
@@ -39,6 +39,61 @@ const SLIDER_PHOTOS = [
   'https://bnopcchgcnkzcvduxwth.supabase.co/storage/v1/object/public/catalog-photos/browash-photo-1784950281808-6.jpg',
 ];
 
+function ServiceDetailModal({ service, onOrder, onClose }: { service: OrderServiceItem; onOrder: () => void; onClose: () => void }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => { requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true))); }, []);
+  const handleClose = useCallback(() => { setVisible(false); setTimeout(onClose, 300); }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
+      <div className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} />
+      <div className={`relative w-full sm:max-w-[420px] mx-4 bg-white rounded-t-[24px] sm:rounded-[24px] shadow-2xl overflow-hidden transition-all duration-300 ease-out max-h-[90vh] overflow-y-auto ${visible ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-full sm:translate-y-8 opacity-0 scale-95'}`}>
+        <div className="relative aspect-[4/3] overflow-hidden bg-zinc-100">
+          <img src={service.image} alt={service.name} className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+          <button type="button" onClick={handleClose} className="absolute top-3 right-3 p-2 rounded-full bg-black/40 backdrop-blur-sm text-white hover:bg-black/60 transition-colors"><span className="text-sm">✕</span></button>
+          <div className="absolute bottom-0 left-0 right-0 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="px-2.5 py-1 rounded-full bg-[#00BCD4] text-[10px] font-bold text-white">{service.brand}</span>
+              <span className="px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm text-[10px] font-bold text-white">{service.time}</span>
+            </div>
+            <h2 className="text-xl font-black text-white leading-tight mb-3" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.6)' }}>{service.name}</h2>
+            <div className="flex items-center gap-3">
+              <div className="bg-white rounded-xl px-3 py-1.5">
+                <span className="text-[11px] text-zinc-400 block leading-none">Цена</span>
+                <span className="text-lg font-black text-zinc-900">{service.price} ₽</span>
+              </div>
+              <div className="flex-1 text-right">
+                <p className="text-[11px] text-white/70">в день аренды</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="p-5">
+          <p className="text-sm text-zinc-600 leading-relaxed mb-4">{service.desc}</p>
+          <div className="bg-[#E0F7FA] rounded-2xl p-4 mb-4">
+            <h4 className="text-[13px] font-bold text-[#00BCD4] mb-2">Условия аренды</h4>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2.5"><CheckCircle2 size={14} className="text-[#00BCD4] shrink-0" /><span className="text-[13px] text-zinc-700">Доставка и возврат в удобное время</span></div>
+              <div className="flex items-center gap-2.5"><CheckCircle2 size={14} className="text-[#00BCD4] shrink-0" /><span className="text-[13px] text-zinc-700">Залог не требуется</span></div>
+              <div className="flex items-center gap-2.5"><CheckCircle2 size={14} className="text-[#00BCD4] shrink-0" /><span className="text-[13px] text-zinc-700">Инструмент проверен и готов к работе</span></div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 p-3 bg-zinc-50 rounded-xl">
+            <span className="text-xl">📞</span>
+            <div>
+              <p className="text-[12px] font-bold text-zinc-900">Нужна консультация?</p>
+              <p className="text-[11px] text-zinc-400">Поможем подобрать инструмент</p>
+            </div>
+          </div>
+        </div>
+        <div className="sticky bottom-0 bg-white border-t border-zinc-100 p-4">
+          <button type="button" onClick={() => { handleClose(); setTimeout(onOrder, 300); }} className="w-full py-3.5 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold hover:bg-[#0097A7] transition-all duration-200 active:scale-[0.98]">Забронировать от {service.price} ₽/день</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const HERO_RATIO = 1094 / 360;
 const SLIDER_RATIO = 626 / 417;
 
@@ -48,6 +103,7 @@ export default function BroRentLanding() {
   const [galleryIdx, setGalleryIdx] = useState(0);
   const [heroIdx, setHeroIdx] = useState(0);
   const [detailService, setDetailService] = useState<OrderServiceItem | null>(null);
+  const [selectedService, setSelectedService] = useState<OrderServiceItem | null>(null);
 
   useEffect(() => {
     if (SLIDER_PHOTOS.length <= 1) return;
@@ -261,9 +317,14 @@ export default function BroRentLanding() {
         </div>
       </div>
 
-      {/* Order modal */}
+      {/* Service detail modal */}
       {detailService && (
-        <OrderModal service={detailService} onClose={() => setDetailService(null)} />
+        <ServiceDetailModal service={detailService} onOrder={() => setSelectedService(detailService)} onClose={() => setDetailService(null)} />
+      )}
+
+      {/* Order modal */}
+      {selectedService && (
+        <OrderModal service={selectedService} onClose={() => setSelectedService(null)} />
       )}
 
     </div>
