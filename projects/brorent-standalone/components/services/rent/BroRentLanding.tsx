@@ -2,19 +2,132 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ChevronLeft, ChevronRight, Phone, MessageCircle, CheckCircle2, Clock } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Phone, MessageCircle, CheckCircle2, Clock, ShoppingCart, Plus, Minus, X } from 'lucide-react';
 import OrderModal, { type OrderServiceItem } from '@/components/OrderModal';
 import SmartSearch from '@/components/SmartSearch';
 
 const FALLBACK_SERVICES: OrderServiceItem[] = [
-  { name: 'Пылесос Karcher Puzzi 8/1', desc: 'Сдам в аренду моющий пылесос Karcher Puzzi 8/1. В комплекте порция моющего средства в подарок (которого хватит почистить кухонный уголок). Дополнительные средства есть в наличии. Будем с вами на связи на протяжении всего срока аренды.', price: '1000', domain: 'rent', brand: 'BroRent', color: '#00BCD4', icon: '🧹', time: 'От 1 дня', image: 'https://bnopcchgcnkzcvduxwth.supabase.co/storage/v1/object/public/catalog-photos/browash-photo-1784878029979-0.jpg' },
-  { name: 'Перфоратор Bosch', desc: 'Мощный перфоратор для демонтажа и сверления бетона', price: '500', domain: 'rent', brand: 'BroRent', color: '#00BCD4', icon: '🔨', time: 'От 1 дня', image: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=400' },
-  { name: 'Парогенератор', desc: 'Для детейлинга мебели и текстиля', price: '600', domain: 'rent', brand: 'BroRent', color: '#00BCD4', icon: '♨️', time: 'От 1 дня', image: 'https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=400' },
-  { name: 'Мойка высокого давления', desc: 'Karcher для фасадов, заборов, площадок', price: '700', domain: 'rent', brand: 'BroRent', color: '#00BCD4', icon: '💦', time: 'От 1 дня', image: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=400' },
-  { name: 'Шуруповерт аккумуляторный', desc: 'Для сборки мебели и ремонтных работ', price: '400', domain: 'rent', brand: 'BroRent', color: '#00BCD4', icon: '🔩', time: 'От 1 дня', image: 'https://images.unsplash.com/photo-1572981779307-38b8cabb2407?w=400' },
-  { name: 'Болгарка Makita', desc: 'УШМ 125мм для резки металла и камня', price: '450', domain: 'rent', brand: 'BroRent', color: '#00BCD4', icon: '⚙️', time: 'От 1 дня', image: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=400' },
-  { name: 'Лазерный уровень', desc: 'Для точной разметки при ремонте', price: '350', domain: 'rent', brand: 'BroRent', color: '#00BCD4', icon: '📐', time: 'От 1 дня', image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400' },
-  { name: 'Компрессор', desc: 'Для покраски и пневмоинструмента', price: '550', domain: 'rent', brand: 'BroRent', color: '#00BCD4', icon: '💨', time: 'От 1 дня', image: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=400' },
+  {
+    name: 'Пылесос Karcher Puzzi 8/1',
+    desc: 'Профессиональный экстрактор для химчистки мягкой мебели, матрасов и автомобильных салонов. Мощность всасывания 210 мбар, объём бака 8 л. В комплекте: моющее средство, насадка для мебели, шланг 2.5 м.',
+    price: '1000',
+    domain: 'rent',
+    brand: 'BroRent',
+    color: '#00BCD4',
+    icon: '🧹',
+    time: 'От 1 дня',
+    image: 'https://bnopcchgcnkzcvduxwth.supabase.co/storage/v1/object/public/catalog-photos/browash-photo-1784878029979-0.jpg',
+  },
+  {
+    name: 'Пылесос Karcher Puzzi 10/1',
+    desc: 'Профессиональный экстрактор для глубокой чистки ковров и крупной мебели. Мощность 480 Вт, объём бака 10 л. Комплект: моющее средство Professional, набор насадок, шланг 3.5 м.',
+    price: '1200',
+    domain: 'rent',
+    brand: 'BroRent',
+    color: '#00BCD4',
+    icon: '🧹',
+    time: 'От 1 дня',
+    image: 'https://bnopcchgcnkzcvduxwth.supabase.co/storage/v1/object/public/catalog-photos/browash-photo-1784900687479-0.jpg',
+  },
+  {
+    name: 'Сушилка Sabrina Air Force',
+    desc: 'Профессиональная воздуходувка для ускорения высыхания мебели, ковров и полов после химчистки. Мощность 2000 Вт, расход воздуха 3000 м³/ч.',
+    price: '500',
+    domain: 'rent',
+    brand: 'BroRent',
+    color: '#00BCD4',
+    icon: '💨',
+    time: 'От 1 дня',
+    image: 'https://bnopcchgcnkzcvduxwth.supabase.co/storage/v1/object/public/catalog-photos/browash-photo-1784900787227-0.jpg',
+  },
+  {
+    name: 'Пылесос Sabrina Professional',
+    desc: 'Профессиональный вакуумный пылесос для сухой и влажной уборки. Мощность 1400 Вт, объём бака 20 л. Фильтр HEPA H13.',
+    price: '400',
+    domain: 'rent',
+    brand: 'BroRent',
+    color: '#00BCD4',
+    icon: '🧹',
+    time: 'От 1 дня',
+    image: 'https://bnopcchgcnkzcvduxwth.supabase.co/storage/v1/object/public/catalog-photos/browash-photo-1784900790996-1.jpg',
+  },
+  {
+    name: 'Перфоратор Makita HR2470',
+    desc: 'Профессиональный перфоратор для сверления и долбления бетона. 780 Вт, сила удара 2.7 Дж, патрон SDS-plus. В комплекте: буры 6/8/10 мм, глубиномер, кейс.',
+    price: '600',
+    domain: 'rent',
+    brand: 'BroRent',
+    color: '#00BCD4',
+    icon: '🔨',
+    time: 'От 1 дня',
+    image: 'https://bnopcchgcnkzcvduxwth.supabase.co/storage/v1/object/public/catalog-photos/browash-photo-1784950271132-0.jpg',
+  },
+  {
+    name: 'Шуруповерт Makita DDF484',
+    desc: 'Аккумуляторный дрель-шуруповерт для сборки мебели и ремонтных работ. 18 В, 42 Нм, 21 ступень. В комплекте: 2 аккумулятора 3.0 Ач, зарядное устройство, кейс.',
+    price: '500',
+    domain: 'rent',
+    brand: 'BroRent',
+    color: '#00BCD4',
+    icon: '🔩',
+    time: 'От 1 дня',
+    image: 'https://bnopcchgcnkzcvduxwth.supabase.co/storage/v1/object/public/catalog-photos/browash-photo-1784950273421-1.webp',
+  },
+  {
+    name: 'Погружная пила Makita DSP600',
+    desc: 'Профессиональная погружная пила для точного раскроя ДСП, фанеры, ЛДСП. 1200 Вт, глубина реза 56 мм. В комплекте: диск, направляющая шина 1400 мм, кейс.',
+    price: '1000',
+    domain: 'rent',
+    brand: 'BroRent',
+    color: '#00BCD4',
+    icon: '🪚',
+    time: 'От 1 дня',
+    image: 'https://bnopcchgcnkzcvduxwth.supabase.co/storage/v1/object/public/catalog-photos/browash-photo-1784950275062-2.jpg',
+  },
+  {
+    name: 'Лобзик Makita JV0600K',
+    desc: 'Профессиональный электролобзик для фигурного раскроя дерева, ДСП, металла. 650 Вт, глубина реза 65 мм. В комплекте: пилки, защитный экран, кейс.',
+    price: '450',
+    domain: 'rent',
+    brand: 'BroRent',
+    color: '#00BCD4',
+    icon: '📐',
+    time: 'От 1 дня',
+    image: 'https://bnopcchgcnkzcvduxwth.supabase.co/storage/v1/object/public/catalog-photos/browash-photo-1784950277237-3.jpg',
+  },
+  {
+    name: 'Кромочный фрезер Makita 3709',
+    desc: 'Профессиональный кромочный фрезер для обработки кромок ДСП, фанеры, массива. 900 Вт, 33000 об/мин. В комплекте: набор фрез, параллельный упор, кейс.',
+    price: '700',
+    domain: 'rent',
+    brand: 'BroRent',
+    color: '#00BCD4',
+    icon: '⚙️',
+    time: 'От 1 дня',
+    image: 'https://bnopcchgcnkzcvduxwth.supabase.co/storage/v1/object/public/catalog-photos/browash-photo-1784950278564-4.jpg',
+  },
+  {
+    name: 'УШМ Makita 9565CV',
+    desc: 'Угловая шлифмашина 125 мм для резки металла, камня, шлифовки. 720 Вт, регулировка 2800-10000 об/мин. В комплекте: диск, защитный кожух, ключ.',
+    price: '500',
+    domain: 'rent',
+    brand: 'BroRent',
+    color: '#00BCD4',
+    icon: '⚙️',
+    time: 'От 1 дня',
+    image: 'https://bnopcchgcnkzcvduxwth.supabase.co/storage/v1/object/public/catalog-photos/browash-photo-1784950280459-5.jpg',
+  },
+  {
+    name: 'Гайковерт Makita TW1000',
+    desc: 'Профессиональный ударный гайковерт. Крутящий момент 1000 Нм, патрон 1/2". В комплекте: головки 17/19/21 мм, кейс.',
+    price: '800',
+    domain: 'rent',
+    brand: 'BroRent',
+    color: '#00BCD4',
+    icon: '🔧',
+    time: 'От 1 дня',
+    image: 'https://bnopcchgcnkzcvduxwth.supabase.co/storage/v1/object/public/catalog-photos/browash-photo-1784950281808-6.jpg',
+  },
 ];
 
 const HERO_PHOTOS = [
@@ -43,51 +156,118 @@ function ServiceDetailModal({ service, onOrder, onClose }: { service: OrderServi
   const [visible, setVisible] = useState(false);
   useEffect(() => { requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true))); }, []);
   const handleClose = useCallback(() => { setVisible(false); setTimeout(onClose, 300); }, [onClose]);
+  const dayPrice = parseInt(service.price.replace(/\s/g, ''));
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
       <div className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} />
-      <div className={`relative w-full sm:max-w-[420px] mx-4 bg-white rounded-t-[24px] sm:rounded-[24px] shadow-2xl overflow-hidden transition-all duration-300 ease-out max-h-[90vh] overflow-y-auto ${visible ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-full sm:translate-y-8 opacity-0 scale-95'}`}>
-        <div className="relative aspect-[4/3] overflow-hidden bg-zinc-100">
+      <div className={`relative w-full sm:max-w-[420px] mx-4 bg-white rounded-t-[28px] sm:rounded-[28px] shadow-2xl overflow-hidden transition-all duration-300 ease-out max-h-[92vh] overflow-y-auto ${visible ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-full sm:translate-y-8 opacity-0 scale-95'}`}>
+
+        {/* Large photo */}
+        <div className="relative aspect-[16/9] overflow-hidden bg-zinc-100">
           <img src={service.image} alt={service.name} className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-          <button type="button" onClick={handleClose} className="absolute top-3 right-3 p-2 rounded-full bg-black/40 backdrop-blur-sm text-white hover:bg-black/60 transition-colors"><span className="text-sm">✕</span></button>
-          <div className="absolute bottom-0 left-0 right-0 p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="px-2.5 py-1 rounded-full bg-[#00BCD4] text-[10px] font-bold text-white">{service.brand}</span>
-              <span className="px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-sm text-[10px] font-bold text-white">{service.time}</span>
-            </div>
-            <h2 className="text-xl font-black text-white leading-tight mb-3" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.6)' }}>{service.name}</h2>
-            <div className="flex items-center gap-3">
-              <div className="bg-white rounded-xl px-3 py-1.5">
-                <span className="text-[11px] text-zinc-400 block leading-none">Цена</span>
-                <span className="text-lg font-black text-zinc-900">{service.price} ₽</span>
-              </div>
-              <div className="flex-1 text-right">
-                <p className="text-[11px] text-white/70">в день аренды</p>
-              </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+          <button type="button" onClick={handleClose} className="absolute top-4 right-4 p-2.5 rounded-full bg-black/40 backdrop-blur-sm text-white hover:bg-black/60 transition-colors">
+            <span className="text-base font-bold">✕</span>
+          </button>
+          <div className="absolute bottom-0 left-0 right-0 p-5">
+            <span className="inline-block px-3 py-1.5 rounded-full bg-[#00BCD4] text-[11px] font-bold text-white mb-3">{service.brand}</span>
+            <h2 className="text-[22px] font-black text-white leading-tight mb-2" style={{ textShadow: '0 2px 16px rgba(0,0,0,0.5)' }}>{service.name}</h2>
+            <div className="flex items-baseline gap-2">
+              <span className="text-[28px] font-black text-white">{service.price}</span>
+              <span className="text-[14px] text-white/70">₽ / сутки</span>
             </div>
           </div>
         </div>
-        <div className="p-5">
-          <p className="text-sm text-zinc-600 leading-relaxed mb-4">{service.desc}</p>
-          <div className="bg-[#E0F7FA] rounded-2xl p-4 mb-4">
-            <h4 className="text-[13px] font-bold text-[#00BCD4] mb-2">Условия аренды</h4>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2.5"><CheckCircle2 size={14} className="text-[#00BCD4] shrink-0" /><span className="text-[13px] text-zinc-700">Доставка и возврат в удобное время</span></div>
-              <div className="flex items-center gap-2.5"><CheckCircle2 size={14} className="text-[#00BCD4] shrink-0" /><span className="text-[13px] text-zinc-700">Залог не требуется</span></div>
-              <div className="flex items-center gap-2.5"><CheckCircle2 size={14} className="text-[#00BCD4] shrink-0" /><span className="text-[13px] text-zinc-700">Инструмент проверен и готов к работе</span></div>
+
+        {/* Content */}
+        <div className="p-5 pb-24 space-y-5">
+
+          {/* Description */}
+          <div>
+            <p className="text-[15px] text-zinc-700 leading-relaxed">{service.desc}</p>
+          </div>
+
+          {/* Pricing */}
+          <div className="bg-zinc-50 rounded-[20px] p-5">
+            <h4 className="text-[14px] font-bold text-zinc-900 mb-4">Стоимость аренды</h4>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between py-2 border-b border-zinc-100">
+                <span className="text-[14px] text-zinc-600">1 сутки</span>
+                <span className="text-[15px] font-bold text-zinc-900">{dayPrice.toLocaleString('ru')} ₽</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-zinc-100">
+                <span className="text-[14px] text-zinc-600">2 суток</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-[#00BCD4] bg-[#E0F7FA] px-2 py-0.5 rounded-full">−10%</span>
+                  <span className="text-[15px] font-bold text-zinc-900">{Math.round(dayPrice * 0.9).toLocaleString('ru')} ₽</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <span className="text-[14px] text-zinc-600">3–10 суток</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-[#00BCD4] bg-[#E0F7FA] px-2 py-0.5 rounded-full">−20%</span>
+                  <span className="text-[15px] font-bold text-zinc-900">{Math.round(dayPrice * 0.8).toLocaleString('ru')} ₽</span>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-2 p-3 bg-zinc-50 rounded-xl">
-            <span className="text-xl">📞</span>
-            <div>
-              <p className="text-[12px] font-bold text-zinc-900">Нужна консультация?</p>
-              <p className="text-[11px] text-zinc-400">Поможем подобрать инструмент</p>
+
+          {/* Conditions */}
+          <div className="bg-[#E0F7FA] rounded-[20px] p-5">
+            <h4 className="text-[14px] font-bold text-[#00BCD4] mb-4">Условия аренды</h4>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-[#00BCD4] flex items-center justify-center shrink-0 mt-0.5">
+                  <CheckCircle2 size={14} className="text-white" />
+                </div>
+                <span className="text-[14px] text-zinc-700 leading-snug">Доставка и возврат курьером за 700 ₽ или самовывоз бесплатно</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-[#00BCD4] flex items-center justify-center shrink-0 mt-0.5">
+                  <CheckCircle2 size={14} className="text-white" />
+                </div>
+                <span className="text-[14px] text-zinc-700 leading-snug">Залог не требуется — оплата при получении</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-[#00BCD4] flex items-center justify-center shrink-0 mt-0.5">
+                  <CheckCircle2 size={14} className="text-white" />
+                </div>
+                <span className="text-[14px] text-zinc-700 leading-snug">Каждый инструмент проходит диагностику перед выдачей</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-[#00BCD4] flex items-center justify-center shrink-0 mt-0.5">
+                  <CheckCircle2 size={14} className="text-white" />
+                </div>
+                <span className="text-[14px] text-zinc-700 leading-snug">При поломке заменим инструмент в течение часа</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-[#00BCD4] flex items-center justify-center shrink-0 mt-0.5">
+                  <CheckCircle2 size={14} className="text-white" />
+                </div>
+                <span className="text-[14px] text-zinc-700 leading-snug">Доставка с 09:00 до 21:00, включая выходные</span>
+              </div>
             </div>
+          </div>
+
+          {/* Consultation */}
+          <div className="flex items-center gap-4 p-4 bg-zinc-50 rounded-[16px]">
+            <div className="w-12 h-12 rounded-full bg-[#E0F7FA] flex items-center justify-center shrink-0">
+              <span className="text-xl">📞</span>
+            </div>
+            <div className="flex-1">
+              <p className="text-[14px] font-bold text-zinc-900">Нужна консультация?</p>
+              <p className="text-[12px] text-zinc-400">Поможем подобрать инструмент под вашу задачу</p>
+            </div>
+            <a href="tel:+79001234567" className="px-4 py-2 rounded-xl bg-[#00BCD4] text-white text-[12px] font-bold hover:bg-[#0097A7] transition-colors">Позвонить</a>
           </div>
         </div>
-        <div className="sticky bottom-0 bg-white border-t border-zinc-100 p-4">
-          <button type="button" onClick={() => { handleClose(); setTimeout(onOrder, 300); }} className="w-full py-3.5 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold hover:bg-[#0097A7] transition-all duration-200 active:scale-[0.98]">Забронировать от {service.price} ₽/день</button>
+
+        {/* Sticky button */}
+        <div className="sticky bottom-0 bg-white border-t border-zinc-100 p-5">
+          <button type="button" onClick={() => { handleClose(); setTimeout(onOrder, 300); }}
+            className="w-full py-4 rounded-2xl bg-[#00BCD4] text-white text-[15px] font-bold hover:bg-[#0097A7] transition-all duration-200 active:scale-[0.98] shadow-lg shadow-[#00BCD4]/20">
+            Забронировать от {service.price} ₽/день
+          </button>
         </div>
       </div>
     </div>
@@ -104,6 +284,20 @@ export default function BroRentLanding() {
   const [heroIdx, setHeroIdx] = useState(0);
   const [detailService, setDetailService] = useState<OrderServiceItem | null>(null);
   const [selectedService, setSelectedService] = useState<OrderServiceItem | null>(null);
+  const [cart, setCart] = useState<OrderServiceItem[]>([]);
+  const [showCart, setShowCart] = useState(false);
+
+  const addToCart = (service: OrderServiceItem) => {
+    setCart(prev => {
+      const exists = prev.find(s => s.name === service.name);
+      if (exists) return prev.filter(s => s.name !== service.name);
+      return [...prev, service];
+    });
+  };
+
+  const isInCart = (name: string) => cart.some(s => s.name === name);
+
+  const cartTotal = cart.reduce((sum, s) => sum + parseInt(s.price.replace(/\s/g, '')), 0);
 
   useEffect(() => {
     if (SLIDER_PHOTOS.length <= 1) return;
@@ -126,7 +320,7 @@ export default function BroRentLanding() {
   return (
     <div className="min-h-screen" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", system-ui, sans-serif', background: '#F2F2F7' }}>
 
-      <div className="max-w-2xl mx-auto px-4 py-6">
+      <div className="max-w-2xl mx-auto px-4 py-6 pb-24">
 
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
@@ -135,7 +329,7 @@ export default function BroRentLanding() {
           </Link>
           <div className="flex-1">
             <h1 className="text-[28px] font-black text-[#00BCD4]">BroRent</h1>
-            <p className="text-[13px] text-zinc-400">Аренда профессионального инструмента</p>
+            <p className="text-[13px] text-zinc-400">Аренда инструмента и оборудования для химчистки и стройки</p>
           </div>
         </div>
 
@@ -150,7 +344,7 @@ export default function BroRentLanding() {
         {/* Наши работы */}
         <section className="mb-8">
           <div className="bg-white rounded-[28px] p-4 shadow-sm">
-            <h3 className="text-[16px] font-bold text-zinc-900 mb-3 px-2">Наши работы</h3>
+            <h3 className="text-[16px] font-bold text-zinc-900 mb-3 px-2">Наше оборудование</h3>
             <div className="relative rounded-[20px] overflow-hidden" style={{ aspectRatio: `${SLIDER_RATIO}` }}>
               {SLIDER_PHOTOS.map((url, i) => (
                 <img key={url} src={url} alt="" className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${i === sliderIdx ? 'opacity-100' : 'opacity-0'}`} />
@@ -179,10 +373,10 @@ export default function BroRentLanding() {
           <h3 className="text-[16px] font-bold text-zinc-900 mb-4 text-center">Наши преимущества</h3>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { icon: '⚡', label: 'Быстрая выдача', desc: 'Инструмент готов к выдаче в течение 1 часа после заказа' },
-              { icon: '🛡️', label: 'Гарантия', desc: 'Все инструменты проходят проверку перед выдачей' },
+              { icon: '⚡', label: 'Быстрая выдача', desc: 'Инструмент готов к выдаче в течение 1 часа после бронирования' },
+              { icon: '🛡️', label: 'Проверка', desc: 'Каждый инструмент проходит диагностику перед выдачей' },
               { icon: '💰', label: 'Фикс. цена', desc: 'Стоимость фиксируется заранее, без скрытых доплат' },
-              { icon: '📸', label: 'Доставка', desc: 'Доставим инструмент на объект и заберём обратно' },
+              { icon: '🚛', label: 'Доставка', desc: 'Доставим на объект и заберём обратно за 700 ₽' },
             ].map(item => (
               <div key={item.label} className="bg-white rounded-[28px] border border-white/20 p-5 shadow-sm text-center">
                 <span className="text-xl mb-2 block">{item.icon}</span>
@@ -200,27 +394,130 @@ export default function BroRentLanding() {
           ))}
         </section>
 
-        {/* Услуги */}
+        {/* Моечные пылесосы для химчистки */}
         <section className="mb-8">
-          <h3 className="text-[16px] font-bold text-zinc-900 mb-4">Инструменты</h3>
-          <div className="space-y-3">
-            {services.map((svc) => (
-              <button key={svc.name} type="button" onClick={() => setDetailService(svc)}
-                className="w-full bg-white rounded-[20px] shadow-sm overflow-hidden flex text-left active:scale-[0.98] transition-transform">
-                <div className="w-28 h-28 shrink-0 bg-zinc-100">
-                  <img src={svc.image} alt={svc.name} className="w-full h-full object-cover" />
-                </div>
-                <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
-                  <div>
-                    <p className="text-[13px] font-bold text-zinc-900 leading-tight">{svc.name}</p>
-                    <p className="text-[11px] text-zinc-500 mt-0.5 line-clamp-2">{svc.desc}</p>
+          <h3 className="text-[16px] font-bold text-zinc-900 mb-3">🧹 Моющие пылесосы для химчистки</h3>
+          <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide snap-x snap-mandatory">
+            {services.filter(s => s.icon === '🧹' || s.icon === '💨').map((svc) => {
+              const inCart = isInCart(svc.name);
+              return (
+                <div key={svc.name} className="snap-start shrink-0 w-[280px] bg-white rounded-[20px] shadow-sm border border-zinc-100 overflow-hidden flex flex-col">
+                  <button type="button" onClick={() => setDetailService(svc)} className="relative h-[160px] bg-zinc-100 overflow-hidden">
+                    <img src={svc.image} alt={svc.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                    <span className="absolute top-2.5 right-2.5 px-2 py-1 rounded-full bg-[#00BCD4] text-[10px] font-bold text-white">{svc.brand}</span>
+                    <div className="absolute bottom-2.5 left-2.5 right-2.5">
+                      <p className="text-[15px] font-black text-white leading-tight" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.5)' }}>{svc.name}</p>
+                    </div>
+                  </button>
+                  <div className="p-3 flex-1 flex flex-col justify-between">
+                    <p className="text-[12px] text-zinc-700 leading-snug mb-2 line-clamp-2">{svc.desc}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[15px] font-black text-zinc-900">{svc.price} ₽<span className="text-[11px] text-zinc-500 font-normal">/день</span></span>
+                      <button type="button" onClick={() => addToCart(svc)}
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all ${inCart ? 'bg-[#00BCD4] text-white' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'}`}>
+                        {inCart ? <><CheckCircle2 size={12} /> В корзине</> : <><Plus size={12} /> В корзину</>}
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-[10px] text-zinc-400">{svc.time}</span>
-                    <span className="text-[13px] font-bold text-zinc-900">{svc.price} ₽/день</span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Инструмент для стройки */}
+        <section className="mb-8">
+          <h3 className="text-[16px] font-bold text-zinc-900 mb-3">🔨 Инструмент для стройки</h3>
+          <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide snap-x snap-mandatory">
+            {services.filter(s => s.icon !== '🧹' && s.icon !== '💨').map((svc) => {
+              const inCart = isInCart(svc.name);
+              return (
+                <div key={svc.name} className="snap-start shrink-0 w-[280px] bg-white rounded-[20px] shadow-sm border border-zinc-100 overflow-hidden flex flex-col">
+                  <button type="button" onClick={() => setDetailService(svc)} className="relative h-[160px] bg-zinc-100 overflow-hidden">
+                    <img src={svc.image} alt={svc.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                    <span className="absolute top-2.5 right-2.5 px-2 py-1 rounded-full bg-[#00BCD4] text-[10px] font-bold text-white">{svc.brand}</span>
+                    <div className="absolute bottom-2.5 left-2.5 right-2.5">
+                      <p className="text-[15px] font-black text-white leading-tight" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.5)' }}>{svc.name}</p>
+                    </div>
+                  </button>
+                  <div className="p-3 flex-1 flex flex-col justify-between">
+                    <p className="text-[12px] text-zinc-700 leading-snug mb-2 line-clamp-2">{svc.desc}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[15px] font-black text-zinc-900">{svc.price} ₽<span className="text-[11px] text-zinc-500 font-normal">/день</span></span>
+                      <button type="button" onClick={() => addToCart(svc)}
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all ${inCart ? 'bg-[#00BCD4] text-white' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'}`}>
+                        {inCart ? <><CheckCircle2 size={12} /> В корзине</> : <><Plus size={12} /> В корзину</>}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Товары для химчистки */}
+        <section className="mb-8">
+          <h3 className="text-[16px] font-bold text-zinc-900 mb-3">🧹 Товары для химчистки</h3>
+          <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide snap-x snap-mandatory">
+            {[
+              { name: 'Средство GROS', desc: 'Порция для химчистки мебели 100мл', price: '250 ₽', icon: '🧴' },
+              { name: 'Кондиционер GROS', desc: 'Для ткани после химчистки 100мл', price: '200 ₽', icon: '🧴' },
+              { name: 'Средство Ecolab', desc: 'Professional Carpet 5л', price: '450 ₽', icon: '🧴' },
+              { name: 'Средство Kiehl', desc: 'Universal Cleaner 5л', price: '500 ₽', icon: '🧴' },
+              { name: 'Кондиционер Host', desc: 'After Shampoo 1л', price: '350 ₽', icon: '🧴' },
+              { name: 'Средство Dr. Schutz', desc: 'Polymer Protector 5л', price: '600 ₽', icon: '🧴' },
+              { name: 'Средство от пятен', desc: 'Удаление сложных загрязнений', price: '200 ₽', icon: '✨' },
+              { name: 'Антисептик', desc: 'Дезинфекция поверхностей 1л', price: '250 ₽', icon: '🛡️' },
+              { name: 'Круглая щётка 100мм', desc: 'Для шуруповерта, нейлон', price: '180 ₽', icon: '🧹' },
+              { name: 'Насадка-щётка 65мм', desc: 'Для дрели, жёсткая', price: '150 ₽', icon: '🧹' },
+            ].map((item) => (
+              <div key={item.name} className="snap-start shrink-0 w-[140px] bg-white rounded-2xl p-3 shadow-sm border border-zinc-100 relative">
+                <span className="text-2xl block mb-2">{item.icon}</span>
+                <p className="text-[12px] font-bold text-zinc-900 mb-0.5 line-clamp-1">{item.name}</p>
+                <p className="text-[10px] text-zinc-600 mb-2 line-clamp-2">{item.desc}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[12px] font-bold text-[#00BCD4]">{item.price}</p>
+                  <button type="button" className="w-7 h-7 rounded-full bg-[#00BCD4] text-white flex items-center justify-center hover:bg-[#0097A7] transition-colors">
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Всё для стройки */}
+        <section className="mb-8">
+          <h3 className="text-[16px] font-bold text-zinc-900 mb-3">🔨 Всё для стройки</h3>
+          <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide snap-x snap-mandatory">
+            {[
+              { name: 'Биты Makita', desc: 'Набор 32 шт. CR-V', price: '250 ₽', icon: '🔩' },
+              { name: 'Диски для УШМ', desc: '125мм по металлу 3шт', price: '180 ₽', icon: '⚙️' },
+              { name: 'Диски отрезные', desc: 'По камню 125мм 2шт', price: '200 ₽', icon: '⚙️' },
+              { name: 'Рулетка 5м', desc: 'Стекловолокно, locked', price: '100 ₽', icon: '📏' },
+              { name: 'Кисти для покраски', desc: 'Набор 3 шт. (50/75/100мм)', price: '220 ₽', icon: '🖌️' },
+              { name: 'Нож малярный', desc: 'С телескопической ручкой', price: '80 ₽', icon: '🔪' },
+              { name: 'Скотч малярный', desc: '36мм × 50м, 2 шт.', price: '150 ₽', icon: '📦' },
+              { name: 'Переноска 20м', desc: '3 розетки, IP44', price: '250 ₽', icon: '🔌' },
+              { name: 'Прожектор LED', desc: '50Вт, 4000 люмен', price: '350 ₽', icon: '🔦' },
+              { name: 'Перчатки х/б', desc: '5 пар, пропитка', price: '90 ₽', icon: '🧤' },
+              { name: 'Респираторы', desc: 'FFP2, 5 шт.', price: '120 ₽', icon: '😷' },
+              { name: 'Пленка укрывная', desc: '3×4м, 50мкм', price: '150 ₽', icon: '📦' },
+            ].map((item) => (
+              <div key={item.name} className="snap-start shrink-0 w-[140px] bg-white rounded-2xl p-3 shadow-sm border border-zinc-100 relative">
+                <span className="text-2xl block mb-2">{item.icon}</span>
+                <p className="text-[12px] font-bold text-zinc-900 mb-0.5 line-clamp-1">{item.name}</p>
+                <p className="text-[10px] text-zinc-600 mb-2 line-clamp-2">{item.desc}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[12px] font-bold text-[#00BCD4]">{item.price}</p>
+                  <button type="button" className="w-7 h-7 rounded-full bg-[#00BCD4] text-white flex items-center justify-center hover:bg-[#0097A7] transition-colors">
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </div>
             ))}
           </div>
         </section>
@@ -232,8 +529,8 @@ export default function BroRentLanding() {
             <div className="space-y-3">
               {[
                 { step: '01', title: 'Выберите инструмент', desc: 'Из каталога или по телефону' },
-                { step: '02', title: 'Забронируйте', desc: 'Укажите дату и срок аренды' },
-                { step: '03', title: 'Получите', desc: 'Доставим или заберёте сами' },
+                { step: '02', title: 'Укажите дату и срок', desc: 'Когда нужен и на сколько суток' },
+                { step: '03', title: 'Получите', desc: 'Доставим курьером или заберёте сами' },
                 { step: '04', title: 'Верните', desc: 'В согласованное время' },
               ].map(item => (
                 <div key={item.step} className="flex items-center gap-4">
@@ -252,7 +549,7 @@ export default function BroRentLanding() {
 
         {/* Фотогалерея */}
         <div className="mb-6">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-zinc-400 mb-3 px-1">Фотогалерея</p>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-zinc-400 mb-3 px-1">Наше оборудование</p>
           <div className="relative rounded-[24px] overflow-hidden bg-zinc-100" style={{ aspectRatio: `${SLIDER_RATIO}` }}>
             {GALLERY_IMAGES.map((url, i) => (
               <img key={url} src={url} alt="" className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${i === galleryIdx ? 'opacity-100' : 'opacity-0'}`} />
@@ -278,12 +575,12 @@ export default function BroRentLanding() {
         {/* За счёт чего результат */}
         <section className="mb-8">
           <div className="bg-white rounded-[28px] p-6 shadow-sm">
-            <h3 className="text-[16px] font-bold text-zinc-900 mb-4">За счёт чего мы получаем идеальный результат?</h3>
+            <h3 className="text-[16px] font-bold text-zinc-900 mb-4">Почему выбирают нас</h3>
             <div className="space-y-3">
               {[
-                { title: 'Проверка инструмента', desc: 'Каждый инструмент проходит диагностику перед выдачей' },
-                { title: 'Оперативная замена', desc: 'При поломке заменим инструмент в течение часа' },
-                { title: 'Чистые инструменты', desc: 'Все инструменты чистые и готовы к работе' },
+                { title: 'Диагностика перед выдачей', desc: 'Каждый инструмент проверяется перед тем, как попадёт к вам' },
+                { title: 'Замена за 1 час', desc: 'При поломке быстро заменим инструмент' },
+                { title: 'Чистые инструменты', desc: 'Всё чистое и готово к работе' },
               ].map((item, i) => (
                 <div key={i} className="flex items-start gap-3">
                   <span className="text-yellow-500 text-sm mt-0.5">⭐</span>
@@ -312,10 +609,65 @@ export default function BroRentLanding() {
             <Phone size={16} /> Позвонить
           </a>
           <button type="button" className="flex-1 flex items-center justify-center gap-2 py-3 rounded-[20px] bg-[#00BCD4] text-white text-[13px] font-bold hover:bg-[#0097A7] transition-colors">
-            <MessageCircle size={16} /> Оставить заявку
+            <MessageCircle size={16} /> Забронировать инструмент
           </button>
         </div>
       </div>
+
+      {/* Floating cart button */}
+      {cart.length > 0 && (
+        <button type="button" onClick={() => setShowCart(true)}
+          className="fixed bottom-20 right-4 z-50 flex items-center gap-2 px-5 py-3.5 rounded-full bg-[#00BCD4] text-white shadow-xl shadow-[#00BCD4]/30 hover:bg-[#0097A7] transition-all active:scale-95">
+          <div className="relative">
+            <ShoppingCart size={20} />
+            <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white text-[#00BCD4] text-[10px] font-bold flex items-center justify-center">{cart.length}</span>
+          </div>
+          <span className="text-[13px] font-bold">{cartTotal.toLocaleString('ru')} ₽</span>
+        </button>
+      )}
+
+      {/* Cart modal */}
+      {showCart && (
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowCart(false)} />
+          <div className="relative w-full sm:max-w-[420px] mx-4 bg-white rounded-t-[24px] sm:rounded-[24px] shadow-2xl overflow-hidden max-h-[80vh] flex flex-col animate-in slide-in-from-bottom-4 duration-300">
+            <div className="p-4 border-b border-zinc-100 flex items-center justify-between">
+              <h3 className="text-[15px] font-bold text-zinc-900">Корзина ({cart.length})</h3>
+              <button type="button" onClick={() => setShowCart(false)} className="p-1.5 rounded-full hover:bg-zinc-100"><X size={18} className="text-zinc-400" /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {cart.map((item) => (
+                <div key={item.name} className="flex items-center gap-3 bg-zinc-50 rounded-xl p-3">
+                  <div className="w-12 h-12 rounded-lg bg-zinc-100 shrink-0 overflow-hidden">
+                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-bold text-zinc-900 truncate">{item.name}</p>
+                    <p className="text-[11px] text-zinc-400">{item.brand}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-[13px] font-bold text-zinc-900">{item.price} ₽</p>
+                    <p className="text-[10px] text-zinc-400">/день</p>
+                  </div>
+                  <button type="button" onClick={() => addToCart(item)} className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-400 hover:bg-red-100 transition-colors shrink-0">
+                    <Minus size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="p-4 border-t border-zinc-100 bg-white">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[13px] font-bold text-zinc-500">Итого:</span>
+                <span className="text-xl font-black text-[#00BCD4]">{cartTotal.toLocaleString('ru')} ₽/день</span>
+              </div>
+              <button type="button" onClick={() => { setSelectedService(cart[0]); setShowCart(false); }}
+                className="w-full py-3.5 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold hover:bg-[#0097A7] transition-all active:scale-[0.98]">
+                Забронировать ({cart.length} шт.)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Service detail modal */}
       {detailService && (
@@ -324,7 +676,7 @@ export default function BroRentLanding() {
 
       {/* Order modal */}
       {selectedService && (
-        <OrderModal service={selectedService} onClose={() => setSelectedService(null)} />
+        <OrderModal service={selectedService} cartItems={cart} onClose={() => { setSelectedService(null); setCart([]); }} />
       )}
 
     </div>

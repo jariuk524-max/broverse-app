@@ -13,6 +13,7 @@ export interface StoredOrder {
   time: string;
   delivery: string;
   returnType: string;
+  payment: string;
   days: number;
   total: number;
   status: 'new' | 'confirmed' | 'completed';
@@ -175,6 +176,10 @@ export default function Header() {
                           <div className="flex justify-between text-[11px]">
                             <span className="text-zinc-400">Получение</span>
                             <span className="text-zinc-600">{order.delivery} / Возврат: {order.returnType}</span>
+                          </div>
+                          <div className="flex justify-between text-[11px]">
+                            <span className="text-zinc-400">Оплата</span>
+                            <span className="text-zinc-600">{order.payment}</span>
                           </div>
                           <div className="flex justify-between text-[11px]">
                             <span className="text-zinc-400">Срок</span>

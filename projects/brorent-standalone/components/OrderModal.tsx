@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { CheckCircle2, X, Phone, MessageCircle, Zap, Minus, Plus, Truck } from 'lucide-react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { CheckCircle2, X, Phone, MessageCircle, Zap, Minus, Plus, Truck, ChevronLeft, ChevronRight, ShoppingCart } from 'lucide-react';
 import { createOrderInSupabase } from '@/lib/monolith-bridge';
 import { saveOrder } from '@/components/Header';
 
@@ -19,6 +19,7 @@ export type OrderServiceItem = {
 
 interface OrderModalProps {
   service: OrderServiceItem;
+  cartItems?: OrderServiceItem[];
   onClose: () => void;
 }
 
@@ -46,6 +47,17 @@ const TIME_SLOTS = [
   { id: '18-21', label: '18:00 — 21:00', sub: 'Поздно', startHour: 18 },
 ];
 
+const ADDON_PRODUCTS = [
+  { id: 'detergent', name: 'Чистящее средство', desc: 'Профессиональный состав для мебели', price: 350, icon: '🧴' },
+  { id: 'dehumidifier', name: 'Осушитель воздуха', desc: 'Для быстрой сушки после чистки', price: 500, icon: '💨' },
+  { id: 'stain-remover', name: 'Средство от пятен', desc: 'Удаление сложных загрязнений', price: 250, icon: '✨' },
+  { id: 'brush', name: 'Насадки для чистки', desc: 'Набор щёток и насадок', price: 200, icon: '🧹' },
+  { id: 'sanitizer', name: 'Антисептик', desc: 'Дезинфекция мягких поверхностей', price: 300, icon: '🛡️' },
+  { id: 'fan', name: 'Вентилятор', desc: 'Ускорение высыхания', price: 400, icon: '🌀' },
+  { id: 'uv-lamp', name: 'УФ-лампа', desc: 'Стерилизация поверхностей', price: 600, icon: '🔦' },
+  { id: 'cover', name: 'Чехол для мебели', desc: 'Защита после чистки', price: 150, icon: '🛋️' },
+];
+
 function getMoscowHour(): number {
   const now = new Date();
   const msk = new Date(now.getTime() + (3 * 60 * 60 * 1000) - (now.getTimezoneOffset() * 60 * 1000));
@@ -58,7 +70,8 @@ function getAvailableTimeSlots(isToday: boolean): typeof TIME_SLOTS {
   return TIME_SLOTS.filter(slot => slot.startHour >= currentHour);
 }
 
-export default function OrderModal({ service, onClose }: OrderModalProps) {
+export default function OrderModal({ service, cartItems, onClose }: OrderModalProps) {
+  const items = cartItems && cartItems.length > 0 ? cartItems : [service];
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -70,8 +83,11 @@ export default function OrderModal({ service, onClose }: OrderModalProps) {
   const [rentDays, setRentDays] = useState(1);
   const [deliveryType, setDeliveryType] = useState<'courier' | 'pickup'>('courier');
   const [returnType, setReturnType] = useState<'courier' | 'pickup'>('courier');
+  const [paymentMethod, setPaymentMethod] = useState<'now' | 'cash'>('cash');
+  const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [visible, setVisible] = useState(false);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
@@ -98,42 +114,57 @@ export default function OrderModal({ service, onClose }: OrderModalProps) {
     { id: 'custom', label: 'Выбрать дату', sub: 'Календарь' },
   ];
 
-  const dayPrice = parseInt(service.price.replace(/\s/g, ''));
+  const dayPrice = items.reduce((sum, s) => sum + parseInt(s.price.replace(/\s/g, '')), 0);
   const rentalTotal = calculateTotalPrice(dayPrice, rentDays);
   const deliveryCost = deliveryType === 'courier' ? DELIVERY_FEE : 0;
   const returnCost = returnType === 'courier' ? DELIVERY_FEE : 0;
-  const grandTotal = rentalTotal + deliveryCost + returnCost;
+  const addonsTotal = ADDON_PRODUCTS.filter(p => selectedAddons.includes(p.id)).reduce((sum, p) => sum + p.price, 0);
+  const grandTotal = rentalTotal + deliveryCost + returnCost + addonsTotal;
 
-  const canProceed = dateOption && timeSlot && name && phone && (deliveryType === 'pickup' || address);
+  const canProceed = dateOption && timeSlot;
+  const canSubmit = name && phone && (deliveryType === 'pickup' || address);
+
+  const toggleAddon = (id: string) => {
+    setSelectedAddons(prev => prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]);
+  };
+
+  const scrollCarousel = (dir: 'left' | 'right') => {
+    if (!carouselRef.current) return;
+    const scrollAmount = 200;
+    carouselRef.current.scrollBy({ left: dir === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+  };
 
   const handleSubmit = useCallback(async () => {
     const timeLabel = TIME_SLOTS.find(t => t.id === timeSlot)?.label || timeSlot;
     const dateLabel = dateOption === 'custom' ? customDate : dateOptions.find(d => d.id === dateOption)?.label;
+    const addons = ADDON_PRODUCTS.filter(p => selectedAddons.includes(p.id)).map(p => p.name).join(', ');
+    const toolsList = items.map(i => `${i.name} (${i.price} ₽/день)`).join(', ');
     await createOrderInSupabase({
-      title: `${service.brand} — ${service.name}`,
+      title: `${service.brand} — ${items.length > 1 ? `${items.length} инструментов` : service.name}`,
       service: 'rental',
       address: address || `Москва, доставка`,
       price: grandTotal,
       client_name: name,
       client_phone: phone,
-      client_comment: `Аренда ${rentDays} дн., доставка: ${dateLabel} ${timeLabel}, получение: ${deliveryType === 'courier' ? 'курьер' : 'самовывоз'}, возврат: ${returnType === 'courier' ? 'курьер' : 'самовывоз'}, адрес: ${address} — ${comment}`,
+      client_comment: `Инструменты: ${toolsList}. Аренда ${rentDays} дн., доставка: ${dateLabel} ${timeLabel}, получение: ${deliveryType === 'courier' ? 'курьер' : 'самовывоз'}, возврат: ${returnType === 'courier' ? 'курьер' : 'самовывоз'}, оплата: ${paymentMethod === 'now' ? 'онлайн' : 'наличные'}${addons ? `, доп. товары: ${addons}` : ''}, адрес: ${address} — ${comment}`,
     });
     saveOrder({
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       name,
       phone,
-      service: service.name,
+      service: items.length > 1 ? `${items.length} инструментов` : items[0].name,
       date: dateLabel || '',
       time: timeLabel,
       delivery: deliveryType === 'courier' ? 'Курьер' : 'Самовывоз',
       returnType: returnType === 'courier' ? 'Курьер' : 'Самовывоз',
+      payment: paymentMethod === 'now' ? 'Онлайн' : 'Наличные',
       days: rentDays,
       total: grandTotal,
       status: 'new',
       createdAt: new Date().toISOString(),
     });
     setSubmitted(true);
-  }, [service.name, service.brand, address, dateOption, customDate, timeSlot, rentDays, name, phone, comment, grandTotal, deliveryType, returnType]);
+  }, [service.name, service.brand, items, address, dateOption, customDate, timeSlot, rentDays, name, phone, comment, grandTotal, deliveryType, returnType, paymentMethod, selectedAddons]);
 
   if (submitted) {
     return (
@@ -144,13 +175,12 @@ export default function OrderModal({ service, onClose }: OrderModalProps) {
             <CheckCircle2 size={32} className="text-[#00BCD4]" />
           </div>
           <h3 className="text-lg font-bold text-zinc-900 mb-2">Заявка отправлена!</h3>
-          <p className="text-sm text-zinc-500 mb-2">{service.name}</p>
+          <p className="text-sm text-zinc-500 mb-2">{items.length > 1 ? `${items.length} инструментов` : items[0].name}</p>
           <p className="text-xs text-zinc-400 mb-1">Доставка: {dateOption === 'custom' ? customDate : dateOptions.find(d => d.id === dateOption)?.label} • {TIME_SLOTS.find(t => t.id === timeSlot)?.label}</p>
           <p className="text-xs text-zinc-400 mb-2">Аренда: {rentDays} {rentDays === 1 ? 'сутки' : rentDays < 5 ? 'суток' : 'суток'}</p>
+          {selectedAddons.length > 0 && <p className="text-xs text-zinc-400 mb-2">Дополнительно: {ADDON_PRODUCTS.filter(p => selectedAddons.includes(p.id)).map(p => p.name).join(', ')}</p>}
           <p className="text-sm font-bold text-[#00BCD4] mb-6">Итого: {grandTotal.toLocaleString('ru')} ₽</p>
-          <button type="button" onClick={handleClose} className="w-full py-3 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold hover:bg-[#0097A7] transition-colors">
-            Закрыть
-          </button>
+          <button type="button" onClick={handleClose} className="w-full py-3 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold hover:bg-[#0097A7] transition-colors">Закрыть</button>
         </div>
       </div>
     );
@@ -159,17 +189,18 @@ export default function OrderModal({ service, onClose }: OrderModalProps) {
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
       <div className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} />
-      <div className={`relative w-full sm:max-w-[420px] mx-4 mb-0 sm:mb-0 bg-white rounded-t-[24px] sm:rounded-[24px] shadow-2xl overflow-hidden transition-all duration-300 ease-out max-h-[90vh] overflow-y-auto ${visible ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-full sm:translate-y-8 opacity-0 scale-95'}`}>
+      <div className={`relative w-full sm:max-w-[420px] mx-4 mb-0 sm:mb-0 bg-white rounded-t-[24px] sm:rounded-[24px] shadow-2xl overflow-hidden transition-all duration-300 ease-out max-h-[90vh] flex flex-col ${visible ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-full sm:translate-y-8 opacity-0 scale-95'}`}>
+
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-white border-b border-zinc-100 p-4 sm:p-5">
+        <div className="shrink-0 bg-white border-b border-zinc-100 p-4 sm:p-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-[#E0F7FA] flex items-center justify-center">
-                <span className="text-xl">{service.icon}</span>
+                <span className="text-xl">{items[0].icon}</span>
               </div>
               <div>
-                <h3 className="text-sm sm:text-base font-bold text-zinc-900">{service.name}</h3>
-                <p className="text-[10px] sm:text-[11px] text-[#00BCD4] font-semibold">{service.brand}</p>
+                <h3 className="text-sm sm:text-base font-bold text-zinc-900">{items.length > 1 ? `${items.length} инструментов` : items[0].name}</h3>
+                <p className="text-[10px] sm:text-[11px] text-[#00BCD4] font-semibold">{items[0].brand}</p>
               </div>
             </div>
             <button type="button" onClick={handleClose} className="p-1.5 rounded-full hover:bg-zinc-100 transition-colors">
@@ -178,12 +209,14 @@ export default function OrderModal({ service, onClose }: OrderModalProps) {
           </div>
           <div className="flex items-center justify-between mt-3">
             <div className="flex items-center gap-2">
-              <span className="text-lg font-black text-zinc-900">{service.price} ₽</span>
+              <span className="text-lg font-black text-zinc-900">{dayPrice.toLocaleString('ru')} ₽</span>
               <span className="text-[11px] text-zinc-400">/сутки</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               {step === 2 && (
-                <button type="button" onClick={() => setStep(1)} className="text-[11px] font-semibold text-[#00BCD4] hover:underline">Изменить</button>
+                <button type="button" onClick={() => setStep(1)} className="flex items-center gap-1 text-[11px] font-semibold text-[#00BCD4] hover:underline">
+                  <ChevronLeft size={14} /> Назад
+                </button>
               )}
               <div className="flex gap-1">
                 {[1, 2].map((s) => (
@@ -194,8 +227,8 @@ export default function OrderModal({ service, onClose }: OrderModalProps) {
           </div>
         </div>
 
-        <div className="p-4 sm:p-5 pb-28">
-          {/* Step 1 */}
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 pb-36">
           {step === 1 && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 space-y-4">
 
@@ -214,7 +247,7 @@ export default function OrderModal({ service, onClose }: OrderModalProps) {
                 {dateOption === 'custom' && (
                   <input type="date" value={customDate} onChange={(e) => setCustomDate(e.target.value)}
                     min={today.toISOString().split('T')[0]}
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#00BCD4] transition-colors mt-1.5" />
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-[15px] outline-none focus:border-[#00BCD4] focus:ring-2 focus:ring-[#00BCD4]/20 transition-all mt-1.5" />
                 )}
               </div>
 
@@ -234,7 +267,7 @@ export default function OrderModal({ service, onClose }: OrderModalProps) {
                       return (
                         <button key={t.id} type="button" onClick={() => { if (isAvailable) setTimeSlot(t.id); }}
                           disabled={!isAvailable}
-                          className={`p-2 rounded-xl border text-left transition-all ${!isAvailable ? 'border-zinc-100 bg-zinc-50 opacity-40 cursor-not-allowed' : timeSlot === t.id ? 'border-[#00BCD4] bg-[#E0F7FA]/50 shadow-sm' : 'border-zinc-200 hover:border-zinc-300'}`}>
+                          className={`p-2.5 rounded-xl border text-left transition-all ${!isAvailable ? 'border-zinc-100 bg-zinc-50 opacity-40 cursor-not-allowed' : timeSlot === t.id ? 'border-[#00BCD4] bg-[#E0F7FA]/50 shadow-sm' : 'border-zinc-200 hover:border-zinc-300'}`}>
                           <p className="text-[12px] font-bold text-zinc-800">{t.label}</p>
                           <p className="text-[9px] text-zinc-400">{isAvailable ? t.sub : 'Прошло'}</p>
                         </button>
@@ -250,7 +283,7 @@ export default function OrderModal({ service, onClose }: OrderModalProps) {
                   <div className="grid grid-cols-2 gap-1.5">
                     {TIME_SLOTS.map((t) => (
                       <button key={t.id} type="button" onClick={() => setTimeSlot(t.id)}
-                        className={`p-2 rounded-xl border text-left transition-all ${timeSlot === t.id ? 'border-[#00BCD4] bg-[#E0F7FA]/50' : 'border-zinc-200 hover:border-zinc-300'}`}>
+                        className={`p-2.5 rounded-xl border text-left transition-all ${timeSlot === t.id ? 'border-[#00BCD4] bg-[#E0F7FA]/50' : 'border-zinc-200 hover:border-zinc-300'}`}>
                         <p className="text-[12px] font-bold text-zinc-800">{t.label}</p>
                         <p className="text-[9px] text-zinc-400">{t.sub}</p>
                       </button>
@@ -377,40 +410,107 @@ export default function OrderModal({ service, onClose }: OrderModalProps) {
                   </div>
                 </div>
               </div>
-
-              {/* Contacts */}
-              <div>
-                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Контакты</p>
-                <div className="space-y-2">
-                  <input type="text" placeholder="Ваше имя" value={name} onChange={(e) => setName(e.target.value)}
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#00BCD4] transition-colors" />
-                  <input type="tel" placeholder="+7 (___) ___-__-__" value={phone} onChange={(e) => setPhone(e.target.value)}
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#00BCD4] transition-colors" />
-                  {deliveryType === 'courier' && (
-                    <input type="text" placeholder="Адрес доставки (улица, дом, кв.)" value={address} onChange={(e) => setAddress(e.target.value)}
-                      className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#00BCD4] transition-colors" />
-                  )}
-                  <textarea placeholder="Комментарий" value={comment} onChange={(e) => setComment(e.target.value)}
-                    className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#00BCD4] transition-colors resize-none h-14" />
-                </div>
-              </div>
             </div>
           )}
 
-          {/* Step 2: Confirmation */}
+          {/* Step 2: Contacts + Addons + Summary */}
           {step === 2 && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-[#E0F7FA] flex items-center justify-center shrink-0">
-                  <span className="text-xl">{service.icon}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-bold text-zinc-900 truncate">{service.name}</p>
-                  <p className="text-[11px] text-zinc-400">{service.brand}</p>
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 space-y-5">
+
+              {/* Items list */}
+              <div>
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Выбранные инструменты</p>
+                <div className="space-y-2">
+                  {items.map((item) => (
+                    <div key={item.name} className="flex items-center gap-3 bg-zinc-50 rounded-xl p-2.5">
+                      <div className="w-10 h-10 rounded-lg bg-zinc-100 shrink-0 overflow-hidden">
+                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-bold text-zinc-900 truncate">{item.name}</p>
+                        <p className="text-[10px] text-zinc-400">{item.brand}</p>
+                      </div>
+                      <p className="text-[12px] font-bold text-zinc-900 shrink-0">{item.price} ₽/день</p>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              <div className="bg-zinc-50 rounded-xl p-3 space-y-1.5 mb-3">
+              {/* Contacts */}
+              <div>
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Контакты</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[11px] font-semibold text-zinc-500 mb-1 block">Имя</label>
+                    <input type="text" placeholder="Ваше имя" value={name} onChange={(e) => setName(e.target.value)}
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3.5 text-[15px] outline-none focus:border-[#00BCD4] focus:ring-2 focus:ring-[#00BCD4]/20 transition-all" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-zinc-500 mb-1 block">Телефон</label>
+                    <input type="tel" inputMode="tel" placeholder="+7 (___) ___-__-__" value={phone} onChange={(e) => setPhone(e.target.value)}
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3.5 text-[15px] outline-none focus:border-[#00BCD4] focus:ring-2 focus:ring-[#00BCD4]/20 transition-all" />
+                  </div>
+                  {deliveryType === 'courier' && (
+                    <div>
+                      <label className="text-[11px] font-semibold text-zinc-500 mb-1 block">Адрес доставки</label>
+                      <input type="text" inputMode="text" placeholder="Улица, дом, корпус, кв." value={address} onChange={(e) => setAddress(e.target.value)}
+                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3.5 text-[15px] outline-none focus:border-[#00BCD4] focus:ring-2 focus:ring-[#00BCD4]/20 transition-all" />
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-[11px] font-semibold text-zinc-500 mb-1 block">Комментарий <span className="text-zinc-300">(необязательно)</span></label>
+                    <textarea placeholder="Подъезд, этаж, код домофона..." value={comment} onChange={(e) => setComment(e.target.value)}
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-[15px] outline-none focus:border-[#00BCD4] focus:ring-2 focus:ring-[#00BCD4]/20 transition-all resize-none h-20" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Addons carousel */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Дополнительно к заказу</p>
+                  <div className="flex gap-1">
+                    <button type="button" onClick={() => scrollCarousel('left')} className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center hover:bg-zinc-200 transition-colors">
+                      <ChevronLeft size={14} className="text-zinc-500" />
+                    </button>
+                    <button type="button" onClick={() => scrollCarousel('right')} className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center hover:bg-zinc-200 transition-colors">
+                      <ChevronRight size={14} className="text-zinc-500" />
+                    </button>
+                  </div>
+                </div>
+                <div ref={carouselRef} className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory">
+                  {ADDON_PRODUCTS.map((product) => {
+                    const isSelected = selectedAddons.includes(product.id);
+                    return (
+                      <button key={product.id} type="button" onClick={() => toggleAddon(product.id)}
+                        className={`snap-start shrink-0 w-[140px] p-3 rounded-xl border text-left transition-all ${isSelected ? 'border-[#00BCD4] bg-[#E0F7FA]/50 shadow-sm ring-1 ring-[#00BCD4]/30' : 'border-zinc-200 hover:border-zinc-300 bg-white'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-2xl">{product.icon}</span>
+                          {isSelected ? (
+                            <div className="w-5 h-5 rounded-full bg-[#00BCD4] flex items-center justify-center">
+                              <CheckCircle2 size={12} className="text-white" />
+                            </div>
+                          ) : (
+                            <div className="w-5 h-5 rounded-full border-2 border-zinc-200" />
+                          )}
+                        </div>
+                        <p className="text-[11px] font-bold text-zinc-900 mb-0.5 line-clamp-1">{product.name}</p>
+                        <p className="text-[9px] text-zinc-400 mb-1.5 line-clamp-2">{product.desc}</p>
+                        <p className="text-[11px] font-bold text-[#00BCD4]">{product.price} ₽</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedAddons.length > 0 && (
+                  <div className="flex items-center gap-1.5 mt-1.5 px-1">
+                    <ShoppingCart size={12} className="text-[#00BCD4]" />
+                    <p className="text-[10px] font-semibold text-[#00BCD4]">Выбрано: {selectedAddons.length} товар(ов) на {addonsTotal.toLocaleString('ru')} ₽</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Order summary */}
+              <div className="bg-zinc-50 rounded-xl p-3 space-y-1.5">
                 <div className="flex justify-between text-[12px]">
                   <span className="text-zinc-400">Дата</span>
                   <span className="font-semibold text-zinc-800">{dateOption === 'custom' ? customDate : dateOptions.find(d => d.id === dateOption)?.label}</span>
@@ -427,21 +527,28 @@ export default function OrderModal({ service, onClose }: OrderModalProps) {
                   <span className="text-zinc-400">Возврат</span>
                   <span className="font-semibold text-zinc-800">{returnType === 'courier' ? 'Курьер — 700 ₽' : 'Самовывоз — бесплатно'}</span>
                 </div>
-                {deliveryType === 'courier' && address && (
-                  <div className="flex justify-between text-[12px]">
-                    <span className="text-zinc-400">Адрес</span>
-                    <span className="font-semibold text-zinc-800 text-right max-w-[180px] truncate">{address}</span>
-                  </div>
-                )}
                 <div className="flex justify-between text-[12px]">
                   <span className="text-zinc-400">Срок</span>
                   <span className="font-semibold text-zinc-800">{rentDays} {rentDays === 1 ? 'сутки' : rentDays < 5 ? 'суток' : 'суток'}</span>
                 </div>
+                {selectedAddons.length > 0 && (
+                  <div className="flex justify-between text-[12px]">
+                    <span className="text-zinc-400">Доп. товары</span>
+                    <span className="font-semibold text-zinc-800">{addonsTotal.toLocaleString('ru')} ₽</span>
+                  </div>
+                )}
               </div>
 
+              {/* Price breakdown */}
               <div className="bg-[#E0F7FA]/50 rounded-xl p-3 space-y-1">
-                <div className="flex justify-between text-[12px]">
-                  <span className="text-zinc-500">Аренда ({rentDays} × {rentDays === 1 ? dayPrice : rentDays === 2 ? Math.round(dayPrice * 0.9) : Math.round(dayPrice * 0.8)} ₽)</span>
+                {items.map((item) => (
+                  <div key={item.name} className="flex justify-between text-[12px]">
+                    <span className="text-zinc-500 truncate max-w-[200px]">{item.name}</span>
+                    <span className="font-semibold text-zinc-800">{item.price} ₽/день</span>
+                  </div>
+                ))}
+                <div className="flex justify-between text-[12px] pt-1 border-t border-[#00BCD4]/20">
+                  <span className="text-zinc-500">Аренда ({rentDays} {rentDays === 1 ? 'сутки' : rentDays < 5 ? 'суток' : 'суток'})</span>
                   <span className="font-semibold text-zinc-800">{rentalTotal.toLocaleString('ru')} ₽</span>
                 </div>
                 <div className="flex justify-between text-[12px]">
@@ -456,6 +563,12 @@ export default function OrderModal({ service, onClose }: OrderModalProps) {
                     {returnType === 'courier' ? `${DELIVERY_FEE} ₽` : 'Бесплатно'}
                   </span>
                 </div>
+                {selectedAddons.length > 0 && (
+                  <div className="flex justify-between text-[12px]">
+                    <span className="text-zinc-500">Доп. товары</span>
+                    <span className="font-semibold text-zinc-800">{addonsTotal.toLocaleString('ru')} ₽</span>
+                  </div>
+                )}
                 <div className="border-t border-[#00BCD4]/30 pt-1.5 mt-1">
                   <div className="flex justify-between items-center">
                     <span className="text-[13px] font-bold text-zinc-800">К оплате</span>
@@ -468,19 +581,36 @@ export default function OrderModal({ service, onClose }: OrderModalProps) {
         </div>
 
         {/* Sticky bottom bar */}
-        <div className="sticky bottom-0 bg-white border-t border-zinc-100 p-4 sm:p-5">
+        <div className="shrink-0 bg-white border-t border-zinc-100 p-4 sm:p-5">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[13px] font-bold text-zinc-500">Итого:</span>
             <span key={grandTotal} className="text-xl font-black text-[#00BCD4] animate-[pulse_0.3s_ease-in-out]">{grandTotal.toLocaleString('ru')} ₽</span>
           </div>
+          {step === 2 && (
+            <div className="mb-3">
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Оплата</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setPaymentMethod('now')}
+                  className={`p-2.5 rounded-xl border text-left transition-all ${paymentMethod === 'now' ? 'border-[#00BCD4] bg-[#E0F7FA]/50 shadow-sm' : 'border-zinc-200 hover:border-zinc-300'}`}>
+                  <p className="text-[12px] font-bold text-zinc-900">💳 Заплатить сейчас</p>
+                  <p className="text-[9px] text-zinc-400">Карта онлайн</p>
+                </button>
+                <button type="button" onClick={() => setPaymentMethod('cash')}
+                  className={`p-2.5 rounded-xl border text-left transition-all ${paymentMethod === 'cash' ? 'border-[#00BCD4] bg-[#E0F7FA]/50 shadow-sm' : 'border-zinc-200 hover:border-zinc-300'}`}>
+                  <p className="text-[12px] font-bold text-zinc-900">💵 Наличные</p>
+                  <p className="text-[9px] text-zinc-400">При встрече</p>
+                </button>
+              </div>
+            </div>
+          )}
           {step === 1 ? (
             <button type="button" onClick={() => setStep(2)} disabled={!canProceed}
               className="w-full py-3.5 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold disabled:opacity-30 hover:bg-[#0097A7] transition-all duration-200 active:scale-[0.98]">
-              Проверить заказ →
+              Далее →
             </button>
           ) : (
-            <button type="button" onClick={handleSubmit}
-              className="w-full py-3.5 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold hover:bg-[#0097A7] transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2">
+            <button type="button" onClick={handleSubmit} disabled={!canSubmit}
+              className="w-full py-3.5 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold disabled:opacity-30 hover:bg-[#0097A7] transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2">
               <Zap size={14} /> Забронировать за {grandTotal.toLocaleString('ru')} ₽
             </button>
           )}
