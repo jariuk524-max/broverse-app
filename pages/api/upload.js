@@ -39,7 +39,7 @@ export default async function handler(req, res) {
 
       const filePath = Array.isArray(file) ? file[0].filepath : file.filepath;
       const fileName = path.basename(filePath);
-      const url = `/uploads/${fileName}`;
+      const url = `${process.env.NEXT_PUBLIC_SITE_URL}/uploads/${fileName}`;
 
       res.status(200).json({ url });
       resolve();
