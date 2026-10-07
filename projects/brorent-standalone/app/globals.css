@@ -14,6 +14,14 @@
   .slide-in-from-bottom-4 {
     animation-name: slideInFromBottom;
   }
+
+  .glass-rent {
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
 }
 
 @keyframes fadeIn {

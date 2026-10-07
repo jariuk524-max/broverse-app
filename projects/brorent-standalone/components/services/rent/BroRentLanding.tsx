@@ -277,6 +277,62 @@ function ServiceDetailModal({ service, onOrder, onClose }: { service: OrderServi
 const HERO_RATIO = 1094 / 360;
 const SLIDER_RATIO = 626 / 417;
 
+const GLASS_CARD = 'glass-rent shadow-sm overflow-hidden';
+
+function RentCatalogCard({
+  svc,
+  inCart,
+  onOpenDetail,
+  onToggleCart,
+}: {
+  svc: OrderServiceItem;
+  inCart: boolean;
+  onOpenDetail: () => void;
+  onToggleCart: () => void;
+}) {
+  return (
+    <div className={`${GLASS_CARD} flex flex-col`}>
+      <button type="button" onClick={onOpenDetail} className="relative h-[180px] bg-zinc-100/50 overflow-hidden rounded-t-[28px]">
+        <img src={svc.image} alt={svc.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+        <span className="absolute top-2.5 right-2.5 px-2 py-1 rounded-full bg-[#00BCD4] text-[10px] font-bold text-white">{svc.brand}</span>
+        <div className="absolute bottom-2.5 left-2.5 right-2.5">
+          <p className="text-[15px] font-black text-white leading-tight" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.5)' }}>{svc.name}</p>
+        </div>
+      </button>
+      <div className="p-4 flex-1 flex flex-col justify-between">
+        <p className="text-[12px] text-zinc-700 leading-snug mb-3 line-clamp-3">{svc.desc}</p>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[15px] font-black text-zinc-900">{svc.price} ₽<span className="text-[11px] text-zinc-500 font-normal">/день</span></span>
+          <button
+            type="button"
+            onClick={onToggleCart}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all shrink-0 ${inCart ? 'bg-[#00BCD4] text-white' : 'bg-white/25 text-zinc-800 hover:bg-white/40 backdrop-blur-sm'}`}
+          >
+            {inCart ? <><CheckCircle2 size={12} /> В корзине</> : <><Plus size={12} /> В корзину</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RentAccessoryCard({ item }: { item: { name: string; desc: string; price: string; icon: string } }) {
+  return (
+    <div className={`${GLASS_CARD} p-4 flex flex-col`}>
+      <span className="text-2xl block mb-2">{item.icon}</span>
+      <p className="text-[12px] font-bold text-zinc-900 mb-0.5 line-clamp-2">{item.name}</p>
+      <p className="text-[10px] text-zinc-600 mb-3 line-clamp-2 flex-1">{item.desc}</p>
+      <div className="flex items-center justify-between">
+        <p className="text-[12px] font-bold text-[#00BCD4]">{item.price}</p>
+        <button type="button" className="w-7 h-7 rounded-full bg-[#00BCD4] text-white flex items-center justify-center hover:bg-[#0097A7] transition-colors">
+          <Plus size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function BroRentLanding() {
   const [services] = useState<OrderServiceItem[]>(FALLBACK_SERVICES);
   const [sliderIdx, setSliderIdx] = useState(0);
@@ -378,7 +434,7 @@ export default function BroRentLanding() {
               { icon: '💰', label: 'Фикс. цена', desc: 'Стоимость фиксируется заранее, без скрытых доплат' },
               { icon: '🚛', label: 'Доставка', desc: 'Доставим на объект и заберём обратно за 700 ₽' },
             ].map(item => (
-              <div key={item.label} className="bg-white rounded-[28px] border border-white/20 p-5 shadow-sm text-center">
+              <div key={item.label} className={`${GLASS_CARD} p-5 text-center`}>
                 <span className="text-xl mb-2 block">{item.icon}</span>
                 <p className="text-[13px] font-bold text-zinc-900 mb-1">{item.label}</p>
                 <p className="text-[11px] text-zinc-500 leading-relaxed">{item.desc}</p>
@@ -397,71 +453,39 @@ export default function BroRentLanding() {
         {/* Моечные пылесосы для химчистки */}
         <section className="mb-8">
           <h3 className="text-[16px] font-bold text-zinc-900 mb-3">🧹 Моющие пылесосы для химчистки</h3>
-          <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide snap-x snap-mandatory">
-            {services.filter(s => s.icon === '🧹' || s.icon === '💨').map((svc) => {
-              const inCart = isInCart(svc.name);
-              return (
-                <div key={svc.name} className="snap-start shrink-0 w-[280px] bg-white rounded-[20px] shadow-sm border border-zinc-100 overflow-hidden flex flex-col">
-                  <button type="button" onClick={() => setDetailService(svc)} className="relative h-[160px] bg-zinc-100 overflow-hidden">
-                    <img src={svc.image} alt={svc.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                    <span className="absolute top-2.5 right-2.5 px-2 py-1 rounded-full bg-[#00BCD4] text-[10px] font-bold text-white">{svc.brand}</span>
-                    <div className="absolute bottom-2.5 left-2.5 right-2.5">
-                      <p className="text-[15px] font-black text-white leading-tight" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.5)' }}>{svc.name}</p>
-                    </div>
-                  </button>
-                  <div className="p-3 flex-1 flex flex-col justify-between">
-                    <p className="text-[12px] text-zinc-700 leading-snug mb-2 line-clamp-2">{svc.desc}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[15px] font-black text-zinc-900">{svc.price} ₽<span className="text-[11px] text-zinc-500 font-normal">/день</span></span>
-                      <button type="button" onClick={() => addToCart(svc)}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all ${inCart ? 'bg-[#00BCD4] text-white' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'}`}>
-                        {inCart ? <><CheckCircle2 size={12} /> В корзине</> : <><Plus size={12} /> В корзину</>}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="grid grid-cols-1 gap-4">
+            {services.filter(s => s.icon === '🧹' || s.icon === '💨').map((svc) => (
+              <RentCatalogCard
+                key={svc.name}
+                svc={svc}
+                inCart={isInCart(svc.name)}
+                onOpenDetail={() => setDetailService(svc)}
+                onToggleCart={() => addToCart(svc)}
+              />
+            ))}
           </div>
         </section>
 
         {/* Инструмент для стройки */}
         <section className="mb-8">
           <h3 className="text-[16px] font-bold text-zinc-900 mb-3">🔨 Инструмент для стройки</h3>
-          <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide snap-x snap-mandatory">
-            {services.filter(s => s.icon !== '🧹' && s.icon !== '💨').map((svc) => {
-              const inCart = isInCart(svc.name);
-              return (
-                <div key={svc.name} className="snap-start shrink-0 w-[280px] bg-white rounded-[20px] shadow-sm border border-zinc-100 overflow-hidden flex flex-col">
-                  <button type="button" onClick={() => setDetailService(svc)} className="relative h-[160px] bg-zinc-100 overflow-hidden">
-                    <img src={svc.image} alt={svc.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                    <span className="absolute top-2.5 right-2.5 px-2 py-1 rounded-full bg-[#00BCD4] text-[10px] font-bold text-white">{svc.brand}</span>
-                    <div className="absolute bottom-2.5 left-2.5 right-2.5">
-                      <p className="text-[15px] font-black text-white leading-tight" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.5)' }}>{svc.name}</p>
-                    </div>
-                  </button>
-                  <div className="p-3 flex-1 flex flex-col justify-between">
-                    <p className="text-[12px] text-zinc-700 leading-snug mb-2 line-clamp-2">{svc.desc}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[15px] font-black text-zinc-900">{svc.price} ₽<span className="text-[11px] text-zinc-500 font-normal">/день</span></span>
-                      <button type="button" onClick={() => addToCart(svc)}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all ${inCart ? 'bg-[#00BCD4] text-white' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'}`}>
-                        {inCart ? <><CheckCircle2 size={12} /> В корзине</> : <><Plus size={12} /> В корзину</>}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="grid grid-cols-1 gap-4">
+            {services.filter(s => s.icon !== '🧹' && s.icon !== '💨').map((svc) => (
+              <RentCatalogCard
+                key={svc.name}
+                svc={svc}
+                inCart={isInCart(svc.name)}
+                onOpenDetail={() => setDetailService(svc)}
+                onToggleCart={() => addToCart(svc)}
+              />
+            ))}
           </div>
         </section>
 
         {/* Товары для химчистки */}
         <section className="mb-8">
           <h3 className="text-[16px] font-bold text-zinc-900 mb-3">🧹 Товары для химчистки</h3>
-          <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide snap-x snap-mandatory">
+          <div className="grid grid-cols-2 gap-3">
             {[
               { name: 'Средство GROS', desc: 'Порция для химчистки мебели 100мл', price: '250 ₽', icon: '🧴' },
               { name: 'Кондиционер GROS', desc: 'Для ткани после химчистки 100мл', price: '200 ₽', icon: '🧴' },
@@ -474,17 +498,7 @@ export default function BroRentLanding() {
               { name: 'Круглая щётка 100мм', desc: 'Для шуруповерта, нейлон', price: '180 ₽', icon: '🧹' },
               { name: 'Насадка-щётка 65мм', desc: 'Для дрели, жёсткая', price: '150 ₽', icon: '🧹' },
             ].map((item) => (
-              <div key={item.name} className="snap-start shrink-0 w-[140px] bg-white rounded-2xl p-3 shadow-sm border border-zinc-100 relative">
-                <span className="text-2xl block mb-2">{item.icon}</span>
-                <p className="text-[12px] font-bold text-zinc-900 mb-0.5 line-clamp-1">{item.name}</p>
-                <p className="text-[10px] text-zinc-600 mb-2 line-clamp-2">{item.desc}</p>
-                <div className="flex items-center justify-between">
-                  <p className="text-[12px] font-bold text-[#00BCD4]">{item.price}</p>
-                  <button type="button" className="w-7 h-7 rounded-full bg-[#00BCD4] text-white flex items-center justify-center hover:bg-[#0097A7] transition-colors">
-                    <Plus size={14} />
-                  </button>
-                </div>
-              </div>
+              <RentAccessoryCard key={item.name} item={item} />
             ))}
           </div>
         </section>
@@ -492,7 +506,7 @@ export default function BroRentLanding() {
         {/* Всё для стройки */}
         <section className="mb-8">
           <h3 className="text-[16px] font-bold text-zinc-900 mb-3">🔨 Всё для стройки</h3>
-          <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide snap-x snap-mandatory">
+          <div className="grid grid-cols-2 gap-3">
             {[
               { name: 'Биты Makita', desc: 'Набор 32 шт. CR-V', price: '250 ₽', icon: '🔩' },
               { name: 'Диски для УШМ', desc: '125мм по металлу 3шт', price: '180 ₽', icon: '⚙️' },
@@ -507,17 +521,7 @@ export default function BroRentLanding() {
               { name: 'Респираторы', desc: 'FFP2, 5 шт.', price: '120 ₽', icon: '😷' },
               { name: 'Пленка укрывная', desc: '3×4м, 50мкм', price: '150 ₽', icon: '📦' },
             ].map((item) => (
-              <div key={item.name} className="snap-start shrink-0 w-[140px] bg-white rounded-2xl p-3 shadow-sm border border-zinc-100 relative">
-                <span className="text-2xl block mb-2">{item.icon}</span>
-                <p className="text-[12px] font-bold text-zinc-900 mb-0.5 line-clamp-1">{item.name}</p>
-                <p className="text-[10px] text-zinc-600 mb-2 line-clamp-2">{item.desc}</p>
-                <div className="flex items-center justify-between">
-                  <p className="text-[12px] font-bold text-[#00BCD4]">{item.price}</p>
-                  <button type="button" className="w-7 h-7 rounded-full bg-[#00BCD4] text-white flex items-center justify-center hover:bg-[#0097A7] transition-colors">
-                    <Plus size={14} />
-                  </button>
-                </div>
-              </div>
+              <RentAccessoryCard key={item.name} item={item} />
             ))}
           </div>
         </section>

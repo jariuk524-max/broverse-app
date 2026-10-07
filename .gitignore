@@ -8,3 +8,5 @@ node_modules/
 ngrok_token.txt
 tsconfig.tsbuildinfo
 .vercel
+.aider*
+.mimocode/
