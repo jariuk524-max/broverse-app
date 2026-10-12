@@ -42,6 +42,13 @@ const TRUST_ITEMS = [
 
 
 
+const HOW_IT_WORKS = [
+  { num: '01', emoji: '📝', title: 'Опишите задачу', desc: 'Выберите услугу из каталога', chips: ['Фото помогает мастеру', 'AI-оценка стоимости'] },
+  { num: '02', emoji: '📞', title: 'Мастер свяжется', desc: 'В течение 5 минут', chips: ['Бесплатный выезд', 'Фиксированная стоимость'] },
+  { num: '03', emoji: '🔧', title: 'Работа выполняется', desc: 'Мастер приедет в удобное время', chips: ['Фотоотчёт', 'Соблюдение сроков'] },
+  { num: '04', emoji: '✅', title: 'Принимайте', desc: 'Проверьте результат', chips: ['Оплата после', 'Гарантия 12 мес'] },
+];
+
 function ServiceDetailModal({ service, onOrder, onClose }: { service: OrderServiceItem; onOrder: () => void; onClose: () => void }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => { requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true))); }, []);
@@ -193,6 +200,31 @@ export default function DomainGrid() {
                   </div>
                 </div>
               </button>
+            ))}
+          </div>
+        </section>
+
+        {/* How it works */}
+        <section className="mb-10">
+          <h2 className="text-xl font-bold text-zinc-900 mb-8 text-center">Как это работает</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {HOW_IT_WORKS.map((step) => (
+              <div key={step.num} className="relative">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-4xl">{step.emoji}</span>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-300">Шаг {step.num}</span>
+                </div>
+                <h3 className="text-[15px] font-bold text-zinc-800 mb-2">{step.title}</h3>
+                <p className="text-xs text-zinc-500 leading-relaxed mb-3">{step.desc}</p>
+                <ul className="space-y-1.5">
+                  {step.chips.map((chip) => (
+                    <li key={chip} className="flex items-start gap-2">
+                      <CheckCircle2 size={12} className="text-emerald-400 mt-0.5 shrink-0" />
+                      <span className="text-[11px] text-zinc-400">{chip}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
           </div>
         </section>

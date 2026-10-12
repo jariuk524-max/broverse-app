@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { CheckCircle2, X, Phone, MessageCircle, Zap, Minus, Plus, Truck, ChevronLeft, ChevronRight, ShoppingCart } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { CheckCircle2, X, Phone, MessageCircle, Zap, Minus, Plus, Truck, ChevronLeft, ShoppingCart } from 'lucide-react';
 import { createOrderInSupabase } from '@/lib/monolith-bridge';
 import { saveOrder } from '@/components/Header';
 
@@ -86,15 +86,10 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
   const [paymentMethod, setPaymentMethod] = useState<'now' | 'cash'>('cash');
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
-  const [visible, setVisible] = useState(false);
-  const carouselRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
-  }, []);
+  const [closing, setClosing] = useState(false);
 
   const handleClose = useCallback(() => {
-    setVisible(false);
+    setClosing(true);
     setTimeout(onClose, 300);
   }, [onClose]);
 
@@ -126,12 +121,6 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
 
   const toggleAddon = (id: string) => {
     setSelectedAddons(prev => prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]);
-  };
-
-  const scrollCarousel = (dir: 'left' | 'right') => {
-    if (!carouselRef.current) return;
-    const scrollAmount = 200;
-    carouselRef.current.scrollBy({ left: dir === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
   };
 
   const handleSubmit = useCallback(async () => {
@@ -169,8 +158,8 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
   if (submitted) {
     return (
       <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
-        <div className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} />
-        <div className={`relative w-full sm:max-w-[400px] mx-4 mb-4 sm:mb-0 bg-white rounded-[24px] p-8 text-center shadow-2xl transition-all duration-300 ease-out ${visible ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-8 opacity-0 scale-95'}`}>
+        <div className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${closing ? 'opacity-0' : 'anim-fade'}`} onClick={handleClose} />
+        <div className={`relative w-full sm:max-w-[400px] mx-4 mb-4 sm:mb-0 bg-white rounded-[24px] p-8 text-center shadow-2xl transition-all duration-300 ease-out ${closing ? 'translate-y-8 opacity-0 scale-95' : 'anim-pop'}`}>
           <div className="mx-auto w-16 h-16 rounded-full bg-[#E0F7FA] flex items-center justify-center mb-4 animate-bounce">
             <CheckCircle2 size={32} className="text-[#00BCD4]" />
           </div>
@@ -188,8 +177,8 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
-      <div className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`} onClick={handleClose} />
-      <div className={`relative w-full sm:max-w-[420px] mx-4 mb-0 sm:mb-0 bg-white rounded-t-[24px] sm:rounded-[24px] shadow-2xl overflow-hidden transition-all duration-300 ease-out max-h-[90vh] flex flex-col ${visible ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-full sm:translate-y-8 opacity-0 scale-95'}`}>
+      <div className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${closing ? 'opacity-0' : 'anim-fade'}`} onClick={handleClose} />
+      <div className={`relative w-full sm:max-w-[420px] mx-4 mb-0 sm:mb-0 bg-white rounded-t-[24px] sm:rounded-[24px] shadow-2xl overflow-hidden transition-all duration-300 ease-out max-h-[90vh] flex flex-col ${closing ? 'translate-y-full sm:translate-y-8 opacity-0 scale-95' : 'anim-sheet'}`}>
 
         {/* Header */}
         <div className="shrink-0 bg-white border-b border-zinc-100 p-4 sm:p-5">
@@ -465,25 +454,15 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
                 </div>
               </div>
 
-              {/* Addons carousel */}
+              {/* Addons */}
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Дополнительно к заказу</p>
-                  <div className="flex gap-1">
-                    <button type="button" onClick={() => scrollCarousel('left')} className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center hover:bg-zinc-200 transition-colors">
-                      <ChevronLeft size={14} className="text-zinc-500" />
-                    </button>
-                    <button type="button" onClick={() => scrollCarousel('right')} className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center hover:bg-zinc-200 transition-colors">
-                      <ChevronRight size={14} className="text-zinc-500" />
-                    </button>
-                  </div>
-                </div>
-                <div ref={carouselRef} className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory">
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Дополнительно к заказу</p>
+                <div className="grid grid-cols-2 gap-2">
                   {ADDON_PRODUCTS.map((product) => {
                     const isSelected = selectedAddons.includes(product.id);
                     return (
                       <button key={product.id} type="button" onClick={() => toggleAddon(product.id)}
-                        className={`snap-start shrink-0 w-[140px] p-3 rounded-xl border text-left transition-all ${isSelected ? 'border-[#00BCD4] bg-[#E0F7FA]/50 shadow-sm ring-1 ring-[#00BCD4]/30' : 'border-zinc-200 hover:border-zinc-300 bg-white'}`}>
+                        className={`p-3 rounded-xl border text-left transition-all ${isSelected ? 'border-[#00BCD4] bg-[#E0F7FA]/50 shadow-sm ring-1 ring-[#00BCD4]/30' : 'border-zinc-200 hover:border-zinc-300 bg-white'}`}>
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-2xl">{product.icon}</span>
                           {isSelected ? (
@@ -605,12 +584,12 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
           )}
           {step === 1 ? (
             <button type="button" onClick={() => setStep(2)} disabled={!canProceed}
-              className="w-full py-3.5 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold disabled:opacity-30 hover:bg-[#0097A7] transition-all duration-200 active:scale-[0.98]">
+              className="w-full py-3.5 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold disabled:opacity-30 hover:bg-[#0097A7] transition-all duration-200 active:scale-[0.98] touch-manipulation">
               Далее →
             </button>
           ) : (
             <button type="button" onClick={handleSubmit} disabled={!canSubmit}
-              className="w-full py-3.5 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold disabled:opacity-30 hover:bg-[#0097A7] transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2">
+              className="w-full py-3.5 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold disabled:opacity-30 hover:bg-[#0097A7] transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2 touch-manipulation">
               <Zap size={14} /> Забронировать за {grandTotal.toLocaleString('ru')} ₽
             </button>
           )}

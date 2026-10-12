@@ -1,4 +1,4 @@
-import ServicePage from '@/components/ServicePage';
+import BroWashLanding from '@/components/services/wash/BroWashLanding';
 
 export const metadata = {
   title: 'BroWash — Химчистка мебели',
@@ -6,5 +6,5 @@ export const metadata = {
 };
 
 export default function WashPage() {
-  return <ServicePage domainId="wash" />;
+  return <BroWashLanding />;
 }
