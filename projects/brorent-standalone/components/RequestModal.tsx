@@ -65,6 +65,11 @@ export default function RequestModal({
     setSubmitting(false);
     if (res) {
       setSubmitted(true);
+      fetch('/api/telegram-notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: res }),
+      }).catch(() => {});
     } else {
       setError('Не удалось отправить заявку. Попробуйте ещё раз.');
     }

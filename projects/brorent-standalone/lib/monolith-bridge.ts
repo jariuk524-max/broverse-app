@@ -32,16 +32,18 @@ export async function createOrderInSupabase(payload: {
   const { data, error } = await getSupabase()
     .from('orders')
     .insert({
-      title: payload.title,
-      service: payload.service || 'cleaning',
+      service_name: payload.title,
       address: payload.address || '',
-      price: payload.price || 0,
       lat: payload.lat || 55.7558 + (Math.random() - 0.5) * 0.04,
       lng: payload.lng || 37.6173 + (Math.random() - 0.5) * 0.04,
       client_name: payload.client_name || '',
       client_phone: payload.client_phone || '',
-      client_comment: payload.client_comment || '',
       status: 'new',
+      metadata: {
+        price: payload.price || 0,
+        comment: payload.client_comment || '',
+        domain: payload.service || 'cleaning',
+      },
     })
     .select()
     .single();

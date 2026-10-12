@@ -128,7 +128,7 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
     const dateLabel = dateOption === 'custom' ? customDate : dateOptions.find(d => d.id === dateOption)?.label;
     const addons = ADDON_PRODUCTS.filter(p => selectedAddons.includes(p.id)).map(p => p.name).join(', ');
     const toolsList = items.map(i => `${i.name} (${i.price} ₽/день)`).join(', ');
-    await createOrderInSupabase({
+    const created = await createOrderInSupabase({
       title: `${service.brand} — ${items.length > 1 ? `${items.length} инструментов` : service.name}`,
       service: 'rental',
       address: address || `Москва, доставка`,
@@ -137,6 +137,13 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
       client_phone: phone,
       client_comment: `Инструменты: ${toolsList}. Аренда ${rentDays} дн., доставка: ${dateLabel} ${timeLabel}, получение: ${deliveryType === 'courier' ? 'курьер' : 'самовывоз'}, возврат: ${returnType === 'courier' ? 'курьер' : 'самовывоз'}, оплата: ${paymentMethod === 'now' ? 'онлайн' : 'наличные'}${addons ? `, доп. товары: ${addons}` : ''}, адрес: ${address} — ${comment}`,
     });
+    if (created) {
+      fetch('/api/telegram-notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: created }),
+      }).catch(() => {});
+    }
     saveOrder({
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       name,
