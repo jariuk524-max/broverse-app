@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ChevronLeft, ChevronRight, Phone, MessageCircle } from 'lucide-react';
 import RequestModal from '@/components/RequestModal';
+import ServiceDetailModal from '@/components/ServiceDetailModal';
 import SmartPhoto from '@/components/SmartPhoto';
 import {
   FRAME_CATEGORIES,
@@ -11,6 +12,7 @@ import {
   FRAME_GALLERY,
   FRAME_BANNERS,
   type FrameService,
+  type FrameCategory,
 } from '@/data/frame-services';
 
 const BRAND = '#EAB308';
@@ -28,10 +30,6 @@ const STEPS = [
   { num: '03', title: 'Ремонт выполняется', desc: 'Быстро, часто при вас, с гарантией' },
   { num: '04', title: 'Принимайте', desc: 'Проверьте работоспособность и оплатите' },
 ];
-
-function toRequestName(s: FrameService): string {
-  return s.name;
-}
 
 const Photo = SmartPhoto;
 
@@ -82,6 +80,7 @@ function Carousel({ photos, intervalMs, rounded, aspect }: {
 export default function BroFrameLanding() {
   const [requestService, setRequestService] = useState<string | null>(null);
   const [showRequest, setShowRequest] = useState(false);
+  const [detail, setDetail] = useState<{ s: FrameService; cat: FrameCategory } | null>(null);
   const [liveEdits, setLiveEdits] = useState<Record<string, Partial<FrameService>>>({});
 
   useEffect(() => {
@@ -160,7 +159,7 @@ export default function BroFrameLanding() {
                 <button
                   key={raw.name}
                   type="button"
-                  onClick={() => setRequestService(toRequestName(s))}
+                  onClick={() => setDetail({ s, cat })}
                   className="w-full bg-white rounded-[20px] shadow-sm overflow-hidden flex text-left active:scale-[0.98] transition-transform"
                 >
                   <div className="w-28 h-28 shrink-0 bg-zinc-100">
@@ -230,6 +229,18 @@ export default function BroFrameLanding() {
           </button>
         </div>
       </div>
+
+      {detail && (
+        <ServiceDetailModal
+          service={detail.s}
+          category={{ name: detail.cat.name, emoji: detail.cat.emoji }}
+          brand={BRAND}
+          brandName="BroFrame"
+          ctaLabel="Оставить заявку"
+          onCta={() => { setRequestService(detail.s.name); setDetail(null); }}
+          onClose={() => setDetail(null)}
+        />
+      )}
 
       {(showRequest || requestService) && (
         <RequestModal

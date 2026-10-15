@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ChevronLeft, ChevronRight, Phone, MessageCircle } from 'lucide-react';
 import MoveRequestModal from '@/components/services/move/MoveRequestModal';
+import ServiceDetailModal from '@/components/ServiceDetailModal';
 import SmartPhoto from '@/components/SmartPhoto';
 import {
   MOVE_CATEGORIES,
@@ -11,6 +12,7 @@ import {
   MOVE_GALLERY,
   MOVE_BANNERS,
   type MoveService,
+  type MoveCategory,
 } from '@/data/move-services';
 
 const BRAND = '#4285F4';
@@ -28,10 +30,6 @@ const STEPS = [
   { num: '03', title: 'Везём и грузим', desc: 'Приедем в удобное время, всё зафиксируем' },
   { num: '04', title: 'Принимайте', desc: 'Расставим на месте и оплатите после' },
 ];
-
-function toRequestName(s: MoveService): string {
-  return s.name;
-}
 
 const Photo = SmartPhoto;
 
@@ -82,6 +80,7 @@ function Carousel({ photos, intervalMs, rounded, aspect }: {
 export default function BroMoveLanding() {
   const [requestService, setRequestService] = useState<string | null>(null);
   const [showRequest, setShowRequest] = useState(false);
+  const [detail, setDetail] = useState<{ s: MoveService; cat: MoveCategory } | null>(null);
   const [liveEdits, setLiveEdits] = useState<Record<string, Partial<MoveService>>>({});
 
   useEffect(() => {
@@ -160,7 +159,7 @@ export default function BroMoveLanding() {
                 <button
                   key={raw.name}
                   type="button"
-                  onClick={() => setRequestService(toRequestName(s))}
+                  onClick={() => setDetail({ s, cat })}
                   className="w-full bg-white rounded-[20px] shadow-sm overflow-hidden flex text-left active:scale-[0.98] transition-transform"
                 >
                   <div className="w-28 h-28 shrink-0 bg-zinc-100">
@@ -230,6 +229,18 @@ export default function BroMoveLanding() {
           </button>
         </div>
       </div>
+
+      {detail && (
+        <ServiceDetailModal
+          service={detail.s}
+          category={{ name: detail.cat.name, emoji: detail.cat.emoji }}
+          brand={BRAND}
+          brandName="BroMove"
+          ctaLabel="Рассчитать переезд"
+          onCta={() => { setRequestService(detail.s.name); setDetail(null); }}
+          onClose={() => setDetail(null)}
+        />
+      )}
 
       {(showRequest || requestService) && (
         <MoveRequestModal
