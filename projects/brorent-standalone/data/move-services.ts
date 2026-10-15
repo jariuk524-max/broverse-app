@@ -19,7 +19,7 @@ export const MOVE_CATEGORIES: MoveCategory[] = [
     services: [
       {
         name: 'Квартирный переезд',
-        desc: 'Упаковка, погрузка, транспортировка, расстановка на месте',
+        desc: 'Упаковка, погрузка, транспортировка и расстановка на месте — всё включено',
         price: '4 000',
         time: '3–5 ч',
         image: '/hero/move-hero.jpg',
@@ -33,7 +33,7 @@ export const MOVE_CATEGORIES: MoveCategory[] = [
       },
       {
         name: 'Дачный переезд',
-        desc: 'Грузоперевозки за город, в любую погоду',
+        desc: 'Межгород в любую погоду, фиксированная цена до выезда',
         price: '5 000',
         time: 'По запросу',
         image: '/hero/move-slider-1.jpg',
@@ -53,7 +53,7 @@ export const MOVE_CATEGORIES: MoveCategory[] = [
       },
       {
         name: 'Газель-фургон',
-        desc: 'Малогабаритные грузы по городу. Грузчики по запросу',
+        desc: 'Малогабаритные грузы по городу. Грузчики и упаковка — по запросу',
         price: '3 000',
         time: 'От 1 ч',
         image: '/hero/move-slider-3.jpg',

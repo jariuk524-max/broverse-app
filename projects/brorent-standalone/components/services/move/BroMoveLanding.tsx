@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ChevronLeft, ChevronRight, Phone, MessageCircle } from 'lucide-react';
-import RequestModal from '@/components/RequestModal';
+import MoveRequestModal from '@/components/services/move/MoveRequestModal';
 import SmartPhoto from '@/components/SmartPhoto';
 import {
   MOVE_CATEGORIES,
@@ -226,17 +226,14 @@ export default function BroMoveLanding() {
             className="flex-1 flex items-center justify-center gap-2 py-3 rounded-[20px] text-white text-[13px] font-bold transition-colors hover:opacity-90"
             style={{ background: BRAND }}
           >
-            <MessageCircle size={16} /> Оставить заявку
+            <MessageCircle size={16} /> Рассчитать переезд
           </button>
         </div>
       </div>
 
       {(showRequest || requestService) && (
-        <RequestModal
-          brand="BroMove"
-          color={BRAND}
-          domain="move"
-          serviceName={requestService || 'Грузоперевозки'}
+        <MoveRequestModal
+          presetService={requestService}
           onClose={() => { setShowRequest(false); setRequestService(null); }}
         />
       )}
