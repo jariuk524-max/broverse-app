@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice">
+  <defs><linearGradient id="wsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B3D4F0"/><stop offset="1" stop-color="#EAF2FA"/></linearGradient></defs>
+  <rect width="1200" height="800" fill="url(#wsky)"/>
+  <rect y="380" width="1200" height="420" fill="#E8F0F6"/>
+  <path d="M0 430 Q300 400 600 430 T1200 430 L1200 800 L0 800 Z" fill="#F5F9FC"/>
+  <path d="M0 520 Q300 495 600 520 T1200 520 L1200 800 L0 800 Z" fill="#FFFFFF"/>
+  <g transform="translate(840 360)">
+    <rect x="-12" y="0" width="24" height="90" fill="#6D4C41"/>
+    <circle cx="0" cy="-40" r="70" fill="#37474F"/><circle cx="-45" cy="0" r="46" fill="#455A64"/><circle cx="45" cy="0" r="46" fill="#455A64"/>
+    <path d="M-70 -50 Q0 -110 70 -50" fill="#FFFFFF" opacity="0.9"/>
+  </g>
+  <g fill="#FFFFFF" opacity="0.95">
+    <circle cx="180" cy="140" r="10"/><circle cx="320" cy="230" r="8"/><circle cx="520" cy="120" r="9"/><circle cx="700" cy="260" r="8"/><circle cx="940" cy="170" r="10"/><circle cx="1080" cy="300" r="8"/><circle cx="420" cy="330" r="7"/><circle cx="620" cy="380" r="7"/>
+  </g>
+  <g transform="translate(240 520)" stroke="#455A64" stroke-width="14" stroke-linecap="round"><path d="M0 0 h90"/><path d="M110 -16 l50 40" /><rect x="150" y="-28" width="70" height="46" rx="12" fill="#1E88E5" stroke="none"/></g>
+</svg>

@@ -5,6 +5,7 @@ import { WASH_SERVICES, WASH_HERO, WASH_GALLERY, WASH_WORKS, WASH_BANNERS } from
 import { BUILD_CATEGORIES, BUILD_HERO, BUILD_GALLERY, BUILD_BANNERS } from '@/data/build-services';
 import { FRAME_CATEGORIES } from '@/data/frame-services';
 import { MOVE_CATEGORIES } from '@/data/move-services';
+import { GARDEN_CATEGORIES } from '@/data/garden-services';
 import { BRO_DOMAINS } from '@/lib/domains';
 
 export const dynamic = 'force-dynamic';
@@ -37,7 +38,7 @@ function pinOk(req: NextRequest): boolean {
 function domainsFromCode(): Record<string, CatalogService[]> {
   const out: Record<string, CatalogService[]> = {};
   for (const d of BRO_DOMAINS) {
-    if (d.id === 'build' || d.id === 'wash' || d.id === 'frame' || d.id === 'move') continue;
+    if (d.id === 'build' || d.id === 'wash' || d.id === 'frame' || d.id === 'move' || d.id === 'garden') continue;
     out[d.id] = d.categories.flatMap((c) =>
       c.items.map((i) => ({ category: c.name, name: i.name, desc: i.description, price: '', time: '', image: '' }))
     );
@@ -46,6 +47,9 @@ function domainsFromCode(): Record<string, CatalogService[]> {
     c.services.map((s) => ({ category: c.name, name: s.name, desc: s.desc, price: s.price, time: s.time, image: s.image }))
   );
   out.move = MOVE_CATEGORIES.flatMap((c) =>
+    c.services.map((s) => ({ category: c.name, name: s.name, desc: s.desc, price: s.price, time: s.time, image: s.image }))
+  );
+  out.garden = GARDEN_CATEGORIES.flatMap((c) =>
     c.services.map((s) => ({ category: c.name, name: s.name, desc: s.desc, price: s.price, time: s.time, image: s.image }))
   );
   return out;

@@ -9,7 +9,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: 'BroVerse — Экосистема профессионального братства',
-  description: 'BroWash • BroBuild • BroMove • BroRent • BroBrew • BroCare',
+  description: 'BroWash • BroBuild • BroFrame • BroMove • BroRent • BroGarden',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

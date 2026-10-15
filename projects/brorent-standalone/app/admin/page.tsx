@@ -24,9 +24,9 @@ const INPUT =
 
 const DOMAIN_LABEL: Record<string, string> = {
   build: 'BroBuild', wash: 'BroWash', frame: 'BroFrame', move: 'BroMove',
-  care: 'BroCare', verse: 'BroVerse', rent: 'BroRent',
+  garden: 'BroGarden', verse: 'BroVerse', rent: 'BroRent',
 };
-const DOMAIN_ORDER = ['build', 'wash', 'frame', 'move', 'rent', 'care', 'verse'];
+const DOMAIN_ORDER = ['build', 'wash', 'frame', 'move', 'rent', 'garden', 'verse'];
 
 export default function AdminPage() {
   const [pin, setPin] = useState('');

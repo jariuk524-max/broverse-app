@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
-import { Camera, Truck, Hammer, Wrench, HeartHandshake, Users, Globe, Smartphone, Home } from 'lucide-react';
+import { Camera, Truck, Hammer, Wrench, Leaf, Users, Globe, Smartphone, Home } from 'lucide-react';
 
-export type DomainService = 'cleaning' | 'repair' | 'electronics' | 'moving' | 'rental' | 'community' | 'education';
+export type DomainService = 'cleaning' | 'repair' | 'electronics' | 'moving' | 'rental' | 'community' | 'education' | 'garden';
 
 export type OrderSource = 'tg' | 'vk' | 'web' | 'insta';
 
@@ -42,17 +42,17 @@ export const BroVerseConfig: Record<string, BroDomainConfig> = {
     hero: 'Братство профессионалов',
     subHero: 'Все услуги экосистемы в одном месте. Найдите мастера, который решит вашу задачу.',
   },
-  care: {
-    id: 'care',
-    title: 'BroCare',
-    domain: 'BroCare.ru',
-    accent: 'Инкубатор мастеров',
-    color: '#1C1C1E',
-    priceBase: 0,
+  garden: {
+    id: 'garden',
+    title: 'BroGarden',
+    domain: 'BroGarden.ru',
+    accent: 'Сад и участок',
+    color: '#16A34A',
+    priceBase: 1500,
     channels: { tg: 1.0, web: 1.0 },
-    description: 'Обучение, аттестация, Trust Level и вход в Братство.',
-    hero: 'Стань профессионалом экосистемы',
-    subHero: 'Обучение, аттестация и поддержка. Повышайте Trust Level и получайте привилегии.',
+    description: 'Озеленение, стрижка газонов, уход за участком и уборка снега',
+    hero: 'Участок в порядке круглый год',
+    subHero: 'Сажаем и стрижем газоны, ухаживаем за садом и убираем снег — отдельные работы или сезонное обслуживание.',
   },
   wash: {
     id: 'wash',
@@ -209,47 +209,34 @@ export const BRO_DOMAINS: BroDomain[] = [
     leadPrice: 1500,
   },
   {
-    id: 'care',
-    domain: 'BroCare.ru',
-    brand: 'BroCare',
-    tagline: 'Инкубатор и Блог Братства',
+    id: 'garden',
+    domain: 'BroGarden.ru',
+    brand: 'BroGarden',
+    tagline: 'Сад и участок',
     categories: [
-      { name: 'Обучение', items: [
-        { name: 'Курсы профессий', description: 'С нуля до профи: химчистка, ремонт, логистика' },
-        { name: 'Видео-база', description: 'Пошаговые инструкции и разборы кейсов' },
+      { name: 'Озеленение', items: [
+        { name: 'Посадка газона', description: 'Под ключ: подготовка, посев или рулоны' },
+        { name: 'Укладка рулонного газона', description: 'Готовый зелёный газон за один день' },
+        { name: 'Озеленение участка', description: 'Клумбы, кустарники, живые изгороди' },
       ]},
-      { name: 'Аттестация', items: [
-        { name: 'Trust Level', description: 'Повышение рейтинга и получение статуса' },
-        { name: 'Verified Master', description: 'Подтверждённый профессионал экосистемы' },
+      { name: 'Стрижка газонов', items: [
+        { name: 'Стрижка газона', description: 'Покос, контуры, вывоз травы' },
+        { name: 'Стрижка живых изгородей', description: 'Ровная форма любой высоты' },
+        { name: 'Аэрация и подкормка', description: 'Проколы дерна, прополка, удобрения' },
       ]},
-      { name: 'Поддержка', items: [
-        { name: 'База знаний', description: 'FAQ, инструкции, лучшие практики' },
-        { name: 'Юридическая помощь', description: 'Консультации и защита интересов' },
-        { name: 'Страхование', description: 'Страховка заказов и имущества' },
-      ]},
-      { name: 'Блог братства', items: [
-        { name: 'Истории мастеров', description: 'Как наши братья растут и зарабатывают' },
-        { name: 'До/После работ', description: 'Фото реальных проектов до и после' },
-        { name: 'Советы и лайфхаки', description: 'Профессиональные секреты от бывалых' },
-      ]},
-      { name: 'События', items: [
-        { name: 'BroBrew Fridays', description: 'Пятничные встречи в формате нетворкинга' },
-        { name: 'Бранчи', description: 'Совместные завтраки и обсуждение кейсов' },
-        { name: 'Выезды на природу', description: 'Командные поездки и тимбилдинг' },
-      ]},
-      { name: 'Привилегии', items: [
-        { name: 'Скидки у партнёров', description: 'Кафе, магазины, сервисы' },
-        { name: 'Приоритет в заказах', description: 'Для активных участников' },
-        { name: 'Мерч братства', description: 'Фирменная одежда и аксессуары' },
+      { name: 'Снег и зима', items: [
+        { name: 'Уборка снега с газона', description: 'Чтобы газон не выпрел зимой' },
+        { name: 'Уборка снега с участка', description: 'Дорожки, парковка, входная группа' },
+        { name: 'Вывоз снега', description: 'Без сугробов по углам участка' },
       ]},
     ],
-    bgClass: 'bg-[#1C1C1E]',
+    bgClass: 'bg-[#16A34A]',
     textClass: 'text-white',
     actionClass: 'bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm',
-    icon: HeartHandshake,
-    actionLabel: 'Войти в сообщество',
-    service: 'education',
-    leadPrice: 0,
+    icon: Leaf,
+    actionLabel: 'Заказать работы',
+    service: 'garden',
+    leadPrice: 1500,
   },
   {
     id: 'build',

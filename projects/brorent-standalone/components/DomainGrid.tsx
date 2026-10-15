@@ -15,7 +15,7 @@ function BrandLogo({ brand, size = 24 }: { brand: string; size?: number }) {
     case 'frame': return (<svg width={s} height={s} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#FBBC05" /><rect x="7" y="5" width="10" height="14" rx="2" stroke="#fff" strokeWidth="1.8" /><line x1="7" y1="8" x2="17" y2="8" stroke="#fff" strokeWidth="1" /><line x1="7" y1="16" x2="17" y2="16" stroke="#fff" strokeWidth="1" /><circle cx="12" cy="17.5" r="0.8" fill="#fff" /></svg>);
     case 'move': return (<svg width={s} height={s} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#34A853" /><rect x="4" y="9" width="10" height="7" rx="1" stroke="#fff" strokeWidth="1.8" /><path d="M14 11l4-2v7l-4-2" stroke="#fff" strokeWidth="1.8" strokeLinejoin="round" /><circle cx="8" cy="17" r="1.5" stroke="#fff" strokeWidth="1.2" /><circle cx="16" cy="17" r="1.5" stroke="#fff" strokeWidth="1.2" /></svg>);
     case 'rent': return (<svg width={s} height={s} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#00BCD4" /><path d="M9 7v5l3 3 3-3V7" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /><line x1="12" y1="15" x2="12" y2="18" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" /><line x1="9" y1="18" x2="15" y2="18" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" /></svg>);
-    case 'care': return (<svg width={s} height={s} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#1C1C1E" /><path d="M8 11c0-2.2 1.8-4 4-4s4 1.8 4 4" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" /><path d="M7 15h10" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" /><circle cx="12" cy="17" r="1" fill="#34A853" /></svg>);
+    case 'garden': return (<svg width={s} height={s} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#16A34A" /><path d="M12 17c0-4 2.5-7 6-8 0 4-2.5 7-6 8z" fill="#fff" /><path d="M12 17c0-4-2.5-7-6-8 0 4 2.5 7 6 8z" fill="#DFF5E4" /><path d="M12 17v3" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" /></svg>);
     default: return null;
   }
 }
@@ -30,7 +30,7 @@ const CATEGORIES = [
   { id: 'frame', label: 'BroFrame', desc: 'Ремонт смартфонов, ноутбуков, роботов и сетевого оборудования', color: '#FBBC05', bg: '#FEF7E0' },
   { id: 'move', label: 'BroMove', desc: 'Квартирные и офисные переезды, сборка мебели, грузоперевозки', color: '#34A853', bg: '#E8F5E9' },
   { id: 'rent', label: 'BroRent', desc: 'Аренда профессионального инструмента и техники', color: '#00BCD4', bg: '#E0F7FA' },
-  { id: 'care', label: 'BroCare', desc: 'Обучение, консультации и сопровождение проектов', color: '#1C1C1E', bg: '#F5F5F5' },
+  { id: 'garden', label: 'BroGarden', desc: 'Озеленение, стрижка газонов и уборка снега', color: '#16A34A', bg: '#E7F6EC' },
 ];
 
 const TRUST_ITEMS = [

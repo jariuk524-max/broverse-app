@@ -39,9 +39,12 @@
 | build | BroBuild | BroBuildLanding | `data/build-services.ts` |
 | frame | BroFrame | BroFrameLanding | `data/frame-services.ts` |
 | move | BroMove | BroMoveLanding | `data/move-services.ts` (только переезды и грузоперевозки) |
+| garden | BroGarden | BroGardenLanding | `data/garden-services.ts` (озеленение, стрижка газонов, уборка снега; ассеты — SVG в public/hero/garden-*.svg) |
 | rent | BroRent | BroRentLanding | `components/services/rent/` |
-| care | BroCare | ServicePage | `lib/domains.ts` (BRO_DOMAINS) |
 | verse | BroVerse | ServicePage (hub) | `lib/domains.ts` (BRO_DOMAINS) |
+
+BroCare убран из клиентского хаба: обучение мастеров живёт в кабинете мастеров
+(broverse-masters → Профиль → плашка «BroCare», компонент `apps/monolith/components/BroCareAcademy.tsx`).
 
 ## Каталог: код + правки
 - Оригинал — в data-модулях (см. таблицу).

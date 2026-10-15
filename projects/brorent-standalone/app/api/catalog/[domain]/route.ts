@@ -5,6 +5,7 @@ import { WASH_SERVICES } from '@/data/wash-services';
 import { BUILD_CATEGORIES } from '@/data/build-services';
 import { FRAME_CATEGORIES } from '@/data/frame-services';
 import { MOVE_CATEGORIES } from '@/data/move-services';
+import { GARDEN_CATEGORIES } from '@/data/garden-services';
 import { BRO_DOMAINS } from '@/lib/domains';
 
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,7 @@ function servicesFromCode(domain: string): { name: string; desc: string; price: 
   if (domain === 'wash') return WASH_SERVICES;
   if (domain === 'frame') return FRAME_CATEGORIES.flatMap((c) => c.services);
   if (domain === 'move') return MOVE_CATEGORIES.flatMap((c) => c.services);
+  if (domain === 'garden') return GARDEN_CATEGORIES.flatMap((c) => c.services);
   const d = BRO_DOMAINS.find((x) => x.id === domain);
   if (!d) return [];
   return d.categories.flatMap((c) =>
