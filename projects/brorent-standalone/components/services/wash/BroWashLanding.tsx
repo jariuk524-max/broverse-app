@@ -102,6 +102,18 @@ function Carousel({ photos, intervalMs, rounded, aspect }: {
 export default function BroWashLanding() {
   const [selectedService, setSelectedService] = useState<OrderServiceItem | null>(null);
   const [showRequest, setShowRequest] = useState(false);
+  const [liveEdits, setLiveEdits] = useState<Record<string, Partial<WashService>>>({});
+
+  useEffect(() => {
+    fetch('/api/catalog/wash')
+      .then((r) => r.json())
+      .then((d) => {
+        const map: Record<string, Partial<WashService>> = {};
+        (d.services || []).forEach((s: WashService) => { map[s.name] = s; });
+        setLiveEdits(map);
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="min-h-screen" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", system-ui, sans-serif', background: '#F2F2F7' }}>
@@ -154,30 +166,33 @@ export default function BroWashLanding() {
         {/* Услуги */}
         <section className="mb-8">
           <h3 className="text-[16px] font-bold text-zinc-900 mb-4">Услуги</h3>
-          <div className="space-y-3">
-            {WASH_SERVICES.map((s) => (
-              <button
-                key={s.name}
-                type="button"
-                onClick={() => setSelectedService(toOrderItem(s))}
-                className="w-full bg-white rounded-[20px] shadow-sm overflow-hidden flex text-left active:scale-[0.98] transition-transform"
-              >
-                <div className="w-28 h-28 shrink-0 bg-zinc-100">
-                  <Photo src={s.image} fallback={s.fallback} alt={s.name} className="w-full h-full object-cover" />
-                </div>
-                <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
-                  <div>
-                    <p className="text-[13px] font-bold text-zinc-900 leading-tight">{s.name}</p>
-                    <p className="text-[11px] text-zinc-500 mt-0.5 line-clamp-2">{s.desc}</p>
+            <div className="space-y-3">
+              {WASH_SERVICES.map((raw) => {
+                const s = { ...raw, ...(liveEdits[raw.name] || {}) };
+                return (
+                <button
+                  key={raw.name}
+                  type="button"
+                  onClick={() => setSelectedService(toOrderItem(s))}
+                  className="w-full bg-white rounded-[20px] shadow-sm overflow-hidden flex text-left active:scale-[0.98] transition-transform"
+                >
+                  <div className="w-28 h-28 shrink-0 bg-zinc-100">
+                    <Photo src={s.image} fallback={raw.fallback} alt={s.name} className="w-full h-full object-cover" />
                   </div>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-[10px] text-zinc-400">{s.time}</span>
-                    <span className="text-[13px] font-bold text-zinc-900">{s.price} ₽</span>
+                  <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
+                    <div>
+                      <p className="text-[13px] font-bold text-zinc-900 leading-tight">{s.name}</p>
+                      <p className="text-[11px] text-zinc-500 mt-0.5 line-clamp-2">{s.desc}</p>
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-[10px] text-zinc-400">{s.time}</span>
+                      <span className="text-[13px] font-bold text-zinc-900">{s.price} ₽</span>
+                    </div>
                   </div>
-                </div>
-              </button>
-            ))}
-          </div>
+                </button>
+                );
+              })}
+            </div>
         </section>
 
         {/* Баннер 2 */}

@@ -4,8 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Phone, MessageCircle, CheckCircle2, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import { BRO_DOMAINS, BroVerseConfig } from '@/lib/domains';
-import OrderModal, { type OrderServiceItem } from '@/components/OrderModal';
-import WashQuiz from '@/components/WashQuiz';
+import RequestModal from '@/components/RequestModal';
 
 interface ServicePageProps {
   domainId: string;
@@ -75,52 +74,6 @@ function SliderDisplay({ brand, domainId }: { brand: string; domainId: string })
   );
 }
 
-const DOMAIN_SERVICE_MAP: Record<string, { brand: string; color: string; icon: string; time: string; price: string }[]> = {
-  wash: [
-    { brand: 'BroWash', color: '#4285F4', icon: '🛋️', time: '2-3 ч', price: '3 500' },
-    { brand: 'BroWash', color: '#4285F4', icon: '💺', time: '1-2 ч', price: '2 500' },
-    { brand: 'BroWash', color: '#4285F4', icon: '🛏️', time: '1-2 ч', price: '2 000' },
-    { brand: 'BroWash', color: '#4285F4', icon: '🪟', time: '1-2 ч', price: '1 500' },
-    { brand: 'BroWash', color: '#4285F4', icon: '🧶', time: '2-3 ч', price: '2 000' },
-    { brand: 'BroWash', color: '#4285F4', icon: '🚗', time: '3-4 ч', price: '4 000' },
-    { brand: 'BroWash', color: '#4285F4', icon: '💨', time: '1 ч', price: '1 500' },
-    { brand: 'BroWash', color: '#4285F4', icon: '🪭', time: '1-2 ч', price: '1 800' },
-  ],
-  move: [
-    { brand: 'BroMove', color: '#4285F4', icon: '📦', time: '3-5 ч', price: '4 000' },
-    { brand: 'BroMove', color: '#4285F4', icon: '🏢', time: '4-6 ч', price: '6 000' },
-    { brand: 'BroMove', color: '#4285F4', icon: '🪑', time: '1-3 ч', price: '2 000' },
-    { brand: 'BroMove', color: '#4285F4', icon: '🚛', time: 'По запросу', price: '3 000' },
-    { brand: 'BroMove', color: '#4285F4', icon: '🪡', time: '2-4 ч', price: '5 000' },
-  ],
-  frame: [
-    { brand: 'BroFrame', color: '#FBBC05', icon: '📱', time: '30-60 мин', price: '4 500' },
-    { brand: 'BroFrame', color: '#FBBC05', icon: '🔋', time: '30 мин', price: '2 000' },
-    { brand: 'BroFrame', color: '#FBBC05', icon: '💻', time: '1 ч', price: '1 500' },
-    { brand: 'BroFrame', color: '#FBBC05', icon: '🤖', time: '1-2 ч', price: '3 000' },
-    { brand: 'BroFrame', color: '#FBBC05', icon: '📶', time: '1 ч', price: '1 500' },
-    { brand: 'BroFrame', color: '#FBBC05', icon: '📲', time: '30-60 мин', price: '3 500' },
-    { brand: 'BroFrame', color: '#FBBC05', icon: '💧', time: '2-3 ч', price: '5 000' },
-  ],
-  build: [
-    { brand: 'BroBuild', color: '#EA4335', icon: '🚿', time: '30-60 мин', price: '1 500' },
-    { brand: 'BroBuild', color: '#EA4335', icon: '🔧', time: '30-60 мин', price: '1 200' },
-    { brand: 'BroBuild', color: '#EA4335', icon: '🔌', time: '20-40 мин', price: '800' },
-    { brand: 'BroBuild', color: '#EA4335', icon: '⚡', time: '3-5 ч', price: '5 000' },
-    { brand: 'BroBuild', color: '#EA4335', icon: '🚪', time: '1-2 ч', price: '3 000' },
-    { brand: 'BroBuild', color: '#EA4335', icon: '🧊', time: '1-2 ч', price: '3 500' },
-    { brand: 'BroBuild', color: '#EA4335', icon: '☕', time: '1-2 ч', price: '2 500' },
-    { brand: 'BroBuild', color: '#EA4335', icon: '❄️', time: '2-3 ч', price: '5 000' },
-  ],
-  rent: [
-    { brand: 'BroRent', color: '#34A853', icon: '🧹', time: 'От 1 дня', price: '800' },
-    { brand: 'BroRent', color: '#34A853', icon: '🔨', time: 'От 1 дня', price: '500' },
-    { brand: 'BroRent', color: '#34A853', icon: '♨️', time: 'От 1 дня', price: '600' },
-    { brand: 'BroRent', color: '#34A853', icon: '💦', time: 'От 1 дня', price: '700' },
-    { brand: 'BroRent', color: '#34A853', icon: '🔩', time: 'От 1 дня', price: '400' },
-  ],
-};
-
 export default function ServicePage({ domainId }: ServicePageProps) {
   const domain = BRO_DOMAINS.find((d) => d.id === domainId)!;
   const config = BroVerseConfig[domainId];
@@ -129,7 +82,21 @@ export default function ServicePage({ domainId }: ServicePageProps) {
   const [expandedCategory, setExpandedCategory] = useState<string | null>(
     domain.categories[0]?.name || null
   );
-  const [selectedService, setSelectedService] = useState<OrderServiceItem | null>(null);
+  const [requestService, setRequestService] = useState<string | null>(null);
+  const [showRequest, setShowRequest] = useState(false);
+  const [liveEdits, setLiveEdits] = useState<Record<string, { desc?: string; price?: string; time?: string; image?: string }>>({});
+
+  useEffect(() => {
+    fetch(`/api/catalog/${domainId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d?.services) return;
+        const map: Record<string, { desc?: string; price?: string; time?: string; image?: string }> = {};
+        (d.services || []).forEach((s: { name: string; desc?: string; price?: string; time?: string; image?: string }) => { map[s.name] = s; });
+        setLiveEdits(map);
+      })
+      .catch(() => {});
+  }, [domainId]);
 
   const bgColor = domain.bgClass.includes('#')
     ? domain.bgClass.replace('bg-[', '').replace(']', '')
@@ -139,28 +106,6 @@ export default function ServicePage({ domainId }: ServicePageProps) {
 
   const toggleCategory = (name: string) => {
     setExpandedCategory(expandedCategory === name ? null : name);
-  };
-
-  const getItemServiceData = (itemName: string, itemDesc: string, itemIndex: number): OrderServiceItem => {
-    const domainServices = DOMAIN_SERVICE_MAP[domainId] || [];
-    const serviceData = domainServices[itemIndex] || domainServices[0] || {
-      brand: domain.brand,
-      color: bgColor,
-      icon: '📋',
-      time: '1 ч',
-      price: `${config?.priceBase || 1000}`,
-    };
-    return {
-      name: itemName,
-      desc: itemDesc,
-      price: serviceData.price,
-      domain: domainId,
-      brand: serviceData.brand,
-      color: serviceData.color,
-      icon: serviceData.icon,
-      time: serviceData.time,
-      image: `/hero/${domainId}-hero.jpg`,
-    };
   };
 
   return (
@@ -198,24 +143,6 @@ export default function ServicePage({ domainId }: ServicePageProps) {
           </div>
         )}
 
-        {domainId === 'wash' && (
-          <div className="mb-6">
-            <WashQuiz onOrder={(data) => {
-              setSelectedService({
-                name: `Химчистка — расчёт ${data.price.toLocaleString('ru-RU')} ₽`,
-                desc: `Расчётная стоимость: ${data.price.toLocaleString('ru-RU')} ₽. Время: ${data.time}`,
-                price: data.price.toLocaleString('ru-RU'),
-                domain: 'wash',
-                brand: 'BroWash',
-                color: '#4285F4',
-                icon: '🧹',
-                time: data.time,
-                image: '/hero/wash-hero.jpg',
-              });
-            }} />
-          </div>
-        )}
-
         <div className="space-y-3 sm:space-y-4">
           {domain.categories.map((category) => (
             <div key={category.name} className="rounded-[24px] bg-white/70 backdrop-blur-xl border border-white/60 shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden">
@@ -232,19 +159,25 @@ export default function ServicePage({ domainId }: ServicePageProps) {
 
               {expandedCategory === category.name && (
                 <div className="px-4 sm:px-5 pb-4 sm:pb-5 space-y-2.5 sm:space-y-3">
-                  {category.items.map((item, idx) => (
-                    <button key={item.name} type="button" onClick={() => setSelectedService(getItemServiceData(item.name, item.description, idx))}
+                  {category.items.map((item) => {
+                    const live = liveEdits[item.name];
+                    return (
+                    <button key={item.name} type="button" onClick={() => setRequestService(item.name)}
                       className="w-full flex items-start gap-3 p-3 rounded-xl bg-zinc-50 hover:bg-zinc-100 transition-colors text-left group">
                       <CheckCircle2 size={16} className="text-green-500 mt-0.5 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs sm:text-sm font-bold text-zinc-900">{item.name}</p>
-                        <p className="text-[10px] sm:text-xs text-zinc-500 mt-0.5">{item.description}</p>
+                        <p className="text-[10px] sm:text-xs text-zinc-500 mt-0.5">{live?.desc || item.description}</p>
+                        {live?.price && (
+                          <p className="text-[10px] sm:text-xs font-bold text-zinc-700 mt-0.5">{live.price} ₽{live.time ? ` · ${live.time}` : ''}</p>
+                        )}
                       </div>
                       <span className="text-[10px] sm:text-[11px] font-semibold text-zinc-300 group-hover:text-zinc-500 transition-colors shrink-0 mt-0.5">
                         Заказать →
                       </span>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -274,14 +207,27 @@ export default function ServicePage({ domainId }: ServicePageProps) {
             <Phone size={16} />
             Позвонить
           </a>
-          <Link href={`/order?service=${domain.id}&from=web`} className="flex-1 flex items-center justify-center gap-2 py-3 sm:py-4 rounded-[20px] text-white text-xs sm:text-sm font-bold transition-colors hover:opacity-90" style={{ backgroundColor: bgColor }}>
+          <button
+            type="button"
+            onClick={() => setShowRequest(true)}
+            className="flex-1 flex items-center justify-center gap-2 py-3 sm:py-4 rounded-[20px] text-white text-xs sm:text-sm font-bold transition-colors hover:opacity-90 active:scale-[0.98]"
+            style={{ backgroundColor: bgColor }}
+          >
             <MessageCircle size={16} />
             Оставить заявку
-          </Link>
+          </button>
         </div>
       </div>
 
-      {selectedService && <OrderModal service={selectedService} onClose={() => setSelectedService(null)} />}
+      {(showRequest || requestService) && (
+        <RequestModal
+          brand={domain.brand}
+          color={bgColor}
+          domain={domainId}
+          serviceName={requestService || domain.tagline}
+          onClose={() => { setShowRequest(false); setRequestService(null); }}
+        />
+      )}
     </div>
   );
 }

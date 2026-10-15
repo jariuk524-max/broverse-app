@@ -1,6 +1,13 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-export type RequestStatus = 'review' | 'approved' | 'rejected';
+export type RequestStatus = 'new' | 'review' | 'approved' | 'rejected';
+
+export type OrderFeedback = {
+  resolved: boolean;
+  comment: string;
+  rating?: number;
+  created_at: string;
+};
 
 export type ServiceRequest = {
   id: string;
@@ -15,6 +22,9 @@ export type ServiceRequest = {
     description?: string;
     proposed_price?: string;
     domain?: string;
+    price?: number | string;
+    comment?: string;
+    feedback?: OrderFeedback;
   } | null;
 };
 
@@ -104,13 +114,63 @@ export async function deleteRequest(id: string): Promise<boolean> {
   return true;
 }
 
+/** Ищет заявки клиента по номеру телефона (для формы отзыва) */
+export async function findRequestsByPhone(phone: string): Promise<ServiceRequest[]> {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length < 6) return [];
+  const { data, error } = await getSupabase()
+    .from('orders')
+    .select('*')
+    .ilike('client_phone', `%${digits}%`)
+    .order('created_at', { ascending: false })
+    .limit(20);
+  if (error) {
+    console.error('[Requests] Supabase search error:', error);
+    return [];
+  }
+  return (data || []) as ServiceRequest[];
+}
+
+/** Клиент оставляет отзыв: решён ли вопрос + комментарий (+ оценка) */
+export async function submitFeedback(
+  id: string,
+  input: { resolved: boolean; comment: string; rating?: number }
+): Promise<boolean> {
+  const { data: row, error: readErr } = await getSupabase()
+    .from('orders')
+    .select('metadata')
+    .eq('id', id)
+    .single();
+  if (readErr) {
+    console.error('[Requests] Supabase read error:', readErr);
+    return false;
+  }
+  const metadata = {
+    ...(row?.metadata || {}),
+    feedback: {
+      resolved: input.resolved,
+      comment: input.comment,
+      ...(input.rating ? { rating: input.rating } : {}),
+      created_at: new Date().toISOString(),
+    },
+  };
+  const { error } = await getSupabase().from('orders').update({ metadata }).eq('id', id);
+  if (error) {
+    console.error('[Requests] Supabase feedback error:', error);
+    return false;
+  }
+  return true;
+}
+
 export const STATUS_LABEL: Record<RequestStatus, string> = {
+  new: 'Новая',
   review: 'На рассмотрении',
   approved: 'Одобрена',
   rejected: 'Отклонена',
 };
 
 export const STATUS_COLOR: Record<RequestStatus, string> = {
+  new: 'bg-sky-100 text-sky-700',
   review: 'bg-amber-100 text-amber-700',
   approved: 'bg-emerald-100 text-emerald-700',
   rejected: 'bg-rose-100 text-rose-700',

@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Sparkles, History, X, ArrowLeft, Phone, MessageCircle } from 'lucide-react';
+import Link from 'next/link';
+import { Sparkles, History, X, ArrowLeft, Phone, MessageCircle, ShieldCheck, Star } from 'lucide-react';
 import OrderModal, { type OrderServiceItem } from '@/components/OrderModal';
+import FeedbackModal from '@/components/FeedbackModal';
 
 export interface StoredOrder {
   id: string;
@@ -45,6 +47,7 @@ export default function Header() {
   const [showAbout, setShowAbout] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showOrder, setShowOrder] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
   const [aboutVisible, setAboutVisible] = useState(false);
   const [historyVisible, setHistoryVisible] = useState(false);
   const [orders, setOrders] = useState<StoredOrder[]>([]);
@@ -100,6 +103,14 @@ export default function Header() {
                 className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-zinc-900 text-white text-[13px] font-bold hover:bg-zinc-800 active:scale-95 transition-all">
                 <History size={14} /> История {orders.length > 0 && <span className="ml-1 w-5 h-5 rounded-full bg-[#00BCD4] text-[10px] flex items-center justify-center">{orders.length}</span>}
               </button>
+              <button type="button" onClick={() => setShowFeedback(true)}
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-zinc-100 text-zinc-600 text-[13px] font-bold hover:bg-zinc-200 active:scale-95 transition-all">
+                <Star size={14} /> Отзыв
+              </button>
+              <Link href="/admin" aria-label="Админ-панель" title="Админ-панель"
+                className="flex items-center justify-center w-10 h-10 rounded-full bg-zinc-100 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-600 active:scale-95 transition-all">
+                <ShieldCheck size={16} />
+              </Link>
             </div>
           </div>
         </div>
@@ -199,6 +210,11 @@ export default function Header() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Feedback modal */}
+      {showFeedback && (
+        <FeedbackModal onClose={() => setShowFeedback(false)} />
       )}
 
       {/* Order modal */}

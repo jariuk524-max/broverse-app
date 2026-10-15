@@ -8,6 +8,7 @@ interface RequestModalProps {
   serviceName?: string;
   brand?: string;
   color?: string;
+  domain?: string;
   onClose: () => void;
 }
 
@@ -21,6 +22,7 @@ export default function RequestModal({
   serviceName = 'Химчистка мебели',
   brand = 'BroWash',
   color = '#4285F4',
+  domain = 'wash',
   onClose,
 }: RequestModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -28,7 +30,6 @@ export default function RequestModal({
   const [description, setDescription] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
-  const [price, setPrice] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
@@ -59,8 +60,7 @@ export default function RequestModal({
       address: address.trim(),
       photo,
       description: description.trim(),
-      proposedPrice: price.trim(),
-      domain: 'wash',
+      domain,
     });
     setSubmitting(false);
     if (res) {
@@ -73,7 +73,7 @@ export default function RequestModal({
     } else {
       setError('Не удалось отправить заявку. Попробуйте ещё раз.');
     }
-  }, [canSubmit, brand, serviceName, phone, address, photo, description, price]);
+  }, [canSubmit, brand, serviceName, domain, phone, address, photo, description]);
 
   if (submitted) {
     return (
@@ -181,21 +181,11 @@ export default function RequestModal({
             </div>
           </div>
 
-          {/* Proposed price */}
-          <div>
-            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Предлагаемая цена</p>
-            <div className="relative">
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="Например, 2 500"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                className={`${INPUT} pr-10`}
-              />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[15px] text-zinc-400 font-semibold">₽</span>
-            </div>
-            <p className="text-[10px] text-zinc-400 mt-1">Мастер подтвердит или скорректирует стоимость.</p>
+          {/* Contact note */}
+          <div className="p-3.5 rounded-xl bg-zinc-50 border border-zinc-100">
+            <p className="text-[12px] font-semibold text-zinc-700 leading-relaxed">
+              Наш сотрудник или мастер свяжется с вами, уточнит детали и согласует стоимость.
+            </p>
           </div>
 
           {error && (
