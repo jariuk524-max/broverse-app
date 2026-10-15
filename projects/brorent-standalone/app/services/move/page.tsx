@@ -1,10 +1,10 @@
-import ServicePage from '@/components/ServicePage';
+import BroMoveLanding from '@/components/services/move/BroMoveLanding';
 
 export const metadata = {
-  title: 'BroMove — Грузоперевозки',
-  description: 'Грузоперевозки, квартирные и офисные переезды, сборка мебели',
+  title: 'BroMove — Переезды и грузоперевозки',
+  description: 'Квартирные и офисные переезды, грузоперевозки, манипулятор',
 };
 
 export default function MovePage() {
-  return <ServicePage domainId="move" />;
+  return <BroMoveLanding />;
 }

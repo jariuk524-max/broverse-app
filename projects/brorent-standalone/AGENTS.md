@@ -1,67 +1,65 @@
 # AGENTS.md — карта проекта Broverse (актуальная)
 
-## Архитектура: 3 туннеля = 3 мини-апа
+## Архитектура: 3 порта = 3 мини-апа (все задеплоены на Vercel)
 
 ```
-┌─ ТУННЕЛЬ 1 — КЛИЕНТСКИЙ ХАБ ─────────────────────────────┐
-│ Песочница (localhost:3001 → broverse-client.vercel.app)  │
-│ Главная с 6 сайтами + страницы сервисов                  │
-│ Mini-app: @Broverse_ru_bot (menu → broverse-client)      │
-│ Заявки → Supabase orders (status 'review')               │
-└──────────────────────────────────────────────────────────┘
-┌─ ТУННЕЛЬ 2 — КАБИНЕТ МАСТЕРОВ ───────────────────────────┐
-│ broverse-masters.vercel.app                              │
-│ /master — кабинет мастера; webhook /api/admin-webhook    │
-│ обслуживает сообщения @Broverse_Admin_bot                │
-│ (код НЕ в песочнице — не трогать)                        │
-└──────────────────────────────────────────────────────────┘
-┌─ ТУННЕЛЬ 3 — АДМИНКА ────────────────────────────────────┐
-│ /admin в песочнице (PIN: NEXT_PUBLIC_ADMIN_PIN)          │
-│ @Broverse_Admin_bot:                                      │
-│  · menu button СУЩЕСТВУЮЩИЙ → admin-psi-two-25.vercel.app│
-│    /admin-mobile — НЕ ТРОГАТЬ (исторический материал)     │
-│  · команды /start, /admin добавлены                       │
-│  · кнопка-щит 🛡 в хабе → /admin                          │
-│ Назначение: модерация заявок всех сайтов, редактирование  │
-│ каталога всех 6 сайтов, в будущем — поддержка клиентов    │
-│ и мастеров                                                │
-└──────────────────────────────────────────────────────────┘
+ПОРТ 3000 — КАБИНЕТ МАСТЕРОВ
+  Источник: /Applications/broverse/apps/monolith
+  Деплой:   broverse-masters.vercel.app (корень, НЕ /master!)
+  Mini-app: @BroVerse_Masters_Bot (menu → https://broverse-masters.vercel.app/)
+  Вид: Титановый Монолит, вкладки Карта / Заказы / История / Профиль
+  Также здесь webhook /api/admin-webhook для @Broverse_Admin_bot
+
+ПОРТ 3001 — КЛИЕНТСКИЙ ХАБ (песочница)
+  Источник: projects/brorent-standalone (этот репо, ~/Desktop/broverse)
+  Деплой:   broverse-client.vercel.app (версия: apps/client-site → устарела,
+            сейчас деплой идёт из песочницы через vercel CLI)
+  Mini-app: @Broverse_ru_bot
+  Содержит: главная с 6 сайтами, /services/*, /admin (PIN: NEXT_PUBLIC_ADMIN_PIN)
+
+ПОРТ 3002 — СТАРАЯ АДМИНКА
+  Источник: /Applications/broverse/apps/admin
+  Деплой:   admin-psi-two-25.vercel.app/admin-mobile?secret=broverse_admin_2024
+  Mini-app: @Broverse_Admin_bot (menu button — НЕ ТРОГАТЬ)
+  В admin-mobile добавлен блок «🛠 Новая админка» → broverse-client.vercel.app/admin
 ```
+
+Репозитории:
+- `~/Desktop/broverse` (ветка main, remote: broverse-app) — песочница.
+- `/Applications/broverse` (ветка main, remote: broverse-full) — монолит, admin, masters.
 
 ## Рабочая зона
-- Работать ТОЛЬКО в `projects/brorent-standalone/`.
-- Монолит и другие репо — только чтение.
+- Основная работа — в `projects/brorent-standalone/`.
+- `/Applications/broverse` — только по явному запросу (там admin/masters/monolith).
 
 ## 6 клиентских сайтов (каталог редактируется из /admin)
-| id | Бренд | Источник услуг в коде |
-|----|-------|----------------------|
-| wash | BroWash | `data/wash-services.ts` (WASH_SERVICES) |
-| build | BroBuild | `data/build-services.ts` (BUILD_CATEGORIES) |
-| frame | BroFrame | `lib/domains.ts` (BRO_DOMAINS) |
-| move | BroMove | `lib/domains.ts` (BRO_DOMAINS) |
-| rent | BroRent | `lib/domains.ts` + `components/services/rent/` |
-| care | BroCare | `lib/domains.ts` (BRO_DOMAINS) |
-| verse | BroVerse | hub, `lib/domains.ts` (BRO_DOMAINS) |
+| id | Бренд | Лендинг | Источник услуг |
+|----|-------|---------|----------------|
+| wash | BroWash | BroWashLanding | `data/wash-services.ts` |
+| build | BroBuild | BroBuildLanding | `data/build-services.ts` |
+| frame | BroFrame | BroFrameLanding | `data/frame-services.ts` |
+| move | BroMove | BroMoveLanding | `data/move-services.ts` (только переезды и грузоперевозки) |
+| rent | BroRent | BroRentLanding | `components/services/rent/` |
+| care | BroCare | ServicePage | `lib/domains.ts` (BRO_DOMAINS) |
+| verse | BroVerse | ServicePage (hub) | `lib/domains.ts` (BRO_DOMAINS) |
 
 ## Каталог: код + правки
-- Оригинал услуг — в коде (см. таблицу).
+- Оригинал — в data-модулях (см. таблицу).
 - Правки админки — `data/catalog-edits.json` (per domain → per service name).
-- Публичный merged: `GET /api/catalog/[domain]` — любой домен.
-- Админский: `GET/POST/DELETE /api/admin/catalog` (auth: заголовок `x-admin-pin`).
-- Страницы подхватывают правки:
-  - `components/services/build/BroBuildLanding.tsx`
-  - `components/services/wash/BroWashLanding.tsx`
-  - `components/ServicePage.tsx` (frame/move/care/verse/rent)
+- Публичный merged: `GET /api/catalog/[domain]`.
+- Админский: `GET/POST/DELETE /api/admin/catalog` (auth: `x-admin-pin`).
+- Лендинги подхватывают liveEdits через `/api/catalog/{domain}`.
 
-## Заявки
-- Везде (включая RequestModal из всех сайтов) → Supabase `orders`, status `'review'`, `metadata.domain` = id сайта.
-- Типы/статусы: `lib/requests.ts` ('new'|'review'|'approved'|'rejected').
-- Модерация: `/admin` → вкладка «Заявки».
+## Заявки и отзывы
+- Все сайты → Supabase `orders`, status `'review'`, `metadata.domain`.
+- Клиент: кнопка ⭐ «Отзыв» на главной → телефон → «решён/не решён» + оценка + комментарий
+  → сохраняется в `metadata.feedback` → вкладка «Отзывы» в /admin.
+- Модерация: `/admin` → «Заявки» / «Отзывы» / «Каталог».
 
 ## Telegram-боты (токены НЕ хранить в репо!)
 - @Broverse_ru_bot — клиентский хаб.
-- @Broverse_Admin_bot — админка; webhook: broverse-masters.vercel.app/api/admin-webhook.
-- Мастер-бот — кабинет мастеров.
+- @Broverse_Admin_bot — admin-mobile + /admin-команда; webhook: broverse-masters /api/admin-webhook.
+- @BroVerse_Masters_Bot — кабинет мастеров.
 
 ## Стек
 Next.js 14 App Router, React 18, TS 5.4, Tailwind 4, Supabase.
