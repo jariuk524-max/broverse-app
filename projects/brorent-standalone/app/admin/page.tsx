@@ -27,12 +27,41 @@ const DOMAIN_LABEL: Record<string, string> = {
   garden: 'BroGarden', verse: 'BroVerse', rent: 'BroRent',
 };
 const DOMAIN_ORDER = ['build', 'wash', 'frame', 'move', 'rent', 'garden', 'verse'];
+const DOMAIN_BADGE: Record<string, string> = { master: 'Анкета мастера' };
+
+type MasterService = {
+  id: string;
+  created_at: string;
+  master_id: string;
+  master_name: string;
+  title: string;
+  description: string;
+  price: number;
+  price_variants?: string;
+  work_types?: string[];
+  photos?: string[];
+  phone?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'paused' | string;
+};
+
+const MASTER_STATUS_LABEL: Record<string, string> = {
+  pending: 'На модерации',
+  approved: 'Одобрено',
+  rejected: 'Отклонено',
+  paused: 'Приостановлено',
+};
+const MASTER_STATUS_COLOR: Record<string, string> = {
+  pending: 'bg-amber-100 text-amber-700',
+  approved: 'bg-emerald-100 text-emerald-700',
+  rejected: 'bg-rose-100 text-rose-500',
+  paused: 'bg-zinc-100 text-zinc-500',
+};
 
 export default function AdminPage() {
   const [pin, setPin] = useState('');
   const [authed, setAuthed] = useState(false);
   const [pinError, setPinError] = useState(false);
-  const [tab, setTab] = useState<'orders' | 'catalog' | 'feedback'>('orders');
+  const [tab, setTab] = useState<'orders' | 'masters' | 'catalog' | 'feedback'>('orders');
 
   useEffect(() => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem(PIN_KEY) : null;
@@ -103,6 +132,13 @@ export default function AdminPage() {
             </button>
             <button
               type="button"
+              onClick={() => setTab('masters')}
+              className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${tab === 'masters' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500'}`}
+            >
+              Мастеры
+            </button>
+            <button
+              type="button"
               onClick={() => setTab('feedback')}
               className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${tab === 'feedback' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500'}`}
             >
@@ -120,7 +156,7 @@ export default function AdminPage() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-4 pb-16">
-        {tab === 'orders' ? <OrdersTab /> : tab === 'feedback' ? <FeedbackTab /> : <CatalogTab />}
+        {tab === 'orders' ? <OrdersTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : <CatalogTab />}
       </main>
     </div>
   );
@@ -237,7 +273,7 @@ function OrdersTab() {
                   <p className="text-[13px] font-bold text-zinc-900 leading-tight">{o.service_name}</p>
                   <p className="text-[11px] text-zinc-400 mt-0.5">
                     {new Date(o.created_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}
-                    {meta.domain ? ` · ${meta.domain}` : ''}
+                    {meta.domain ? ` · ${DOMAIN_BADGE[meta.domain] || meta.domain}` : ''}
                   </p>
                 </div>
                 <span className={`shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold ${STATUS_COLOR[o.status] || 'bg-zinc-100 text-zinc-500'}`}>
@@ -304,6 +340,136 @@ function Row({ label, value }: { label: string; value: string }) {
       <span className="font-semibold text-zinc-800">{value}</span>
     </p>
   );
+}
+
+/* ────────────────────────── МАСТЕРЫ (модерация услуг) ────────────────────────── */
+
+function MastersTab() {
+  const [list, setList] = useState<MasterService[]>([]);
+  const [filter, setFilter] = useState<'pending' | 'all'>('pending');
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const saved = localStorage.getItem(PIN_KEY) || '';
+      const res = await fetch('/api/admin/master-services', { headers: { 'x-admin-pin': saved } });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) setList(data);
+      }
+    } catch {}
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const act = async (id: string, status: 'approved' | 'rejected') => {
+    setBusyId(id);
+    try {
+      const saved = localStorage.getItem(PIN_KEY) || '';
+      const res = await fetch('/api/admin/master-services', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'x-admin-pin': saved },
+        body: JSON.stringify({ id, status }),
+      });
+      if (res.ok) {
+        setList(prev => prev.map(s => s.id === id ? { ...s, status } : s));
+      }
+    } catch {}
+    setBusyId(null);
+  };
+
+  const visible = filter === 'all' ? list : list.filter(s => s.status === 'pending');
+
+  return (
+    <div>
+      <div className="flex gap-1 mb-4 bg-zinc-100 rounded-full p-1 w-fit">
+        {(['pending', 'all'] as const).map((f) => (
+          <button
+            key={f}
+            type="button"
+            onClick={() => setFilter(f)}
+            className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${filter === f ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500'}`}
+          >
+            {f === 'pending' ? `На модерации (${list.filter(s => s.status === 'pending').length})` : `Все (${list.length})`}
+          </button>
+        ))}
+      </div>
+
+      {loading && (
+        <div className="bg-white rounded-[20px] p-8 text-center shadow-sm">
+          <Loader2 size={22} className="text-zinc-300 mx-auto animate-spin" />
+        </div>
+      )}
+
+      {!loading && visible.length === 0 && (
+        <div className="bg-white rounded-[20px] p-8 text-center shadow-sm">
+          <WrenchIcon />
+          <p className="text-[13px] text-zinc-400 mt-2">Услуг мастеров на модерации нет</p>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {visible.map((s) => (
+          <div key={s.id} className="bg-white rounded-[20px] p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="min-w-0">
+                <p className="text-[13px] font-bold text-zinc-900 leading-tight">{s.title}</p>
+                <p className="text-[11px] text-zinc-400 mt-0.5">
+                  {s.master_name || s.master_id}
+                  {s.created_at ? ` · ${new Date(s.created_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}` : ''}
+                </p>
+              </div>
+              <span className={`shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold ${MASTER_STATUS_COLOR[s.status] || 'bg-zinc-100 text-zinc-500'}`}>
+                {MASTER_STATUS_LABEL[s.status] || s.status}
+              </span>
+            </div>
+
+            <div className="space-y-1 mb-3">
+              {s.price ? <Row label="💰 Цена" value={`${s.price.toLocaleString('ru-RU')} ₽`} /> : null}
+              {s.price_variants && <Row label="📊 Варианты цен" value={s.price_variants} />}
+              {s.phone && <Row label="📞 Телефон" value={s.phone} />}
+              {s.description && <Row label="📝 Описание" value={s.description} />}
+              {Array.isArray(s.photos) && s.photos[0] && (
+                <div className="pt-1">
+                  <img src={s.photos[0]} alt="Фото услуги" className="w-full max-h-48 object-cover rounded-xl" />
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              {s.status !== 'approved' && (
+                <button
+                  type="button"
+                  disabled={busyId === s.id}
+                  onClick={() => act(s.id, 'approved')}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-50 text-emerald-600 text-[12px] font-bold active:scale-[0.98] transition-transform disabled:opacity-40"
+                >
+                  {busyId === s.id ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />} Одобрить
+                </button>
+              )}
+              {s.status !== 'rejected' && (
+                <button
+                  type="button"
+                  disabled={busyId === s.id}
+                  onClick={() => act(s.id, 'rejected')}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-rose-50 text-rose-500 text-[12px] font-bold active:scale-[0.98] transition-transform disabled:opacity-40"
+                >
+                  <XCircle size={13} /> Отклонить
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function WrenchIcon() {
+  return <Package size={28} className="text-zinc-300 mx-auto" />;
 }
 
 /* ────────────────────────── ОТЗЫВЫ ────────────────────────── */

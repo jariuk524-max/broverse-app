@@ -245,6 +245,22 @@ export default function DomainGrid() {
           </div>
         </section>
 
+        {/* Стать мастером */}
+        <section className="mb-10">
+          <Link href="/master" className="block group">
+            <div className="rounded-[24px] bg-gradient-to-br from-[#18181b] to-[#2a2a2e] p-8 text-center shadow-sm transition-transform active:scale-[0.99]">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 mb-2">Мастерам</p>
+              <h2 className="text-xl font-bold text-white mb-2">Стать мастером BroVerse</h2>
+              <p className="text-sm text-zinc-400 mb-5 max-w-md mx-auto">
+                Заявка на доступ к заказам, свои услуги и цены, профиль для клиентов
+              </p>
+              <span className="inline-flex items-center gap-2 bg-white text-zinc-900 text-sm font-bold px-7 py-3 rounded-full group-hover:bg-zinc-100 transition-colors">
+                Заполнить анкету <ChevronRight size={16} />
+              </span>
+            </div>
+          </Link>
+        </section>
+
       </main>
 
       {detailService && <ServiceDetailModal service={detailService} onOrder={() => setSelectedService(detailService)} onClose={() => setDetailService(null)} />}
