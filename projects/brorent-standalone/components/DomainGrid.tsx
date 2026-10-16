@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import SmartSearch from '@/components/SmartSearch';
 import OrderModal, { type OrderServiceItem } from '@/components/OrderModal';
-import { ChevronRight, Shield, Star, Clock, CheckCircle2, Wrench } from 'lucide-react';
+import { ChevronRight, Shield, Star, Clock, CheckCircle2, Wrench, Phone } from 'lucide-react';
 import { masterAdFallbackImage, type MasterAd } from '@/lib/master-ads';
 
 function BrandLogo({ brand, size = 24 }: { brand: string; size?: number }) {
@@ -68,6 +68,47 @@ function ServiceDetailModal({ service, onOrder, onClose }: { service: OrderServi
           </div>
         </div>
         <div className="p-5">
+          {service.isMaster && service.masterName && (
+            <div className="mb-4 rounded-[18px] bg-[#F2F2F7] p-3.5">
+              <div className="flex items-center gap-3">
+                <span className="w-12 h-12 rounded-full bg-white overflow-hidden flex items-center justify-center shrink-0 shadow-sm">
+                  {service.masterProfile?.photo ? (
+                    <img src={service.masterProfile.photo} alt={service.masterName} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-lg font-black text-zinc-500">{service.masterName.charAt(0).toUpperCase()}</span>
+                  )}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-[15px] font-bold text-zinc-900 truncate">{service.masterName}</p>
+                    <span className="flex items-center gap-0.5 text-[11px] font-bold text-amber-500 shrink-0">
+                      <Star size={11} fill="currentColor" />{(service.masterProfile?.rating ?? 5).toFixed(1)}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-500 truncate">
+                    {[service.masterProfile?.specialization, service.masterProfile?.city].filter(Boolean).join(' · ') || 'Мастер BroVerse'}
+                  </p>
+                </div>
+                {service.masterPhone && (
+                  <a href={`tel:${service.masterPhone}`} className="shrink-0 flex items-center gap-1.5 rounded-full bg-white px-3 py-2 text-[12px] font-bold text-zinc-900 shadow-sm active:bg-zinc-100">
+                    <Phone size={13} /> Позвонить
+                  </a>
+                )}
+              </div>
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
+                {service.masterProfile?.experience && (
+                  <span className="px-2.5 py-1 rounded-full bg-white text-[11px] font-semibold text-zinc-600">Опыт: {service.masterProfile.experience}</span>
+                )}
+                {service.masterProfile?.city && (
+                  <span className="px-2.5 py-1 rounded-full bg-white text-[11px] font-semibold text-zinc-600">{service.masterProfile.city}</span>
+                )}
+                <span className="px-2.5 py-1 rounded-full bg-white text-[11px] font-semibold text-zinc-600">Проверен BroVerse</span>
+              </div>
+              {service.masterProfile?.about && (
+                <p className="mt-2 text-[12px] leading-relaxed text-zinc-600">{service.masterProfile.about}</p>
+              )}
+            </div>
+          )}
           <div className="flex items-center justify-between mb-4">
             <span className="text-xl font-black text-zinc-900">от {service.price} ₽</span>
             <div className="flex items-center gap-1.5 text-[11px] text-zinc-400"><Clock size={12} />{service.time}</div>
@@ -90,13 +131,7 @@ function ServiceDetailModal({ service, onOrder, onClose }: { service: OrderServi
 function adToOrderItem(ad: MasterAd): OrderServiceItem {
   return {
     name: ad.title,
-    desc: [
-      ad.master.name ? `Мастер: ${ad.master.name}` : '',
-      ad.master.city ? `Город: ${ad.master.city}` : '',
-      ad.description || '',
-    ]
-      .filter(Boolean)
-      .join(' · ') || 'Услуга мастера BroVerse',
+    desc: ad.description || `Услуга мастера ${ad.master.name}`.trim(),
     price: String(ad.price || 0),
     domain: ad.domain || 'wash',
     brand: ad.brand,
@@ -104,6 +139,19 @@ function adToOrderItem(ad: MasterAd): OrderServiceItem {
     icon: '🛠️',
     time: 'Мастер',
     image: ad.photos?.[0] || masterAdFallbackImage(ad.domain),
+    isMaster: true,
+    masterId: ad.master.id,
+    masterName: ad.master.name,
+    masterPhone: ad.master.phone || ad.phone,
+    adId: ad.id,
+    masterProfile: {
+      photo: ad.master.photo,
+      city: ad.master.city,
+      experience: ad.master.experience,
+      specialization: ad.master.specialization,
+      about: ad.master.about,
+      rating: ad.master.rating ?? 5,
+    },
   };
 }
 
@@ -145,7 +193,15 @@ export default function DomainGrid() {
       .catch(() => {});
   }, []);
 
-  const filteredServices = filter === 'all' ? services : services.filter((s) => s.domain === filter);
+  const catalogServices = useMemo(() => services, [services]);
+  const masterItems = useMemo(() => masters.map(adToOrderItem), [masters]);
+  const allItems = useMemo(() => [...catalogServices, ...masterItems], [catalogServices, masterItems]);
+
+  const filteredServices = filter === 'all'
+    ? allItems
+    : filter === 'masters'
+      ? masterItems
+      : allItems.filter((s) => s.domain === filter);
 
   return (
     <div className="min-h-screen bg-[#F2F2F7]">
@@ -190,20 +246,29 @@ export default function DomainGrid() {
         </section>
 
         {/* All Services */}
-        <section className="mb-10">
+        <section id="catalog" className="mb-10 scroll-mt-24">
           <div className="flex items-center gap-3 mb-5">
             <BroVerseLogo className="w-10 h-10" />
             <div className="flex-1">
               <h2 className="text-lg font-bold text-zinc-900">Все услуги BroVerse</h2>
-              <p className="text-xs text-zinc-400">{filteredServices.length} услуг</p>
+              <p className="text-xs text-zinc-400">{filteredServices.length} услуг{masterItems.length > 0 ? ` · из них ${masterItems.length} от мастеров` : ''}</p>
             </div>
           </div>
 
           {/* Filter pills */}
           <div className="flex gap-2 overflow-x-auto pb-3 mb-5 scrollbar-hide">
-            <button type="button" onClick={() => setFilter('all')} className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 ${filter === 'all' ? 'bg-zinc-900 text-white shadow-md' : 'bg-white/80 text-zinc-500 hover:bg-white'}`}>Все ({services.length})</button>
+            <button type="button" onClick={() => setFilter('all')} className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 ${filter === 'all' ? 'bg-zinc-900 text-white shadow-md' : 'bg-white/80 text-zinc-500 hover:bg-white'}`}>Все ({allItems.length})</button>
+            {masterItems.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setFilter(filter === 'masters' ? 'all' : 'masters')}
+                className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 ${filter === 'masters' ? 'bg-zinc-900 text-white shadow-md' : 'bg-white/80 text-zinc-500 hover:bg-white'}`}
+              >
+                <Wrench size={13} />Мастера ({masterItems.length})
+              </button>
+            )}
             {CATEGORIES.map((cat) => {
-              const count = services.filter((s) => s.domain === cat.id).length;
+              const count = allItems.filter((s) => s.domain === cat.id && !s.isMaster).length;
               return (
                 <button key={cat.id} type="button" onClick={() => setFilter(filter === cat.id ? 'all' : cat.id)} className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 ${filter === cat.id ? 'text-white shadow-md' : 'hover:opacity-80'}`} style={{ backgroundColor: filter === cat.id ? cat.color : cat.bg, color: filter === cat.id ? '#fff' : cat.color }}>
                   <BrandLogo brand={cat.id} size={16} />{cat.label} ({count})
@@ -215,16 +280,42 @@ export default function DomainGrid() {
           {/* Service cards grid */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
             {filteredServices.map((service) => (
-              <button key={service.name} type="button" onClick={() => setDetailService(service)} className="group relative text-left rounded-[24px] border border-white/20 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-white/80 backdrop-blur-md">
+              <button
+                key={`${service.isMaster ? 'm' : 'c'}-${service.adId || service.name}`}
+                type="button"
+                onClick={() => setDetailService(service)}
+                className="group relative text-left rounded-[24px] border border-white/20 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-white/80 backdrop-blur-md"
+              >
                 <div className="relative aspect-[16/10] overflow-hidden bg-zinc-100">
                   <img src={service.image} alt={service.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <span className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm text-[10px] font-bold text-white">{service.brand}</span>
-                  <span className="absolute bottom-2.5 left-2.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm text-[10px] font-bold text-white">{service.time}</span>
+                  {service.isMaster ? (
+                    <span className="absolute bottom-2.5 left-2.5 flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-sm text-[10px] font-bold text-zinc-900">
+                      <Wrench size={10} className="text-zinc-500" /> Мастер
+                    </span>
+                  ) : (
+                    <span className="absolute bottom-2.5 left-2.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm text-[10px] font-bold text-white">{service.time}</span>
+                  )}
                 </div>
                 <div className="p-4">
                   <p className="text-[13px] font-semibold text-zinc-800 group-hover:text-zinc-950 transition-colors leading-tight line-clamp-1">{service.name}</p>
                   <p className="text-[11px] text-zinc-400 mt-1 line-clamp-1">{service.desc}</p>
+                  {service.isMaster && service.masterName && (
+                    <div className="flex items-center gap-1.5 mt-2">
+                      <span className="w-5 h-5 rounded-full bg-zinc-100 overflow-hidden flex items-center justify-center shrink-0">
+                        {service.masterProfile?.photo ? (
+                          <img src={service.masterProfile.photo} alt={service.masterName} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-[9px] font-bold text-zinc-500">{service.masterName.charAt(0).toUpperCase()}</span>
+                        )}
+                      </span>
+                      <span className="text-[11px] font-semibold text-zinc-600 truncate">{service.masterName}</span>
+                      <span className="flex items-center gap-0.5 text-[10px] font-bold text-amber-500 shrink-0">
+                        <Star size={10} fill="currentColor" />{(service.masterProfile?.rating ?? 5).toFixed(1)}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between mt-2.5">
                     <span className="text-sm font-bold text-zinc-900">от {service.price} ₽</span>
                     <span className="text-[11px] font-semibold text-zinc-400 group-hover:text-zinc-600 transition-colors">Заказать →</span>
@@ -234,68 +325,6 @@ export default function DomainGrid() {
             ))}
           </div>
         </section>
-
-        {/* Masters */}
-        {masters.length > 0 && (
-          <section id="masters" className="mb-10 scroll-mt-24">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-2xl bg-white/80 backdrop-blur-md border border-white/20 shadow-sm flex items-center justify-center shrink-0">
-                <Wrench size={18} className="text-zinc-700" strokeWidth={2} />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-lg font-bold text-zinc-900">Мастера</h2>
-                <p className="text-xs text-zinc-400">{masters.length} услуг от проверенных мастеров</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-              {masters.map((ad) => (
-                <button
-                  key={ad.id}
-                  type="button"
-                  onClick={() => setDetailService(adToOrderItem(ad))}
-                  className="group relative text-left rounded-[24px] border border-white/20 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-white/80 backdrop-blur-md"
-                >
-                  <div className="relative aspect-[16/10] overflow-hidden bg-zinc-100">
-                    <img
-                      src={ad.photos?.[0] || masterAdFallbackImage(ad.domain)}
-                      alt={ad.title}
-                      loading="lazy"
-                      onError={(e) => { e.currentTarget.src = masterAdFallbackImage(ad.domain); }}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <span className="absolute top-2.5 left-2.5 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm text-[10px] font-bold text-white">
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ad.color }} />
-                      Мастер
-                    </span>
-                    <span className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm text-[10px] font-bold text-white">{ad.brand}</span>
-                  </div>
-                  <div className="p-4">
-                    <p className="text-[13px] font-bold text-zinc-900 group-hover:text-zinc-950 transition-colors leading-tight line-clamp-2">{ad.title}</p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="w-6 h-6 rounded-full bg-zinc-100 overflow-hidden flex items-center justify-center shrink-0">
-                        {ad.master.photo ? (
-                          <img src={ad.master.photo} alt={ad.master.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-[10px] font-bold text-zinc-500">{(ad.master.name || 'М').charAt(0).toUpperCase()}</span>
-                        )}
-                      </span>
-                      <p className="text-[11px] text-zinc-500 truncate">{ad.master.name}{ad.master.city ? ` · ${ad.master.city}` : ''}</p>
-                      <span className="ml-auto flex items-center gap-0.5 text-[10px] font-bold text-amber-500 shrink-0">
-                        <Star size={10} fill="currentColor" />{(ad.master.rating ?? 5).toFixed(1)}
-                      </span>
-                    </div>
-                    {ad.description && <p className="text-[11px] text-zinc-400 mt-1.5 line-clamp-2">{ad.description}</p>}
-                    <div className="flex items-center justify-between mt-2.5">
-                      <span className="text-sm font-bold text-zinc-900">{ad.price > 0 ? `${ad.price.toLocaleString('ru-RU')} ₽` : 'Договорная'}</span>
-                      <span className="text-[11px] font-semibold text-zinc-400 group-hover:text-zinc-600 transition-colors">Заказать →</span>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
 
         {/* How it works */}
         <section className="mb-10">

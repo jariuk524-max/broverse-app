@@ -28,6 +28,7 @@ export async function createOrderInSupabase(payload: {
   client_phone?: string;
   client_comment?: string;
   client_chat_id?: string;
+  master?: { id?: string; name?: string; phone?: string; adId?: string; service?: string };
 }) {
   const { data, error } = await getSupabase()
     .from('orders')
@@ -43,6 +44,15 @@ export async function createOrderInSupabase(payload: {
         price: payload.price || 0,
         comment: payload.client_comment || '',
         domain: payload.service || 'cleaning',
+        ...(payload.master
+          ? {
+              master_id: payload.master.id || '',
+              master_name: payload.master.name || '',
+              master_phone: payload.master.phone || '',
+              master_ad_id: payload.master.adId || '',
+              master_service: payload.master.service || '',
+            }
+          : {}),
       },
     })
     .select()

@@ -110,6 +110,7 @@ export async function GET() {
         specialization: profile?.specialization,
         experience: profile?.experience,
         city: profile?.city,
+        about: profile?.about,
         rating: 5,
       },
       domain,

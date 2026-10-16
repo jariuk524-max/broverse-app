@@ -16,6 +16,7 @@ export type MasterAd = {
     specialization?: string;
     experience?: string;
     city?: string;
+    about?: string;
     rating?: number;
   };
   domain: string;

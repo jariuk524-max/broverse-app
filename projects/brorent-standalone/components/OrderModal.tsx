@@ -15,6 +15,19 @@ export type OrderServiceItem = {
   icon: string;
   time: string;
   image: string;
+  isMaster?: boolean;
+  masterId?: string;
+  masterName?: string;
+  masterPhone?: string;
+  adId?: string;
+  masterProfile?: {
+    photo?: string;
+    city?: string;
+    experience?: string;
+    specialization?: string;
+    about?: string;
+    rating?: number;
+  };
 };
 
 interface OrderModalProps {
@@ -129,13 +142,18 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
     const addons = ADDON_PRODUCTS.filter(p => selectedAddons.includes(p.id)).map(p => p.name).join(', ');
     const toolsList = items.map(i => `${i.name} (${i.price} ₽/день)`).join(', ');
     const created = await createOrderInSupabase({
-      title: `${service.brand} — ${items.length > 1 ? `${items.length} инструментов` : service.name}`,
-      service: 'rental',
+      title: service.isMaster
+        ? `Мастер ${service.masterName || ''} — ${service.name}`.trim()
+        : `${service.brand} — ${items.length > 1 ? `${items.length} инструментов` : service.name}`,
+      service: service.isMaster ? 'master' : 'rental',
       address: address || `Москва, доставка`,
       price: grandTotal,
       client_name: name,
       client_phone: phone,
       client_comment: `Инструменты: ${toolsList}. Аренда ${rentDays} дн., доставка: ${dateLabel} ${timeLabel}, получение: ${deliveryType === 'courier' ? 'курьер' : 'самовывоз'}, возврат: ${returnType === 'courier' ? 'курьер' : 'самовывоз'}, оплата: ${paymentMethod === 'now' ? 'онлайн' : 'наличные'}${addons ? `, доп. товары: ${addons}` : ''}, адрес: ${address} — ${comment}`,
+      master: service.isMaster
+        ? { id: service.masterId || '', name: service.masterName || '', phone: service.masterPhone || '', adId: service.adId || '', service: service.name }
+        : undefined,
     });
     if (created) {
       fetch('/api/telegram-notify', {

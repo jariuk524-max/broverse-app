@@ -520,7 +520,7 @@ export default function SmartSearch({ query: externalQuery, onQueryChange, onMas
                   ) : (
                     <Link
                       key={ad.id}
-                      href="/#masters"
+                      href="/#catalog"
                       onClick={() => setIsOpen(false)}
                       className={rowClass}
                     >
