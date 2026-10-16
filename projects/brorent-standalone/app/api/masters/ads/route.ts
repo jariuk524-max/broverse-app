@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { detectMasterAdDomain, masterBrandFor, parseMasterProfileDescription, type MasterAd } from '@/lib/master-ads';
+import { detectMasterAdDomain, masterBrandFor, parseMasterProfileDescription, MASTER_DIRECTIONS, type MasterAd } from '@/lib/master-ads';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +21,7 @@ type StoredAd = {
   price?: number | string;
   price_variants?: string;
   work_types?: string[];
+  direction?: string;
   photos?: string[];
   phone?: string;
   status?: string;
@@ -116,6 +117,8 @@ export async function GET() {
       domain,
       brand: brand.brand,
       color: brand.color,
+      direction: ad.direction || undefined,
+      directionLabel: ad.direction ? MASTER_DIRECTIONS[ad.direction]?.label : undefined,
     } satisfies MasterAd;
   });
 

@@ -22,6 +22,22 @@ export type MasterAd = {
   domain: string;
   brand: string;
   color: string;
+  /** Направление мастера (химчистка, электрика…) — из кабинета */
+  direction?: string;
+  directionLabel?: string;
+};
+
+/** Понятные направления из кабинета мастеров (lib/directions.ts монолита) */
+export const MASTER_DIRECTIONS: Record<string, { label: string; icon: string }> = {
+  cleaning: { label: 'Химчистка', icon: '🛋️' },
+  plumbing: { label: 'Сантехника', icon: '🚿' },
+  electric: { label: 'Электрика', icon: '⚡' },
+  repair: { label: 'Стройка и ремонт', icon: '🔨' },
+  appliance: { label: 'Ремонт техники', icon: '🔧' },
+  electronics: { label: 'Гаджеты', icon: '📱' },
+  moving: { label: 'Переезды', icon: '📦' },
+  rental: { label: 'Аренда оборудования', icon: '🧰' },
+  garden: { label: 'Сад и участок', icon: '🌿' },
 };
 
 export const MASTER_BRAND: Record<string, { brand: string; color: string; label: string }> = {

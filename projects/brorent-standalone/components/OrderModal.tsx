@@ -20,6 +20,7 @@ export type OrderServiceItem = {
   masterName?: string;
   masterPhone?: string;
   adId?: string;
+  directionLabel?: string;
   masterProfile?: {
     photo?: string;
     city?: string;

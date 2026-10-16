@@ -96,6 +96,9 @@ function ServiceDetailModal({ service, onOrder, onClose }: { service: OrderServi
                 )}
               </div>
               <div className="mt-2.5 flex flex-wrap gap-1.5">
+                {service.directionLabel && (
+                  <span className="px-2.5 py-1 rounded-full bg-white text-[11px] font-semibold text-zinc-700">📌 {service.directionLabel}</span>
+                )}
                 {service.masterProfile?.experience && (
                   <span className="px-2.5 py-1 rounded-full bg-white text-[11px] font-semibold text-zinc-600">Опыт: {service.masterProfile.experience}</span>
                 )}
@@ -144,6 +147,7 @@ function adToOrderItem(ad: MasterAd): OrderServiceItem {
     masterName: ad.master.name,
     masterPhone: ad.master.phone || ad.phone,
     adId: ad.id,
+    directionLabel: ad.directionLabel,
     masterProfile: {
       photo: ad.master.photo,
       city: ad.master.city,
@@ -292,7 +296,7 @@ export default function DomainGrid() {
                   <span className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm text-[10px] font-bold text-white">{service.brand}</span>
                   {service.isMaster ? (
                     <span className="absolute bottom-2.5 left-2.5 flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-sm text-[10px] font-bold text-zinc-900">
-                      <Wrench size={10} className="text-zinc-500" /> Мастер
+                      <Wrench size={10} className="text-zinc-500" /> Мастер{service.directionLabel ? ` · ${service.directionLabel}` : ''}
                     </span>
                   ) : (
                     <span className="absolute bottom-2.5 left-2.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm text-[10px] font-bold text-white">{service.time}</span>
