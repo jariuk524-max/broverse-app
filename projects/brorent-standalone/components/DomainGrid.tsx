@@ -299,7 +299,7 @@ export default function DomainGrid() {
               onClick={() => setFilter(filter === 'masters' ? 'all' : 'masters')}
               className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 ${filter === 'masters' ? 'bg-zinc-900 text-white shadow-md' : 'bg-white/80 text-zinc-500 hover:bg-white'}`}
             >
-              <Wrench size={13} />Мастера ({masterItems.length})
+              <Wrench size={13} />Наши мастера ({masterItems.length})
             </button>
             {CATEGORIES.map((cat) => {
               const count = allItems.filter((s) => s.domain === cat.id && !s.isMaster).length;
