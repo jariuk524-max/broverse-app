@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { Search, X, ArrowRight, Camera, Sparkles, Loader2, ImageIcon } from 'lucide-react';
+import { Search, X, ArrowRight, Camera, Sparkles, Loader2, ImageIcon, User } from 'lucide-react';
 import Link from 'next/link';
 import { BRO_DOMAINS, type BroDomain } from '@/lib/domains';
+import type { MasterAd } from '@/lib/master-ads';
 
 type SearchResult = {
   domain: BroDomain;
@@ -250,7 +251,7 @@ function getSearchResults(query: string): SearchResult[] {
     .slice(0, 8);
 }
 
-export default function SmartSearch({ query: externalQuery, onQueryChange }: { query?: string; onQueryChange?: (q: string) => void } = {}) {
+export default function SmartSearch({ query: externalQuery, onQueryChange, onMasterAdClick }: { query?: string; onQueryChange?: (q: string) => void; onMasterAdClick?: (ad: MasterAd) => void } = {}) {
   const [internalQuery, setInternalQuery] = useState('');
   const query = externalQuery !== undefined ? externalQuery : internalQuery;
   const setQuery = onQueryChange || setInternalQuery;
@@ -258,14 +259,43 @@ export default function SmartSearch({ query: externalQuery, onQueryChange }: { q
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
+  const [masterAds, setMasterAds] = useState<MasterAd[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetch('/api/masters/ads')
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setMasterAds(data as MasterAd[]);
+      })
+      .catch(() => {});
+  }, []);
 
   const results = useMemo(() => {
     if (!query.trim()) return [];
     return getSearchResults(query);
   }, [query]);
+
+  const masterResults = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q || masterAds.length === 0) return [];
+    const words = q.split(/\s+/).filter((w) => w.length > 2);
+    const scored = masterAds
+      .map((ad) => {
+        const title = (ad.title || '').toLowerCase();
+        const desc = (ad.description || '').toLowerCase();
+        const master = (ad.master?.name || '').toLowerCase();
+        let confidence = 0;
+        if (title.includes(q)) confidence = 0.95;
+        else if (desc.includes(q) || master.includes(q)) confidence = 0.85;
+        else if (words.some((w) => title.includes(w) || desc.includes(w) || master.includes(w))) confidence = 0.75;
+        return { ad, confidence };
+      })
+      .filter((r) => r.confidence > 0);
+    return scored.sort((a, b) => b.confidence - a.confidence).slice(0, 4);
+  }, [query, masterAds]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -433,7 +463,7 @@ export default function SmartSearch({ query: externalQuery, onQueryChange }: { q
                 Распознаём объект и подбираем решение
               </p>
             </div>
-          ) : results.length > 0 ? (
+          ) : results.length > 0 || masterResults.length > 0 ? (
             <div>
               {aiSuggestion && (
                 <div className="px-3 sm:px-4 py-2 sm:py-3 bg-gradient-to-r from-blue-50 to-purple-50 border-b border-zinc-100">
@@ -445,6 +475,59 @@ export default function SmartSearch({ query: externalQuery, onQueryChange }: { q
                 </div>
               )}
               <div className="divide-y divide-zinc-100 max-h-[50vh] overflow-y-auto">
+                {masterResults.map(({ ad, confidence }) => {
+                  const inner = (
+                    <>
+                      <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-lg sm:rounded-xl overflow-hidden bg-zinc-100 text-zinc-400">
+                        {ad.master?.photo ? (
+                          <img src={ad.master.photo} alt={ad.master.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <User size={16} />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                          <span className="text-[10px] sm:text-xs font-bold" style={{ color: ad.color }}>{ad.brand}</span>
+                          <span className="text-[9px] sm:text-[10px] font-bold px-1 sm:px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600">Мастер</span>
+                          <span className={`text-[9px] sm:text-[10px] font-bold px-1 sm:px-1.5 py-0.5 rounded-full ${getConfidenceColor(confidence)}`}>
+                            {Math.round(confidence * 100)}%
+                          </span>
+                        </div>
+                        <p
+                          className="mt-0.5 text-xs sm:text-sm font-bold text-zinc-900 truncate"
+                          dangerouslySetInnerHTML={{ __html: highlightMatch(ad.title || '', query) }}
+                        />
+                        <p className="mt-0.5 text-[10px] sm:text-xs text-zinc-500 truncate">
+                          {ad.master?.name}{ad.master?.city ? ` · ${ad.master.city}` : ''} · {ad.price > 0 ? `${ad.price.toLocaleString('ru-RU')} ₽` : 'Договорная'}
+                        </p>
+                      </div>
+                      <ArrowRight
+                        size={14}
+                        className="mt-2 text-zinc-300 group-hover:text-zinc-600 group-hover:translate-x-1 transition-all shrink-0"
+                      />
+                    </>
+                  );
+                  const rowClass = 'flex items-start gap-3 sm:gap-4 p-3 sm:p-4 hover:bg-zinc-50 transition-colors group';
+                  return onMasterAdClick ? (
+                    <button
+                      key={ad.id}
+                      type="button"
+                      onClick={() => { setIsOpen(false); onMasterAdClick(ad); }}
+                      className={`w-full text-left ${rowClass}`}
+                    >
+                      {inner}
+                    </button>
+                  ) : (
+                    <Link
+                      key={ad.id}
+                      href="/#masters"
+                      onClick={() => setIsOpen(false)}
+                      className={rowClass}
+                    >
+                      {inner}
+                    </Link>
+                  );
+                })}
                 {results.map((result, i) => (
                   <Link
                     key={`${result.domain.id}-${result.service}-${i}`}
