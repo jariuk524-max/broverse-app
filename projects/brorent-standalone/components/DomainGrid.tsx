@@ -7,6 +7,7 @@ import SmartSearch from '@/components/SmartSearch';
 import OrderModal, { type OrderServiceItem } from '@/components/OrderModal';
 import { ChevronRight, Shield, Star, Clock, CheckCircle2, Wrench, Phone } from 'lucide-react';
 import { masterAdFallbackImage, type MasterAd } from '@/lib/master-ads';
+import { GARDEN_CATEGORIES } from '@/data/garden-services';
 
 function BrandLogo({ brand, size = 24 }: { brand: string; size?: number }) {
   const s = size;
@@ -164,6 +165,7 @@ export default function DomainGrid() {
   const [detailService, setDetailService] = useState<OrderServiceItem | null>(null);
   const [filter, setFilter] = useState<string>('all');
   const [services, setServices] = useState<OrderServiceItem[]>([]);
+  const [garden, setGarden] = useState<OrderServiceItem[]>([]);
   const [masters, setMasters] = useState<MasterAd[]>([]);
 
   useEffect(() => {
@@ -197,7 +199,37 @@ export default function DomainGrid() {
       .catch(() => {});
   }, []);
 
-  const catalogServices = useMemo(() => services, [services]);
+  // Услуги сайта BroGarden (каталог бренда, merged с правками /admin)
+  useEffect(() => {
+    fetch('/api/catalog/garden')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        const list = Array.isArray(data?.services) ? data.services : Array.isArray(data) ? data : [];
+        if (!list.length) return;
+        const emojiByName = new Map<string, string>();
+        for (const cat of GARDEN_CATEGORIES) {
+          for (const s of cat.services) emojiByName.set(s.name, cat.emoji);
+        }
+        setGarden(list.map((s: any) => ({
+          name: s.name || '',
+          desc: s.desc || '',
+          price: String(s.price || '0'),
+          domain: 'garden',
+          brand: 'BroGarden',
+          color: '#16A34A',
+          icon: emojiByName.get(s.name) || '🌿',
+          time: s.time || '1 ч',
+          image: s.image || '/hero/garden-hero.svg',
+        })));
+      })
+      .catch(() => {});
+  }, []);
+
+  const catalogServices = useMemo(() => {
+    // garden — из каталога бренда; убираем дубли по имени, если уже есть в /api/services
+    const seen = new Set(services.map((s) => `${s.domain}:${s.name.toLowerCase()}`));
+    return [...services, ...garden.filter((g) => !seen.has(`garden:${g.name.toLowerCase()}`))];
+  }, [services, garden]);
   const masterItems = useMemo(() => masters.map(adToOrderItem), [masters]);
   const allItems = useMemo(() => [...catalogServices, ...masterItems], [catalogServices, masterItems]);
 
@@ -262,15 +294,13 @@ export default function DomainGrid() {
           {/* Filter pills */}
           <div className="flex gap-2 overflow-x-auto pb-3 mb-5 scrollbar-hide">
             <button type="button" onClick={() => setFilter('all')} className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 ${filter === 'all' ? 'bg-zinc-900 text-white shadow-md' : 'bg-white/80 text-zinc-500 hover:bg-white'}`}>Все ({allItems.length})</button>
-            {masterItems.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setFilter(filter === 'masters' ? 'all' : 'masters')}
-                className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 ${filter === 'masters' ? 'bg-zinc-900 text-white shadow-md' : 'bg-white/80 text-zinc-500 hover:bg-white'}`}
-              >
-                <Wrench size={13} />Мастера ({masterItems.length})
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setFilter(filter === 'masters' ? 'all' : 'masters')}
+              className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 ${filter === 'masters' ? 'bg-zinc-900 text-white shadow-md' : 'bg-white/80 text-zinc-500 hover:bg-white'}`}
+            >
+              <Wrench size={13} />Мастера ({masterItems.length})
+            </button>
             {CATEGORIES.map((cat) => {
               const count = allItems.filter((s) => s.domain === cat.id && !s.isMaster).length;
               return (
@@ -282,7 +312,20 @@ export default function DomainGrid() {
           </div>
 
           {/* Service cards grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+          {filteredServices.length === 0 ? (
+            <div className="rounded-[24px] border border-dashed border-zinc-300 bg-white/60 p-10 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-100">
+                <Wrench size={20} className="text-zinc-400" />
+              </div>
+              <p className="text-sm font-bold text-zinc-700">
+                {filter === 'masters' ? 'Услуги мастеров появятся здесь после модерации' : 'В этом разделе пока нет услуг'}
+              </p>
+              <p className="mt-1 text-xs text-zinc-400">
+                {filter === 'masters' ? 'Мастеры добавляют услуги в кабинете — BroVerse проверяет и публикует' : 'Попробуйте другой раздел'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
             {filteredServices.map((service) => (
               <button
                 key={`${service.isMaster ? 'm' : 'c'}-${service.adId || service.name}`}
@@ -327,7 +370,8 @@ export default function DomainGrid() {
                 </div>
               </button>
             ))}
-          </div>
+            </div>
+          )}
         </section>
 
         {/* How it works */}
