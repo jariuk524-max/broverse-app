@@ -167,6 +167,55 @@ export async function submitFeedback(
   return true;
 }
 
+/** Живой снимок заявки — для ожидания ответа мастера */
+export async function getRequestSnapshot(id: string): Promise<{
+  status: string;
+  masterId: string | null;
+  masterName: string | null;
+  declinedBy: string | null;
+} | null> {
+  const { data, error } = await getSupabase()
+    .from('orders')
+    .select('status, metadata')
+    .eq('id', id)
+    .single();
+  if (error || !data) return null;
+  const meta = data.metadata || {};
+  return {
+    status: data.status,
+    masterId: meta.master_id ?? null,
+    masterName: meta.master_name ?? null,
+    declinedBy: meta.declined_by ?? null,
+  };
+}
+
+/** Перенаправляет прямую заявку другому мастеру (сбрасывает отметку об отказе) */
+export async function forwardRequestToMaster(
+  id: string,
+  master: { id: string; name: string; phone?: string }
+): Promise<boolean> {
+  const { data: row, error: readErr } = await getSupabase()
+    .from('orders')
+    .select('metadata')
+    .eq('id', id)
+    .single();
+  if (readErr || !row) return false;
+  const metadata = {
+    ...(row.metadata || {}),
+    master_id: master.id,
+    master_name: master.name,
+    master_phone: master.phone || '',
+    declined_by: null,
+    forwarded_at: new Date().toISOString(),
+  };
+  const { error } = await getSupabase().from('orders').update({ metadata }).eq('id', id);
+  if (error) {
+    console.error('[Requests] forward error:', error);
+    return false;
+  }
+  return true;
+}
+
 export const STATUS_LABEL: Record<RequestStatus, string> = {
   new: 'Новая',
   review: 'На рассмотрении',

@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { CheckCircle2, X, Phone, MessageCircle, Zap, Minus, Plus, Truck, ChevronLeft, ShoppingCart } from 'lucide-react';
 import { createOrderInSupabase } from '@/lib/monolith-bridge';
+import MasterOrderStatus from '@/components/MasterOrderStatus';
 import { saveOrder } from '@/components/Header';
 
 export type OrderServiceItem = {
@@ -102,6 +103,7 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
   const [paymentMethod, setPaymentMethod] = useState<'now' | 'cash'>('cash');
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
+  const [orderId, setOrderId] = useState('');
   const [closing, setClosing] = useState(false);
 
   const handleClose = useCallback(() => {
@@ -164,6 +166,7 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
         : undefined,
     });
     if (created) {
+      setOrderId(created.id || '');
       fetch('/api/telegram-notify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -193,17 +196,29 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
       <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
         <div className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${closing ? 'opacity-0' : 'anim-fade'}`} onClick={handleClose} />
         <div className={`relative w-full sm:max-w-[400px] mx-4 mb-4 sm:mb-0 bg-white rounded-[24px] p-8 text-center shadow-2xl transition-all duration-300 ease-out ${closing ? 'translate-y-8 opacity-0 scale-95' : 'anim-pop'}`}>
-          <div className="mx-auto w-16 h-16 rounded-full bg-[#E0F7FA] flex items-center justify-center mb-4 animate-bounce">
-            <CheckCircle2 size={32} className="text-[#00BCD4]" />
-          </div>
-          <h3 className="text-lg font-bold text-zinc-900 mb-2">{isMasterOrder ? 'Заявка отправлена мастеру' : 'Заявка отправлена!'}</h3>
-          <p className="text-sm text-zinc-500 mb-2">{isMasterOrder ? `${service.masterName ? `Мастер ${service.masterName} · ` : ''}${items[0].name}` : (items.length > 1 ? `${items.length} инструментов` : items[0].name)}</p>
-          <p className="text-xs text-zinc-400 mb-1">{isMasterOrder ? 'Визит' : 'Доставка'}: {dateOption === 'custom' ? customDate : dateOptions.find(d => d.id === dateOption)?.label} • {TIME_SLOTS.find(t => t.id === timeSlot)?.label}</p>
-          {!isMasterOrder && <p className="text-xs text-zinc-400 mb-2">Аренда: {rentDays} {rentDays === 1 ? 'сутки' : rentDays < 5 ? 'суток' : 'суток'}</p>}
-          {!isMasterOrder && selectedAddons.length > 0 && <p className="text-xs text-zinc-400 mb-2">Дополнительно: {ADDON_PRODUCTS.filter(p => selectedAddons.includes(p.id)).map(p => p.name).join(', ')}</p>}
-          <p className="text-sm font-bold text-[#00BCD4] mb-6">{isMasterOrder ? 'Стоимость: ' : 'Итого: '}{grandTotal.toLocaleString('ru')} ₽</p>
-          {isMasterOrder && <p className="text-xs text-zinc-400 -mt-4 mb-4">Мастер свяжется с вами для подтверждения визита</p>}
-          <button type="button" onClick={handleClose} className="w-full py-3 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold hover:bg-[#0097A7] transition-colors">Закрыть</button>
+          {isMasterOrder && orderId ? (
+            <MasterOrderStatus
+              orderId={orderId}
+              masterId={service.masterId || 'master-1'}
+              masterName={service.masterName || ''}
+              serviceName={items[0].name}
+              onClose={handleClose}
+            />
+          ) : (
+            <>
+              <div className="mx-auto w-16 h-16 rounded-full bg-[#E0F7FA] flex items-center justify-center mb-4 animate-bounce">
+                <CheckCircle2 size={32} className="text-[#00BCD4]" />
+              </div>
+              <h3 className="text-lg font-bold text-zinc-900 mb-2">{isMasterOrder ? 'Заявка отправлена мастеру' : 'Заявка отправлена!'}</h3>
+              <p className="text-sm text-zinc-500 mb-2">{isMasterOrder ? `${service.masterName ? `Мастер ${service.masterName} · ` : ''}${items[0].name}` : (items.length > 1 ? `${items.length} инструментов` : items[0].name)}</p>
+              <p className="text-xs text-zinc-400 mb-1">{isMasterOrder ? 'Визит' : 'Доставка'}: {dateOption === 'custom' ? customDate : dateOptions.find(d => d.id === dateOption)?.label} • {TIME_SLOTS.find(t => t.id === timeSlot)?.label}</p>
+              {!isMasterOrder && <p className="text-xs text-zinc-400 mb-2">Аренда: {rentDays} {rentDays === 1 ? 'сутки' : rentDays < 5 ? 'суток' : 'суток'}</p>}
+              {!isMasterOrder && selectedAddons.length > 0 && <p className="text-xs text-zinc-400 mb-2">Дополнительно: {ADDON_PRODUCTS.filter(p => selectedAddons.includes(p.id)).map(p => p.name).join(', ')}</p>}
+              <p className="text-sm font-bold text-[#00BCD4] mb-6">{isMasterOrder ? 'Стоимость: ' : 'Итого: '}{grandTotal.toLocaleString('ru')} ₽</p>
+              {isMasterOrder && <p className="text-xs text-zinc-400 -mt-4 mb-4">Мастер свяжется с вами для подтверждения визита</p>}
+              <button type="button" onClick={handleClose} className="w-full py-3 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold hover:bg-[#0097A7] transition-colors">Закрыть</button>
+            </>
+          )}
         </div>
       </div>
     );
