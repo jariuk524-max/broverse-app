@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { writeAudit } from '@/lib/admin/store';
-import { requireRole } from '@/lib/admin/guard';
+import { requireRole, requireAnyRole } from '@/lib/admin/guard';
 import { guardWrite } from '@/lib/admin/security';
 
 export const dynamic = 'force-dynamic';
@@ -13,6 +13,16 @@ function supabase() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new Error('Supabase service role не настроен');
   return createClient(url, key, { auth: { persistSession: false } });
+}
+
+/** Все заявки для админ-вкладок — service role (работает даже если anon-политики закрыты) */
+export async function GET() {
+  const res = await requireAnyRole(['requests', 'feedback', 'overview', 'finance', 'team', 'masters']);
+  if ('error' in res) return res.error;
+  const db = supabase();
+  const { data, error } = await db.from('orders').select('*').order('created_at', { ascending: false });
+  if (error) return NextResponse.json({ error: 'Supabase error' }, { status: 500 });
+  return NextResponse.json({ requests: data || [] });
 }
 
 /** Смена статуса заявки/отзыва с записью в аудит (кто/когда/было→стало) */

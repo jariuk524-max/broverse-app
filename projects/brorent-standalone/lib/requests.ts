@@ -90,18 +90,33 @@ export async function createServiceRequest(input: {
   return data as ServiceRequest;
 }
 
-/** Забирает все заявки (для админки), новые — сверху */
+/** Забирает все заявки (для админки), новые — сверху.
+ * Основной источник — админский GET (service role), fallback — анонимный select. */
 export async function listServiceRequests(): Promise<ServiceRequest[]> {
-  const { data, error } = await getSupabase()
-    .from('orders')
-    .select('*')
-    .order('created_at', { ascending: false });
+  try {
+    const res = await fetch('/api/admin/requests', { cache: 'no-store' });
+    if (res.ok) {
+      const json = await res.json().catch(() => null);
+      if (Array.isArray(json?.requests)) return json.requests as ServiceRequest[];
+    }
+  } catch {
+    // нет сессии/роли или вызов не из браузера — идём в анонимный select
+  }
+  try {
+    const { data, error } = await getSupabase()
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('[Requests] Supabase select error:', error);
+    if (error) {
+      console.error('[Requests] Supabase select error:', error);
+      return [];
+    }
+    return (data || []) as ServiceRequest[];
+  } catch (e) {
+    console.error('[Requests] Supabase not configured:', e);
     return [];
   }
-  return (data || []) as ServiceRequest[];
 }
 
 /** Меняет статус заявки (одобрить / отклонить) */

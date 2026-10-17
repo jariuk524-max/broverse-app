@@ -352,6 +352,13 @@ function OrdersTab() {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    const id = setInterval(() => { if (!document.hidden) load(); }, 30000);
+    const onVis = () => { if (!document.hidden) load(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', onVis); };
+  }, [load]);
+
   const act = async (o: ServiceRequest, action: 'approved' | 'rejected') => {
     let comment = '';
     if (action === 'rejected') {
@@ -1304,6 +1311,8 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
   const [copiedFor, setCopiedFor] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const dragLogin = useRef<string | null>(null);
+  const dragMoved = useRef(false);
+  const orderRef = useRef<string[]>([]);
   const [statusList, setStatusList] = useState<'queue' | 'all' | RequestStatus | null>(null);
   const [openOrder, setOpenOrder] = useState<string | null>(null);
   const [openCabinet, setOpenCabinet] = useState<string | null>(null);
@@ -1327,6 +1336,25 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const refreshLive = async () => {
+      try {
+        const [o, au] = await Promise.all([
+          listServiceRequests(),
+          fetch('/api/admin/audit').then((r) => (r.ok ? r.json().catch(() => null) : null)),
+        ]);
+        setOrders(o);
+        if (Array.isArray(au?.entries)) setEntries(au.entries);
+      } catch {
+        /* тихий пропуск — покажем старые данные */
+      }
+    };
+    const id = setInterval(() => { if (!document.hidden) refreshLive(); }, 30000);
+    const onVis = () => { if (!document.hidden) refreshLive(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', onVis); };
+  }, []);
 
   if (!orders || !admins || !entries || !ads) {
     return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
@@ -1361,7 +1389,10 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
   }
 
   const decisions = entries.filter(
-    (e) => e.action === 'order_status' && ['approved', 'rejected'].includes(String(e.details?.to))
+    (e) =>
+      e.action === 'order_status' &&
+      e.entity_type === 'orders' &&
+      ['approved', 'rejected'].includes(String(e.details?.to))
   );
   const feed = decisions.slice(0, 10);
   const queueCount = (statusCounts.new || 0) + (statusCounts.review || 0);
@@ -1407,6 +1438,8 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
     const j = logins.indexOf(under);
     if (i < 0 || j < 0) return;
     logins.splice(j, 0, logins.splice(i, 1)[0]);
+    dragMoved.current = true;
+    orderRef.current = logins;
     setCabOrder(logins);
   };
 
@@ -1414,7 +1447,8 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
     if (!dragLogin.current) return;
     dragLogin.current = null;
     setDragId(null);
-    if (cabOrder.length) saveLayout(cabOrder);
+    if (orderRef.current.length) saveLayout(orderRef.current);
+    setTimeout(() => { dragMoved.current = false; }, 0);
   };
 
   const effLogin = loginTouched ? createLogin.trim() : toLogin(createName);
@@ -1548,6 +1582,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                 key={a.login}
                 data-cabinet={a.login}
                 onClick={(e) => {
+                  if (dragMoved.current) return;
                   if ((e.target as HTMLElement).closest('button')) return;
                   setPwMsg(null);
                   setPwValue('');
@@ -1738,7 +1773,10 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
 
       {openOrder && (() => {
         const o = orders.find((x) => x.id === openOrder);
-        if (!o) return null;
+        if (!o) {
+          setOpenOrder(null);
+          return null;
+        }
         const md = o.metadata;
         const fb = md?.feedback;
         const decision = entries.find((e) => e.entity_id === o.id && e.action === 'order_status');
