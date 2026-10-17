@@ -6,6 +6,7 @@ import {
   ShieldCheck, Package, ImageIcon, Lock, Star, MessageSquare,
   LogOut, User, History, Plus, BarChart3, ListTodo, LayoutGrid,
   ChevronUp, ChevronDown, ChevronRight, Send, Search, Square, CheckSquare, X,
+  Eye, RefreshCw, KeyRound, Users, GripVertical,
 } from 'lucide-react';
 import {
   listServiceRequests,
@@ -33,9 +34,16 @@ const TABS: { id: TabId; label: string; role: string | null }[] = [
   { id: 'feedback', label: 'Отзывы', role: 'feedback' },
   { id: 'catalog', label: 'Каталог', role: 'catalog' },
   { id: 'mirror', label: 'Зеркало', role: 'mirror' },
-  { id: 'audit', label: 'Аудит', role: null },
+  { id: 'audit', label: 'Аудит', role: 'team' },
   { id: 'team', label: 'Команда', role: 'team' },
 ];
+
+/** Название вкладки: для сотрудника первый раздел — «Мой кабинет» */
+const tabLabel = (id: TabId, roles: string[]): string => {
+  if (id === 'overview') return roles.includes('team') ? 'Хаб' : 'Мой кабинет';
+  const t = TABS.find((x) => x.id === id);
+  return t ? t.label : '';
+};
 
 const ROLE_LABEL: Record<string, string> = {
   overview: 'Обзор',
@@ -292,7 +300,7 @@ export default function AdminPage() {
                   className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors whitespace-nowrap inline-flex items-center gap-1 ${!locked && tab === t.id && !lockedTab ? 'bg-white shadow-sm text-zinc-900' : locked ? 'text-zinc-300' : 'text-zinc-500'}`}
                 >
                   {locked && <Lock size={10} />}
-                  {t.label}
+                  {tabLabel(t.id, session.roles)}
                 </button>
               );
             })}
@@ -303,9 +311,9 @@ export default function AdminPage() {
       <main className="max-w-2xl mx-auto px-4 py-5">
         {lockedTab ? (
           <LockedSection
-            label={TABS.find((t) => t.id === lockedTab)?.label || ''}
+            label={tabLabel(lockedTab, session.roles)}
             onAsk={async () => {
-              const label = TABS.find((t) => t.id === lockedTab)?.label || '';
+              const label = tabLabel(lockedTab, session.roles);
               await fetch('/api/admin/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -315,7 +323,7 @@ export default function AdminPage() {
               setTab('chat');
             }}
           />
-        ) : tab === 'overview' ? <OverviewTab session={session} /> : tab === 'orders' ? <OrdersTab /> : tab === 'chat' ? <ChatTab session={session} /> : tab === 'tasks' ? <TasksTab /> : tab === 'finance' ? <FinanceTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : tab === 'catalog' ? <CatalogTab /> : tab === 'mirror' ? <MirrorTab /> : tab === 'team' ? <TeamTab session={session} /> : <AuditTab />}
+        ) : tab === 'overview' ? (session.roles.includes('team') ? <OverviewTab session={session} onOpenTab={setTab} /> : <MyCabinetTab session={session} onOpenTab={setTab} onAskLocked={setLockedTab} />) : tab === 'orders' ? <OrdersTab /> : tab === 'chat' ? <ChatTab session={session} /> : tab === 'tasks' ? <TasksTab /> : tab === 'finance' ? <FinanceTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : tab === 'catalog' ? <CatalogTab /> : tab === 'mirror' ? <MirrorTab /> : tab === 'team' ? <TeamTab session={session} /> : <AuditTab />}
       </main>
 
       {showProfile && (
@@ -1097,6 +1105,8 @@ const AUDIT_ACTION_LABEL: Record<string, string> = {
   mirror_order: 'Поменял порядок услуг (зеркало)',
   chat_message: 'Написал сообщение в чат',
   user_delete: 'Удалил кабинет сотрудника',
+  password_set_by_admin: 'Задал пароль сотруднику',
+  password_reset_by_admin: 'Сбросил пароль сотруднику',
 };
 
 type AuditEntry = {
@@ -1188,6 +1198,64 @@ function AuditTab() {
   );
 }
 
+/* ────────────────────────── МОЙ КАБИНЕТ (сотрудник) ────────────────────────── */
+
+const TAB_ICONS: Record<TabId, React.ComponentType<{ size?: number; className?: string }>> = {
+  overview: BarChart3, orders: Package, chat: MessageSquare, tasks: ListTodo,
+  finance: History, masters: Star, feedback: Star, catalog: ImageIcon,
+  mirror: LayoutGrid, audit: History, team: Users,
+};
+
+function MyCabinetTab({ session, onOpenTab, onAskLocked }: {
+  session: Session;
+  onOpenTab: (id: TabId) => void;
+  onAskLocked: (id: TabId) => void;
+}) {
+  const sections = TABS.filter((t) => t.id !== 'overview');
+  return (
+    <div className="space-y-4">
+      <div className="bg-white rounded-[24px] p-5 shadow-sm flex items-center gap-3.5">
+        <span className="w-14 h-14 rounded-2xl bg-zinc-900 text-white text-[20px] font-black flex items-center justify-center shrink-0">
+          {(session.display_name || session.login).slice(0, 1).toUpperCase()}
+        </span>
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Мой кабинет</p>
+          <p className="text-[16px] font-black text-zinc-900 truncate">{session.display_name || session.login}</p>
+          <p className="text-[11px] text-zinc-400">@{session.login}</p>
+        </div>
+      </div>
+
+      <div>
+        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2 px-1">Разделы</p>
+        <div className="grid grid-cols-2 gap-2.5">
+          {sections.map((t) => {
+            const locked = !!t.role && !session.roles.includes(t.role);
+            const Icon = TAB_ICONS[t.id];
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => (locked ? onAskLocked(t.id) : onOpenTab(t.id))}
+                className={`rounded-[18px] p-4 text-left shadow-sm active:scale-[0.97] transition-transform ${locked ? 'bg-zinc-100' : 'bg-white'}`}
+              >
+                <span className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2 ${locked ? 'bg-zinc-200' : 'bg-zinc-900'}`}>
+                  {locked ? <Lock size={15} className="text-zinc-400" /> : <Icon size={15} className="text-white" />}
+                </span>
+                <p className={`text-[13px] font-bold ${locked ? 'text-zinc-400' : 'text-zinc-900'}`}>{t.label}</p>
+                <p className="text-[10px] text-zinc-400 mt-0.5">{locked ? 'закрыт — попросить' : 'открыт'}</p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <p className="text-[10px] text-zinc-300 px-1">
+        Видны только разделы, которые выдал руководитель. Ссылка на кабинет постоянная.
+      </p>
+    </div>
+  );
+}
+
 /* ────────────────────────── ОБЗОР РУКОВОДИТЕЛЯ ────────────────────────── */
 
 function Stat({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
@@ -1200,26 +1268,41 @@ function Stat({ label, value, sub }: { label: string; value: string | number; su
   );
 }
 
-function OverviewTab({ session }: { session: Session }) {
+function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id: TabId) => void }) {
   const [orders, setOrders] = useState<ServiceRequest[] | null>(null);
-  const [admins, setAdmins] = useState<{ login: string; display_name: string; last_login_at: string | null }[] | null>(null);
+  const [admins, setAdmins] = useState<{ login: string; display_name: string; roles: string[]; password_set_at: string | null; last_login_at: string | null }[] | null>(null);
   const [entries, setEntries] = useState<AuditEntry[] | null>(null);
   const [ads, setAds] = useState<unknown[] | null>(null);
+  const [cabOrder, setCabOrder] = useState<string[]>([]);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createDone, setCreateDone] = useState('');
+  const [createName, setCreateName] = useState('');
+  const [createLogin, setCreateLogin] = useState('');
+  const [loginTouched, setLoginTouched] = useState(false);
+  const [createRoles, setCreateRoles] = useState<string[]>(['requests']);
+  const [createErr, setCreateErr] = useState('');
+  const [createBusy, setCreateBusy] = useState(false);
+  const [chatWith, setChatWith] = useState<string | null>(null);
+  const [copiedFor, setCopiedFor] = useState<string | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const dragLogin = useRef<string | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      const [o, a, au, ad] = await Promise.all([
-        listServiceRequests().catch(() => [] as ServiceRequest[]),
-        fetch('/api/admin/users').then((r) => (r.ok ? r.json().catch(() => null) : null)).catch(() => null),
-        fetch('/api/admin/audit').then((r) => (r.ok ? r.json().catch(() => null) : null)).catch(() => null),
-        fetch('/api/masters/ads').then((r) => (r.ok ? r.json().catch(() => null) : null)).catch(() => null),
-      ]);
-      setOrders(o);
-      setAdmins(Array.isArray(a?.admins) ? a.admins : []);
-      setEntries(Array.isArray(au?.entries) ? au.entries : []);
-      setAds(Array.isArray(ad) ? ad : []);
-    })();
+  const load = useCallback(async () => {
+    const [o, a, au, ad, lay] = await Promise.all([
+      listServiceRequests().catch(() => [] as ServiceRequest[]),
+      fetch('/api/admin/users').then((r) => (r.ok ? r.json().catch(() => null) : null)).catch(() => null),
+      fetch('/api/admin/audit').then((r) => (r.ok ? r.json().catch(() => null) : null)).catch(() => null),
+      fetch('/api/masters/ads').then((r) => (r.ok ? r.json().catch(() => null) : null)).catch(() => null),
+      fetch('/api/admin/layout').then((r) => (r.ok ? r.json().catch(() => null) : null)).catch(() => null),
+    ]);
+    setOrders(o);
+    setAdmins(Array.isArray(a?.admins) ? a.admins : []);
+    setEntries(Array.isArray(au?.entries) ? au.entries : []);
+    setAds(Array.isArray(ad) ? ad : []);
+    setCabOrder(Array.isArray(lay?.order) ? lay.order.map(String) : []);
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   if (!orders || !admins || !entries || !ads) {
     return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
@@ -1252,17 +1335,264 @@ function OverviewTab({ session }: { session: Session }) {
     if (new Date(e.created_at).getTime() > new Date(cur.last).getTime()) cur.last = e.created_at;
     workByLogin.set(e.actor_login, cur);
   }
-  const weekWork = [...workByLogin.entries()].sort((a, b) => b[1].count - a[1].count);
+
+  const decisions = entries.filter(
+    (e) => e.action === 'order_status' && ['approved', 'rejected'].includes(String(e.details?.to))
+  );
+  const feed = decisions.slice(0, 10);
+  const queueCount = (statusCounts.new || 0) + (statusCounts.review || 0);
+  const approvedCount = (statusCounts.approved || 0) + (statusCounts.accepted || 0) + (statusCounts.completed || 0);
+
+  const activityMap: Record<string, { action: string; created_at: string }[]> = {};
+  for (const e of entries) {
+    if (e.action === 'login' || e.action === 'logout') continue;
+    const arr = activityMap[e.actor_login] || (activityMap[e.actor_login] = []);
+    if (arr.length < 2) arr.push({ action: AUDIT_ACTION_LABEL[e.action] || e.action, created_at: e.created_at });
+  }
+
+  const orderedAdmins = [...admins].sort((a, b) => {
+    const i = cabOrder.indexOf(a.login);
+    const j = cabOrder.indexOf(b.login);
+    if (i === -1 && j === -1) return 0;
+    if (i === -1) return 1;
+    if (j === -1) return -1;
+    return i - j;
+  });
+
+  const saveLayout = (list: string[]) => {
+    fetch('/api/admin/layout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order: list }),
+    }).catch(() => {});
+  };
+
+  const startDrag = (e: React.PointerEvent, login: string) => {
+    dragLogin.current = login;
+    setDragId(login);
+    try { (e.currentTarget as Element).setPointerCapture(e.pointerId); } catch { /* ignore */ }
+  };
+
+  const moveDrag = (e: React.PointerEvent) => {
+    const from = dragLogin.current;
+    if (!from) return;
+    const under = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-cabinet]')?.getAttribute('data-cabinet');
+    if (!under || under === from) return;
+    const logins = orderedAdmins.map((a) => a.login);
+    const i = logins.indexOf(from);
+    const j = logins.indexOf(under);
+    if (i < 0 || j < 0) return;
+    logins.splice(j, 0, logins.splice(i, 1)[0]);
+    setCabOrder(logins);
+  };
+
+  const endDrag = () => {
+    if (!dragLogin.current) return;
+    dragLogin.current = null;
+    setDragId(null);
+    if (cabOrder.length) saveLayout(cabOrder);
+  };
+
+  const effLogin = loginTouched ? createLogin.trim() : toLogin(createName);
+
+  const submitCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (createBusy) return;
+    setCreateBusy(true);
+    setCreateErr('');
+    try {
+      const r = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ login: effLogin, display_name: createName.trim(), roles: createRoles }),
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        setCreateErr(d.error || 'Не удалось создать кабинет');
+      } else {
+        setCreateDone(effLogin);
+        setCreateName('');
+        setCreateLogin('');
+        setLoginTouched(false);
+        setCreateRoles(['requests']);
+        await load();
+      }
+    } finally {
+      setCreateBusy(false);
+    }
+  };
+
+  const copyAccess = async (a: { login: string; display_name: string; roles: string[] }) => {
+    try {
+      await navigator.clipboard.writeText(accessMessage(a.login, a.display_name, a.roles));
+      setCopiedFor(a.login);
+      setTimeout(() => setCopiedFor(null), 1500);
+    } catch { /* clipboard недоступен */ }
+  };
+
+  const removeCabinet = async (login: string) => {
+    if (!window.confirm(`Удалить кабинет @${login}? Доступ пропадёт сразу.`)) return;
+    await fetch('/api/admin/users', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ login }),
+    }).catch(() => {});
+    await load();
+  };
 
   return (
     <div className="space-y-4">
+      <div className="bg-white rounded-[24px] p-5 shadow-sm">
+        <p className="text-[17px] font-black text-zinc-900">Кабинет руководителя проекта</p>
+        <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
+          Все процессы и кабинеты сотрудников — здесь.
+          {session.display_name ? ` Руководитель: ${session.display_name}.` : ''}
+        </p>
+        <button
+          type="button"
+          onClick={() => { setCreateOpen(true); setCreateDone(''); setCreateErr(''); }}
+          className="w-full mt-4 py-3 rounded-2xl bg-zinc-900 text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform"
+        >
+          <Plus size={15} /> Создать кабинет
+        </button>
+      </div>
+
       <div className="grid grid-cols-2 gap-2.5">
-        <Stat label="Заявок всего" value={orders.length} sub={`сегодня: ${todayCount}`} />
-        <Stat label="Открытых заявок" value={(statusCounts.new || 0) + (statusCounts.review || 0)} sub="ждут решения" />
-        <Stat label="Мастеров (услуги)" value={ads.length} sub={`анкет на модерации: ${anketyPending}`} />
-        <Stat label="Сотрудников" value={admins.length} sub={`активны за 7 дней: ${weekWork.length}`} />
-        <Stat label="Отзывов" value={feedbacks.length} sub={`средняя оценка: ${avgRating}`} />
-        <Stat label="Не закрытых отзывов" value={unresolvedFb} sub={unresolvedFb ? 'нужна реакция' : 'всё в порядке'} />
+        <Stat label="В очереди" value={queueCount} sub="ждут решения" />
+        <Stat label="Одобрено" value={approvedCount} sub="прошли модерацию" />
+        <Stat label="Отклонено" value={statusCounts.rejected || 0} sub="с причинами" />
+        <Stat label="Сегодня / всего" value={`${todayCount} / ${orders.length}`} sub="новые заявки" />
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-1 px-1">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Кабинеты сотрудников · {orderedAdmins.length}</p>
+        </div>
+        <p className="text-[10px] text-zinc-300 mb-2.5 px-1">Потяните блок за ⠿ — порядок сохранится</p>
+        {orderedAdmins.length === 0 ? (
+          <div className="bg-white rounded-[18px] py-8 text-center shadow-sm">
+            <Users size={24} className="text-zinc-300 mx-auto mb-2" />
+            <p className="text-[12px] text-zinc-400">Кабинетов пока нет</p>
+            <button
+              type="button"
+              onClick={() => { setCreateOpen(true); setCreateDone(''); setCreateErr(''); }}
+              className="mt-3 px-4 py-2 rounded-xl bg-zinc-900 text-white text-[11px] font-bold active:scale-95 transition-transform"
+            >
+              Создать первый
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {orderedAdmins.map((a) => (
+              <div
+                key={a.login}
+                data-cabinet={a.login}
+                className={`bg-white rounded-[18px] p-3.5 shadow-sm transition-all ${dragId === a.login ? 'ring-2 ring-zinc-900 opacity-80 scale-[1.01]' : ''}`}
+              >
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onPointerDown={(e) => startDrag(e, a.login)}
+                    onPointerMove={moveDrag}
+                    onPointerUp={endDrag}
+                    onPointerCancel={endDrag}
+                    className="w-7 h-9 -ml-1 flex items-center justify-center text-zinc-300 touch-none select-none cursor-grab active:cursor-grabbing shrink-0"
+                    title="Перетащить блок"
+                  >
+                    <GripVertical size={16} />
+                  </button>
+                  <span className="w-9 h-9 rounded-xl bg-zinc-900 text-white text-[13px] font-black flex items-center justify-center shrink-0">
+                    {(a.display_name || a.login).slice(0, 1).toUpperCase()}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-bold text-zinc-900 truncate">{a.display_name || a.login}</p>
+                    <p className="text-[10px] text-zinc-400 truncate">
+                      @{a.login} · {a.password_set_at ? 'пароль задан' : 'ждёт первый вход'}
+                      {a.last_login_at ? ` · вход ${new Date(a.last_login_at).toLocaleDateString('ru-RU')}` : ''}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {a.roles.length === 0 && <span className="text-[10px] text-zinc-400">без разделов</span>}
+                  {a.roles.map((r) => (
+                    <span key={r} className="px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 text-[9.5px] font-bold">
+                      {ROLE_LABEL[r] || r}
+                    </span>
+                  ))}
+                </div>
+                {activityMap[a.login]?.length ? (
+                  <p className="text-[10px] text-zinc-400 mt-1.5 truncate">
+                    {activityMap[a.login].map((x) => x.action).join(' · ')}
+                  </p>
+                ) : null}
+                <div className="flex gap-1.5 mt-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setChatWith(a.login)}
+                    className="flex-1 py-1.5 rounded-lg bg-zinc-900 text-white text-[10.5px] font-bold active:scale-95 transition-transform"
+                  >
+                    Чат
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onOpenTab('team')}
+                    className="flex-1 py-1.5 rounded-lg bg-zinc-100 text-zinc-700 text-[10.5px] font-bold active:scale-95 transition-transform"
+                  >
+                    Навыки
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => copyAccess(a)}
+                    className="flex-1 py-1.5 rounded-lg bg-zinc-100 text-zinc-700 text-[10.5px] font-bold active:scale-95 transition-transform"
+                  >
+                    {copiedFor === a.login ? '✓ Скопировано' : 'Доступ'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeCabinet(a.login)}
+                    className="py-1.5 px-2.5 rounded-lg bg-white border border-zinc-200 text-zinc-400 text-[10.5px] font-bold active:scale-95 transition-transform"
+                  >
+                    Удалить
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-[18px] p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-1.5">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Последние решения</p>
+          <span className="text-[10px] text-zinc-400">всего: {decisions.length}</span>
+        </div>
+        {feed.length === 0 ? (
+          <p className="text-[12px] text-zinc-400 py-1">
+            Решений пока нет — сотрудники разберут очередь во вкладке «Заявки».
+          </p>
+        ) : (
+          <div>
+            {feed.map((e) => {
+              const ok = String(e.details?.to) === 'approved';
+              const comment = typeof e.details?.comment === 'string' ? e.details.comment : '';
+              return (
+                <div key={e.id} className="flex gap-2.5 items-start py-2 border-b border-zinc-50 last:border-0">
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${ok ? 'bg-zinc-900' : 'bg-white border border-zinc-300'}`}>
+                    {ok ? <CheckCircle2 size={13} className="text-white" /> : <XCircle size={13} className="text-zinc-500" />}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12px] font-bold text-zinc-900 truncate">{e.entity_label}</p>
+                    <p className="text-[10.5px] text-zinc-400">
+                      {ok ? 'Одобрена' : 'Отклонена'} · {e.actor_name || e.actor_login} ·{' '}
+                      {new Date(e.created_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                    {comment && <p className="text-[10.5px] text-zinc-600 mt-0.5 break-words">«{comment}»</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-[18px] p-4 shadow-sm">
@@ -1276,36 +1606,136 @@ function OverviewTab({ session }: { session: Session }) {
         </div>
       </div>
 
-      {session.roles.includes('team') && (
-      <div className="bg-white rounded-[18px] p-4 shadow-sm">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Команда за 7 дней</p>
-        {admins.length === 0 ? (
-          <p className="text-[12px] text-zinc-400">Сотрудники ещё не добавлены — вкладка «Команда».</p>
-        ) : (
-          <div className="space-y-2">
-            {admins.map((a) => {
-              const w = workByLogin.get(a.login);
-              return (
-                <div key={a.login} className="flex items-center gap-2 text-[12px]">
-                  <span className="w-7 h-7 rounded-full bg-zinc-900 text-white text-[10px] font-black flex items-center justify-center shrink-0">
-                    {(a.display_name || a.login).slice(0, 1).toUpperCase()}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-bold text-zinc-900 truncate">{a.display_name || a.login}</p>
-                    <p className="text-[10px] text-zinc-400">
-                      {w
-                        ? `действий: ${w.count} · последний: ${new Date(w.last).toLocaleDateString('ru-RU')}`
-                        : a.last_login_at
-                          ? `вход: ${new Date(a.last_login_at).toLocaleDateString('ru-RU')}`
-                          : 'за 7 дней без действий'}
-                    </p>
+      <div className="grid grid-cols-2 gap-2.5">
+        <Stat label="Мастеров (услуги)" value={ads.length} sub={`анкет на модерации: ${anketyPending}`} />
+        <Stat label="Сотрудников" value={admins.length} sub={`активны за 7 дней: ${workByLogin.size}`} />
+        <Stat label="Отзывов" value={feedbacks.length} sub={`средняя оценка: ${avgRating}`} />
+        <Stat label="Не закрытых отзывов" value={unresolvedFb} sub={unresolvedFb ? 'нужна реакция' : 'всё в порядке'} />
+      </div>
+
+      {(createOpen || createDone) && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={() => { setCreateOpen(false); setCreateDone(''); }}>
+          <div className="w-full max-w-[400px] bg-white rounded-[24px] p-5 shadow-2xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            {createDone ? (
+              <div>
+                <p className="text-[14px] font-bold text-zinc-900">Кабинет @{createDone} создан</p>
+                <p className="text-[11px] text-zinc-400 mt-1.5 leading-relaxed">
+                  Ссылка постоянная. Отправьте её сотруднику — он задаст пароль при первом входе.
+                </p>
+                <div className="flex gap-2 mt-4">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const a = admins.find((x) => x.login === createDone);
+                      try {
+                        await navigator.clipboard.writeText(accessMessage(createDone, a?.display_name || createDone, a?.roles || []));
+                        setCopiedFor('created');
+                        setTimeout(() => setCopiedFor(null), 1500);
+                      } catch { /* ignore */ }
+                    }}
+                    className="flex-1 py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold active:scale-95 transition-transform"
+                  >
+                    {copiedFor === 'created' ? 'Скопировано ✓' : 'Скопировать доступ'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setCreateDone(''); setCreateOpen(true); }}
+                    className="px-4 py-2.5 rounded-xl bg-zinc-100 text-zinc-700 text-[12px] font-bold active:scale-95 transition-transform"
+                  >
+                    Ещё
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setCreateOpen(false); setCreateDone(''); }}
+                  className="w-full mt-2 py-2.5 rounded-xl bg-white border border-zinc-200 text-zinc-500 text-[12px] font-bold active:scale-95 transition-transform"
+                >
+                  Закрыть
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={submitCreate} className="space-y-2.5">
+                <p className="text-[14px] font-bold text-zinc-900">Новый кабинет</p>
+                <input
+                  value={createName}
+                  onChange={(e) => setCreateName(e.target.value)}
+                  placeholder="Имя сотрудника"
+                  className={INPUT}
+                  autoFocus
+                />
+                <input
+                  value={effLogin}
+                  onChange={(e) => { setLoginTouched(true); setCreateLogin(e.target.value); }}
+                  placeholder="Логин (получится из имени)"
+                  className={INPUT}
+                  autoCapitalize="none"
+                />
+                <div>
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Шаблон доступа</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {ROLE_TEMPLATES.map((tp) => (
+                      <button
+                        key={tp.label}
+                        type="button"
+                        onClick={() => setCreateRoles(tp.roles)}
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors ${JSON.stringify(createRoles) === JSON.stringify(tp.roles) ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600'}`}
+                      >
+                        {tp.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
-              );
-            })}
+                <div>
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Разделы</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.keys(ROLE_LABEL).map((r) => {
+                      const on = createRoles.includes(r);
+                      return (
+                        <button
+                          key={r}
+                          type="button"
+                          onClick={() => setCreateRoles((p) => (p.includes(r) ? p.filter((x) => x !== r) : [...p, r]))}
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors ${on ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-400'}`}
+                        >
+                          {ROLE_LABEL[r]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                {createErr && <p className="text-[11px] text-zinc-800 font-semibold">{createErr}</p>}
+                <button
+                  type="submit"
+                  disabled={createBusy || !createName.trim() || !effLogin}
+                  className="w-full py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform disabled:opacity-40"
+                >
+                  <Plus size={13} /> {createBusy ? '…' : 'Создать кабинет'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCreateOpen(false)}
+                  className="w-full py-2.5 rounded-xl bg-white border border-zinc-200 text-zinc-500 text-[12px] font-bold active:scale-95 transition-transform"
+                >
+                  Закрыть
+                </button>
+              </form>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {chatWith && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={() => setChatWith(null)}>
+          <div className="w-full max-w-[420px] max-h-[85vh] overflow-y-auto bg-white rounded-[24px] p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[13px] font-bold text-zinc-900">Чат: @{chatWith}</p>
+              <button type="button" onClick={() => setChatWith(null)} className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500">
+                <X size={15} />
+              </button>
+            </div>
+            <ChatPanel withLogin={chatWith} />
+          </div>
+        </div>
       )}
     </div>
   );
@@ -1995,6 +2425,32 @@ const ROLE_TEMPLATES: { label: string; roles: string[] }[] = [
   { label: 'Наблюдатель', roles: ['overview'] },
 ];
 
+/** Готовое сообщение-доступ для сотрудника (копируется в буфер) */
+const accessMessage = (login: string, name: string, roles: string[]) =>
+  `Доступ в кабинет BroVerse\n\n` +
+  `Ссылка: https://broverse-client.vercel.app/admin\n` +
+  `Логин: ${login}\n` +
+  `Имя: ${name}\n\n` +
+  `При первом входе зададите свой пароль.\n` +
+  `Разделы: ${roles.map((r) => ROLE_LABEL[r]).filter(Boolean).join(', ') || '—'}`;
+
+const TRANSLIT: Record<string, string> = {
+  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y',
+  к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f',
+  х: 'h', ц: 'c', ч: 'ch', ш: 'sh', щ: 'sch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya',
+};
+
+/** Логин из имени: «Алина Смирнова» → «alina-smirnova» */
+const toLogin = (s: string): string =>
+  s
+    .toLowerCase()
+    .split('')
+    .map((ch) => TRANSLIT[ch] ?? ch)
+    .join('')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 32);
+
 function TeamTab({ session }: { session: Session }) {
   const canManage = session.roles.includes('team');
   const [admins, setAdmins] = useState<{ login: string; display_name: string; roles: string[]; password_set_at: string | null; last_login_at: string | null }[] | null>(null);
@@ -2007,6 +2463,10 @@ function TeamTab({ session }: { session: Session }) {
   const [accessFor, setAccessFor] = useState<string | null>(null);
   const [chatWith, setChatWith] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [pwFor, setPwFor] = useState<string | null>(null);
+  const [pwValue, setPwValue] = useState('');
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwMsg, setPwMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
   const load = useCallback(async () => {
     const [r, au] = await Promise.all([
@@ -2080,13 +2540,36 @@ function TeamTab({ session }: { session: Session }) {
     await load();
   };
 
-  const buildAccessText = (login: string, name: string, roles: string[]) =>
-    `Доступ в кабинет BroVerse\n\n` +
-    `Ссылка: https://broverse-client.vercel.app/admin\n` +
-    `Логин: ${login}\n` +
-    `Имя: ${name}\n\n` +
-    `При первом входе зададите свой пароль.\n` +
-    `Разделы: ${roles.map((r) => ROLE_LABEL[r]).filter(Boolean).join(', ') || '—'}`;
+  const changePassword = async (login: string, mode: 'set' | 'reset') => {
+    setPwBusy(true);
+    setPwMsg(null);
+    try {
+      const r = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          mode === 'set'
+            ? { login, action: 'set_password', new_password: pwValue }
+            : { login, action: 'reset_password' }
+        ),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) {
+        setPwMsg({
+          type: 'ok',
+          text: mode === 'set'
+            ? 'Пароль задан. Старые входы отключены — отправьте его сотруднику.'
+            : 'Пароль сброшен. Сотрудник задаст новый при следующем входе.',
+        });
+        setPwValue('');
+        await load();
+      } else {
+        setPwMsg({ type: 'err', text: d.error || 'Не удалось изменить пароль' });
+      }
+    } finally {
+      setPwBusy(false);
+    }
+  };
 
   if (!admins) {
     return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
@@ -2095,7 +2578,8 @@ function TeamTab({ session }: { session: Session }) {
   return (
     <div className="space-y-3">
       <p className="text-[11px] text-zinc-400 px-1">
-        Сотрудник входит по логину — пароль он создаёт сам при первом входе.
+        Ссылка одна и постоянная: broverse-client.vercel.app/admin. Сотрудник входит по логину;
+        пароль создаёт сам при первом входе, а при смене человека — «Сменить пароль» здесь.
       </p>
 
       {admins.map((a) => (
@@ -2134,29 +2618,40 @@ function TeamTab({ session }: { session: Session }) {
             </p>
           )}
           {canManage && a.login !== session.login && (
-            <div className="flex gap-1.5 mt-3 pt-3 border-t border-zinc-100">
-              <button
-                type="button"
-                onClick={() => { setAccessFor(a.login); setCopied(false); }}
-                className="flex-1 py-2 rounded-xl bg-zinc-900 text-white text-[11px] font-bold active:scale-95 transition-transform"
-              >
-                Отправить доступ
-              </button>
-              <button
-                type="button"
-                onClick={() => setChatWith(a.login)}
-                className="px-3 py-2 rounded-xl bg-zinc-100 text-zinc-700 text-[11px] font-bold active:scale-95 transition-transform"
-              >
-                Чат
-              </button>
-              <button
-                type="button"
-                onClick={() => removeCabinet(a.login)}
-                className="px-3 py-2 rounded-xl bg-white border border-zinc-200 text-zinc-400 text-[11px] font-bold active:scale-95 transition-transform"
-              >
-                Удалить
-              </button>
-            </div>
+            <>
+              <div className="flex gap-1.5 mt-3 pt-3 border-t border-zinc-100">
+                <button
+                  type="button"
+                  onClick={() => { setAccessFor(a.login); setCopied(false); }}
+                  className="flex-1 py-2 rounded-xl bg-zinc-900 text-white text-[11px] font-bold active:scale-95 transition-transform"
+                >
+                  Отправить доступ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChatWith(a.login)}
+                  className="px-4 py-2 rounded-xl bg-zinc-100 text-zinc-700 text-[11px] font-bold active:scale-95 transition-transform"
+                >
+                  Чат
+                </button>
+              </div>
+              <div className="flex gap-1.5 mt-1.5">
+                <button
+                  type="button"
+                  onClick={() => { setPwFor(a.login); setPwValue(''); setPwMsg(null); }}
+                  className="flex-1 py-2 rounded-xl bg-white border border-zinc-200 text-zinc-700 text-[11px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                >
+                  <KeyRound size={12} /> Сменить пароль
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removeCabinet(a.login)}
+                  className="px-4 py-2 rounded-xl bg-white border border-zinc-200 text-zinc-400 text-[11px] font-bold active:scale-95 transition-transform"
+                >
+                  Удалить
+                </button>
+              </div>
+            </>
           )}
         </div>
       ))}
@@ -2217,7 +2712,7 @@ function TeamTab({ session }: { session: Session }) {
             <p className="text-[11px] text-zinc-400 mb-3">Скопируйте и отправьте сотруднику в Telegram или мессенджер.</p>
             <textarea
               readOnly
-              value={buildAccessText(accessFor, admins?.find((x) => x.login === accessFor)?.display_name || accessFor, admins?.find((x) => x.login === accessFor)?.roles || [])}
+              value={accessMessage(accessFor, admins?.find((x) => x.login === accessFor)?.display_name || accessFor, admins?.find((x) => x.login === accessFor)?.roles || [])}
               rows={7}
               className={`${INPUT} resize-none font-mono text-[11px]`}
               onFocus={(e) => e.currentTarget.select()}
@@ -2226,7 +2721,7 @@ function TeamTab({ session }: { session: Session }) {
               <button
                 type="button"
                 onClick={async () => {
-                  const text = buildAccessText(accessFor, admins?.find((x) => x.login === accessFor)?.display_name || accessFor, admins?.find((x) => x.login === accessFor)?.roles || []);
+                  const text = accessMessage(accessFor, admins?.find((x) => x.login === accessFor)?.display_name || accessFor, admins?.find((x) => x.login === accessFor)?.roles || []);
                   try { await navigator.clipboard.writeText(text); setCopied(true); } catch { setCopied(false); }
                 }}
                 className="flex-1 py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold active:scale-95 transition-transform"
@@ -2241,6 +2736,58 @@ function TeamTab({ session }: { session: Session }) {
                 Закрыть
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {pwFor && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={() => { setPwFor(null); setPwMsg(null); }}>
+          <div className="w-full max-w-[400px] bg-white rounded-[24px] p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-[14px] font-bold text-zinc-900 mb-1">Пароль: @{pwFor}</p>
+            <p className="text-[11px] text-zinc-400 mb-3 leading-relaxed">
+              Кабинет постоянный: меняется только пароль — ссылка и логин те же.
+              Все старые входы сотрудника отключаются сразу.
+            </p>
+            <input
+              type="password"
+              value={pwValue}
+              onChange={(e) => setPwValue(e.target.value)}
+              placeholder="Новый пароль (от 6 символов)"
+              className={INPUT}
+            />
+            {pwMsg && (
+              <p className={`text-[11px] font-semibold mt-2 ${pwMsg.type === 'ok' ? 'text-zinc-900' : 'text-zinc-700'}`}>
+                {pwMsg.text}
+              </p>
+            )}
+            <button
+              type="button"
+              disabled={pwBusy || pwValue.length < 6}
+              onClick={() => changePassword(pwFor, 'set')}
+              className="w-full mt-3 py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold active:scale-[0.98] transition-transform disabled:opacity-40"
+            >
+              {pwBusy ? '…' : 'Задать новый пароль'}
+            </button>
+            <div className="flex items-center gap-2 my-3">
+              <span className="flex-1 h-px bg-zinc-100" />
+              <span className="text-[10px] text-zinc-300 font-bold">ИЛИ</span>
+              <span className="flex-1 h-px bg-zinc-100" />
+            </div>
+            <button
+              type="button"
+              disabled={pwBusy}
+              onClick={() => changePassword(pwFor, 'reset')}
+              className="w-full py-2.5 rounded-xl bg-zinc-100 text-zinc-700 text-[12px] font-bold active:scale-[0.98] transition-transform disabled:opacity-40"
+            >
+              Сбросить — сотрудник задаст при входе
+            </button>
+            <button
+              type="button"
+              onClick={() => { setPwFor(null); setPwMsg(null); }}
+              className="w-full mt-2 py-2.5 rounded-xl bg-white border border-zinc-200 text-zinc-500 text-[12px] font-bold active:scale-[0.98] transition-transform"
+            >
+              Закрыть
+            </button>
           </div>
         </div>
       )}

@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { SESSION_COOKIE, verifySessionToken } from './crypto';
 import { getAdminByLogin, writeAudit, type AdminUser, type AdminRole } from './store';
+import { getRevocation } from './revocations';
 
 export type SessionAdmin = Omit<AdminUser, 'password_hash'>;
 
@@ -13,6 +14,9 @@ export async function currentAdmin(): Promise<SessionAdmin | null> {
   if (!payload) return null;
   const admin = await getAdminByLogin(payload.login);
   if (!admin) return null;
+  // Сессия старше момента отзыва (смена/сброс пароля) — считаем невалидной
+  const revokedAt = await getRevocation(payload.login);
+  if (revokedAt && (payload.iat || 0) < revokedAt) return null;
   const { password_hash: _, ...safe } = admin;
   return safe;
 }

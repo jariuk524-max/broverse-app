@@ -58,6 +58,15 @@ export async function setAdminPassword(login: string, passwordHash: string): Pro
   return !error;
 }
 
+/** Сброс пароля: сотрудник задаст его заново при следующем входе */
+export async function clearAdminPassword(login: string): Promise<boolean> {
+  const { error } = await sb()
+    .from('admin_users')
+    .update({ password_hash: null, password_set_at: null })
+    .eq('login', login);
+  return !error;
+}
+
 export async function touchLastLogin(login: string): Promise<void> {
   await sb().from('admin_users').update({ last_login_at: new Date().toISOString() }).eq('login', login);
 }

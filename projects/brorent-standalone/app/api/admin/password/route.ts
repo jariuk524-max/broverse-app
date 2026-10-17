@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { hashPassword, verifyPassword } from '@/lib/admin/crypto';
+import { hashPassword, verifyPassword, signSession, SESSION_COOKIE, SESSION_TTL_MS } from '@/lib/admin/crypto';
 import { setAdminPassword, writeAudit, getAdminByLogin } from '@/lib/admin/store';
 import { requireSession } from '@/lib/admin/guard';
 import { guardWrite } from '@/lib/admin/security';
+import { revokeSessions } from '@/lib/admin/revocations';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +27,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Текущий пароль неверен' }, { status: 401 });
   }
 
+  // Отзываем старые сессии (в т.ч. другие устройства) и выдаём свежую куку
+  await revokeSessions(res.admin.login);
   await setAdminPassword(res.admin.login, await hashPassword(newPassword));
   await writeAudit({
     actor_login: res.admin.login,
@@ -36,5 +39,13 @@ export async function POST(req: Request) {
     entity_label: res.admin.display_name,
   });
 
-  return NextResponse.json({ ok: true });
+  const out = NextResponse.json({ ok: true });
+  out.cookies.set(SESSION_COOKIE, signSession(res.admin.login), {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: Math.floor(SESSION_TTL_MS / 1000),
+  });
+  return out;
 }

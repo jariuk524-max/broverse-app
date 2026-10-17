@@ -36,7 +36,7 @@ export async function verifyPassword(password: string, stored: string | null): P
 export const SESSION_COOKIE = 'broverse_admin';
 export const SESSION_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
-type SessionPayload = { login: string; exp: number };
+type SessionPayload = { login: string; exp: number; iat?: number };
 
 function secret(): string {
   const s = process.env.ADMIN_SESSION_SECRET;
@@ -45,7 +45,7 @@ function secret(): string {
 }
 
 export function signSession(login: string): string {
-  const payload: SessionPayload = { login, exp: Date.now() + SESSION_TTL_MS };
+  const payload: SessionPayload = { login, exp: Date.now() + SESSION_TTL_MS, iat: Date.now() };
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const sig = createHmac('sha256', secret()).update(body).digest('base64url');
   return `${body}.${sig}`;
