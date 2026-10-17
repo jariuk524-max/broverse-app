@@ -5,7 +5,7 @@ import {
   CheckCircle2, XCircle, Pencil, Save, RotateCcw, Loader2, Upload,
   ShieldCheck, Package, ImageIcon, Lock, Star, MessageSquare,
   LogOut, User, History, Plus, BarChart3, ListTodo, LayoutGrid,
-  ChevronUp, ChevronDown, Send, Search, Square, CheckSquare, X,
+  ChevronUp, ChevronDown, ChevronRight, Send, Search, Square, CheckSquare, X,
 } from 'lucide-react';
 import {
   listServiceRequests,
@@ -21,12 +21,14 @@ type Session = {
   last_login_at: string | null;
 };
 
-type TabId = 'overview' | 'orders' | 'tasks' | 'masters' | 'feedback' | 'catalog' | 'mirror' | 'audit' | 'team';
+type TabId = 'overview' | 'orders' | 'chat' | 'tasks' | 'finance' | 'masters' | 'feedback' | 'catalog' | 'mirror' | 'audit' | 'team';
 
 const TABS: { id: TabId; label: string; role: string | null }[] = [
   { id: 'overview', label: 'Обзор', role: 'overview' },
   { id: 'orders', label: 'Заявки', role: 'requests' },
+  { id: 'chat', label: 'Чат', role: null },
   { id: 'tasks', label: 'Задачи', role: 'tasks' },
+  { id: 'finance', label: 'Финансы', role: 'finance' },
   { id: 'masters', label: 'Мастера', role: 'masters' },
   { id: 'feedback', label: 'Отзывы', role: 'feedback' },
   { id: 'catalog', label: 'Каталог', role: 'catalog' },
@@ -39,6 +41,7 @@ const ROLE_LABEL: Record<string, string> = {
   overview: 'Обзор',
   requests: 'Заявки',
   tasks: 'Задачи',
+  finance: 'Финансы',
   feedback: 'Отзывы',
   catalog: 'Каталог',
   masters: 'Мастера',
@@ -116,6 +119,7 @@ export default function AdminPage() {
   const [authError, setAuthError] = useState('');
   const [authBusy, setAuthBusy] = useState(false);
   const [tab, setTab] = useState<TabId>('orders');
+  const [lockedTab, setLockedTab] = useState<TabId | null>(null);
   const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
@@ -234,7 +238,8 @@ export default function AdminPage() {
     );
   }
 
-  const visibleTabs = TABS.filter((t) => !t.role || session.roles.includes(t.role));
+  const canSee = (t: (typeof TABS)[number]) => !t.role || session.roles.includes(t.role);
+  const visibleTabs = TABS; // все разделы видимы; закрытые — с замком
 
   return (
     <div className="min-h-[100dvh] bg-[#F2F2F7]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", system-ui, sans-serif' }}>
@@ -249,37 +254,68 @@ export default function AdminPage() {
               <p className="text-[10px] text-zinc-400">{session.display_name || session.login}</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowProfile(true)}
-            className="flex items-center gap-1.5 bg-zinc-100 hover:bg-zinc-200 rounded-full pl-3 pr-2 py-1.5 transition-colors"
-          >
-            <span className="text-[11px] font-bold text-zinc-700 max-w-[110px] truncate">
-              {session.display_name || session.login}
-            </span>
-            <span className="w-6 h-6 rounded-full bg-zinc-900 flex items-center justify-center">
-              <User size={12} className="text-white" />
-            </span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => { setTab('chat'); setLockedTab(null); }}
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${tab === 'chat' && !lockedTab ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'}`}
+              title={session.roles.includes('team') ? 'Чаты сотрудников' : 'Чат с руководителем'}
+            >
+              <MessageSquare size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowProfile(true)}
+              className="flex items-center gap-1.5 bg-zinc-100 hover:bg-zinc-200 rounded-full pl-3 pr-2 py-1.5 transition-colors"
+            >
+              <span className="text-[11px] font-bold text-zinc-700 max-w-[110px] truncate">
+                {session.display_name || session.login}
+              </span>
+              <span className="w-6 h-6 rounded-full bg-zinc-900 flex items-center justify-center">
+                <User size={12} className="text-white" />
+              </span>
+            </button>
+          </div>
         </div>
         <div className="max-w-2xl mx-auto px-4 pb-3 flex gap-1 bg-zinc-100 rounded-none">
           <div className="flex gap-1 bg-zinc-100 rounded-full p-1 overflow-x-auto">
-            {visibleTabs.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(t.id)}
-                className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors whitespace-nowrap ${tab === t.id ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500'}`}
-              >
-                {t.label}
-              </button>
-            ))}
+            {visibleTabs.map((t) => {
+              const locked = !canSee(t);
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => {
+                    if (locked) { setLockedTab(t.id); }
+                    else { setLockedTab(null); setTab(t.id); }
+                  }}
+                  className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors whitespace-nowrap inline-flex items-center gap-1 ${!locked && tab === t.id && !lockedTab ? 'bg-white shadow-sm text-zinc-900' : locked ? 'text-zinc-300' : 'text-zinc-500'}`}
+                >
+                  {locked && <Lock size={10} />}
+                  {t.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-5">
-        {tab === 'overview' ? <OverviewTab /> : tab === 'orders' ? <OrdersTab /> : tab === 'tasks' ? <TasksTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : tab === 'catalog' ? <CatalogTab /> : tab === 'mirror' ? <MirrorTab /> : tab === 'team' ? <TeamTab session={session} /> : <AuditTab />}
+        {lockedTab ? (
+          <LockedSection
+            label={TABS.find((t) => t.id === lockedTab)?.label || ''}
+            onAsk={async () => {
+              const label = TABS.find((t) => t.id === lockedTab)?.label || '';
+              await fetch('/api/admin/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: `Прошу открыть раздел «${label}» 🙏` }),
+              }).catch(() => {});
+              setLockedTab(null);
+              setTab('chat');
+            }}
+          />
+        ) : tab === 'overview' ? <OverviewTab session={session} /> : tab === 'orders' ? <OrdersTab /> : tab === 'chat' ? <ChatTab session={session} /> : tab === 'tasks' ? <TasksTab /> : tab === 'finance' ? <FinanceTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : tab === 'catalog' ? <CatalogTab /> : tab === 'mirror' ? <MirrorTab /> : tab === 'team' ? <TeamTab session={session} /> : <AuditTab />}
       </main>
 
       {showProfile && (
@@ -1059,6 +1095,8 @@ const AUDIT_ACTION_LABEL: Record<string, string> = {
   task_create: 'Поставил задачу мастеру',
   task_status: 'Изменил статус задачи',
   mirror_order: 'Поменял порядок услуг (зеркало)',
+  chat_message: 'Написал сообщение в чат',
+  user_delete: 'Удалил кабинет сотрудника',
 };
 
 type AuditEntry = {
@@ -1162,7 +1200,7 @@ function Stat({ label, value, sub }: { label: string; value: string | number; su
   );
 }
 
-function OverviewTab() {
+function OverviewTab({ session }: { session: Session }) {
   const [orders, setOrders] = useState<ServiceRequest[] | null>(null);
   const [admins, setAdmins] = useState<{ login: string; display_name: string; last_login_at: string | null }[] | null>(null);
   const [entries, setEntries] = useState<AuditEntry[] | null>(null);
@@ -1238,6 +1276,7 @@ function OverviewTab() {
         </div>
       </div>
 
+      {session.roles.includes('team') && (
       <div className="bg-white rounded-[18px] p-4 shadow-sm">
         <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Команда за 7 дней</p>
         {admins.length === 0 ? (
@@ -1267,6 +1306,7 @@ function OverviewTab() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }
@@ -1667,15 +1707,291 @@ function MirrorTab() {
   );
 }
 
-/* ────────────────────────── КОМАНДА ────────────────────────── */
+/* ────────────────────────── ФИНАНСЫ (бухгалтер) ────────────────────────── */
+
+function orderPrice(o: ServiceRequest): number {
+  const m = o.metadata || {};
+  const raw = m.proposed_price ?? m.price;
+  const n = Number(String(raw ?? '').replace(/[^\d.]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function FinanceTab() {
+  const [orders, setOrders] = useState<ServiceRequest[] | null>(null);
+
+  useEffect(() => {
+    listServiceRequests().then(setOrders).catch(() => setOrders([]));
+  }, []);
+
+  const csv = () => {
+    if (!orders) return;
+    const rows = [['Дата', 'Услуга', 'Сайт', 'Статус', 'Цена', 'Телефон', 'Имя', 'Адрес']];
+    for (const o of orders) {
+      rows.push([
+        new Date(o.created_at).toLocaleString('ru-RU'),
+        o.service_name,
+        String(o.metadata?.domain || ''),
+        STATUS_LABEL[o.status] || o.status,
+        String(orderPrice(o) || ''),
+        o.client_phone || '',
+        o.client_name || '',
+        o.address || '',
+      ]);
+    }
+    const csvText = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\n');
+    const blob = new Blob(['﻿' + csvText], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `broverse-zayavki-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  if (!orders) {
+    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
+  }
+
+  const withPrice = orders.filter((o) => orderPrice(o) > 0);
+  const total = withPrice.reduce((s, o) => s + orderPrice(o), 0);
+  const doneList = withPrice.filter((o) => ['approved', 'accepted', 'completed'].includes(o.status));
+  const doneSum = doneList.reduce((s, o) => s + orderPrice(o), 0);
+  const avg = withPrice.length ? Math.round(total / withPrice.length) : 0;
+
+  const byDomain = new Map<string, { count: number; sum: number }>();
+  for (const o of withPrice) {
+    const d = String(o.metadata?.domain || '—');
+    const cur = byDomain.get(d) || { count: 0, sum: 0 };
+    cur.count += 1;
+    cur.sum += orderPrice(o);
+    byDomain.set(d, cur);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-2.5">
+        <Stat label="Сумма по заявкам" value={`${total.toLocaleString('ru-RU')} ₽`} sub={`${withPrice.length} шт. с ценой`} />
+        <Stat label="Средний чек" value={`${avg.toLocaleString('ru-RU')} ₽`} />
+        <Stat label="Принято к оплате" value={`${doneSum.toLocaleString('ru-RU')} ₽`} sub={`${doneList.length} одобрено/выполнено`} />
+        <Stat label="Всего заявок" value={orders.length} sub={`без цены: ${orders.length - withPrice.length}`} />
+      </div>
+
+      <div className="bg-white rounded-[18px] p-4 shadow-sm">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2">По сайтам</p>
+        <div className="space-y-1.5">
+          {[...byDomain.entries()].sort((a, b) => b[1].sum - a[1].sum).map(([d, v]) => (
+            <div key={d} className="flex items-center justify-between text-[12px]">
+              <span className="font-bold text-zinc-700">{DOMAIN_LABEL[d] || d}</span>
+              <span className="text-zinc-500">{v.count} шт.</span>
+              <span className="font-bold text-zinc-900">{v.sum.toLocaleString('ru-RU')} ₽</span>
+            </div>
+          ))}
+          {byDomain.size === 0 && <p className="text-[12px] text-zinc-400">Пока нет заявок с ценой</p>}
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={csv}
+        className="w-full py-3 rounded-2xl bg-white text-zinc-800 text-[13px] font-bold shadow-sm active:scale-[0.98] transition-transform flex items-center justify-center gap-1.5"
+      >
+        <History size={14} /> Выгрузить все заявки в CSV
+      </button>
+
+      <p className="text-[10px] text-zinc-300 px-1">
+        Цены берутся из заявок клиентов. Итоговые суммы по факту работы считает руководитель.
+      </p>
+    </div>
+  );
+}
+
+/* ────────────────────────── ЗАКРЫТЫЙ РАЗДЕЛ + ЧАТ ────────────────────────── */
+
+function LockedSection({ label, onAsk }: { label: string; onAsk: () => void }) {
+  const [sent, setSent] = useState(false);
+  return (
+    <div className="bg-white rounded-[24px] p-8 text-center shadow-sm">
+      <div className="w-14 h-14 rounded-2xl bg-zinc-100 flex items-center justify-center mx-auto mb-4">
+        <Lock size={22} className="text-zinc-400" />
+      </div>
+      <p className="text-[15px] font-bold text-zinc-900">Раздел «{label}» закрыт</p>
+      <p className="text-[12px] text-zinc-400 mt-2 leading-relaxed max-w-[280px] mx-auto">
+        Руководитель открывает разделы по мере необходимости. Можно сразу попросить — сообщение уйдёт в чат.
+      </p>
+      <button
+        type="button"
+        disabled={sent}
+        onClick={() => { onAsk(); setSent(true); }}
+        className="mt-5 px-5 py-3 rounded-2xl bg-zinc-900 text-white text-[13px] font-bold active:scale-95 transition-transform disabled:opacity-50 inline-flex items-center gap-1.5"
+      >
+        <Send size={14} /> {sent ? 'Отправлено руководителю' : 'Попросить открыть раздел'}
+      </button>
+    </div>
+  );
+}
+
+type ChatMsg = { id: string; from: 'staff' | 'admin'; login: string; text: string; created_at: string };
+
+function ChatPanel({ withLogin }: { withLogin?: string }) {
+  const [msgs, setMsgs] = useState<ChatMsg[] | null>(null);
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    const url = withLogin ? `/api/admin/chat?with=${encodeURIComponent(withLogin)}` : '/api/admin/chat';
+    const r = await fetch(url).catch(() => null);
+    if (r && r.ok) {
+      const d = await r.json().catch(() => null);
+      setMsgs(Array.isArray(d?.messages) ? d.messages : []);
+    } else setMsgs([]);
+  }, [withLogin]);
+
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 5000);
+    return () => clearInterval(t);
+  }, [load]);
+
+  const send = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const t = text.trim();
+    if (!t || busy) return;
+    setBusy(true);
+    await fetch('/api/admin/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...(withLogin ? { to: withLogin } : {}), text: t }),
+    }).catch(() => {});
+    setText('');
+    await load();
+    setBusy(false);
+  };
+
+  if (!msgs) {
+    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
+  }
+
+  return (
+    <div>
+      <div className="space-y-2 py-1 min-h-[200px]">
+        {msgs.length === 0 && (
+          <p className="text-center text-[12px] text-zinc-400 py-8">
+            Сообщений пока нет. Напишите первым — собеседник увидит сообщение в кабинете.
+          </p>
+        )}
+        {msgs.map((m) => (
+          <div key={m.id} className={`flex ${m.from === 'staff' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 ${m.from === 'staff' ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-800 shadow-sm'}`}>
+              <p className="text-[13px] leading-snug break-words">{m.text}</p>
+              <p className={`text-[9px] mt-1 ${m.from === 'staff' ? 'text-zinc-400' : 'text-zinc-400'}`}>
+                {m.from === 'admin' ? `${m.login} · ` : ''}{new Date(m.created_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <form onSubmit={send} className="flex gap-2 mt-3 sticky bottom-3">
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={withLogin ? `Сообщение: ${withLogin}…` : 'Сообщение руководителю…'}
+          className={INPUT}
+          maxLength={1000}
+        />
+        <button
+          type="submit"
+          disabled={busy || !text.trim()}
+          className="shrink-0 px-4 rounded-xl bg-zinc-900 text-white text-[12px] font-bold active:scale-95 transition-transform disabled:opacity-40"
+        >
+          <Send size={15} />
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function ChatTab({ session }: { session: Session }) {
+  const isChief = session.roles.includes('team');
+  const [list, setList] = useState<{ login: string; count: number; last: ChatMsg | null }[] | null>(null);
+  const [withLogin, setWithLogin] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isChief) return;
+    fetch('/api/admin/chat?list=1')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setList(Array.isArray(d?.chats) ? d.chats : []))
+      .catch(() => setList([]));
+  }, [isChief]);
+
+  if (!isChief) {
+    return (
+      <div className="bg-white rounded-[24px] p-4 shadow-sm">
+        <p className="text-[12px] font-bold text-zinc-900 mb-3">Чат с руководителем</p>
+        <ChatPanel />
+      </div>
+    );
+  }
+
+  if (withLogin) {
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() => setWithLogin(null)}
+          className="mb-3 px-3 py-1.5 rounded-full bg-white text-[11px] font-bold text-zinc-500 shadow-sm"
+        >
+          ← Все чаты
+        </button>
+        <p className="text-[12px] font-bold text-zinc-900 mb-2 px-1">Чат: {withLogin}</p>
+        <ChatPanel withLogin={withLogin} />
+      </div>
+    );
+  }
+
+  if (list === null) {
+    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] text-zinc-400 px-1">Сообщения сотрудников. Ответы видит только этот сотрудник.</p>
+      {list.length === 0 && (
+        <div className="bg-white rounded-[20px] p-8 text-center shadow-sm">
+          <MessageSquare size={26} className="text-zinc-300 mx-auto mb-2" />
+          <p className="text-[13px] text-zinc-400">Сотрудники ещё не писали</p>
+        </div>
+      )}
+      {list.map((c) => (
+        <button
+          key={c.login}
+          type="button"
+          onClick={() => setWithLogin(c.login)}
+          className="w-full text-left bg-white rounded-[16px] p-3.5 shadow-sm flex items-center gap-3 active:scale-[0.99] transition-transform"
+        >
+          <span className="w-9 h-9 rounded-full bg-zinc-900 text-white text-[12px] font-black flex items-center justify-center shrink-0">
+            {c.login.slice(0, 1).toUpperCase()}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-bold text-zinc-900">@{c.login}</p>
+            <p className="text-[11px] text-zinc-400 truncate">
+              {c.last ? `${c.last.from === 'admin' ? 'Вы: ' : ''}${c.last.text}` : ''}
+            </p>
+          </div>
+          <ChevronRight size={15} className="text-zinc-300 shrink-0" />
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /* ────────────────────────── КОМАНДА / ИНВАЙТЫ ────────────────────────── */
 
 const ROLE_TEMPLATES: { label: string; roles: string[] }[] = [
   { label: 'Руководитель', roles: ['overview', 'requests', 'tasks', 'feedback', 'catalog', 'mirror', 'masters', 'team'] },
-  { label: 'Модератор заявок', roles: ['overview', 'requests', 'feedback'] },
-  { label: 'Контент-менеджер', roles: ['overview', 'catalog', 'mirror'] },
+  { label: 'Администратор', roles: ['overview', 'requests', 'feedback', 'tasks'] },
+  { label: 'Бухгалтер', roles: ['overview', 'finance'] },
+  { label: 'Дизайнер/контент', roles: ['overview', 'catalog', 'mirror'] },
   { label: 'Менеджер мастеров', roles: ['overview', 'masters', 'tasks'] },
+  { label: 'Модератор заявок', roles: ['overview', 'requests', 'feedback'] },
   { label: 'Наблюдатель', roles: ['overview'] },
 ];
 
@@ -1687,12 +2003,30 @@ function TeamTab({ session }: { session: Session }) {
   const [newRoles, setNewRoles] = useState<string[]>(['requests']);
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [activity, setActivity] = useState<Record<string, { action: string; created_at: string }[]>>({});
+  const [accessFor, setAccessFor] = useState<string | null>(null);
+  const [chatWith, setChatWith] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const load = useCallback(async () => {
-    const r = await fetch('/api/admin/users');
+    const [r, au] = await Promise.all([
+      fetch('/api/admin/users'),
+      fetch('/api/admin/audit').catch(() => null),
+    ]);
     if (r.ok) {
       const d = await r.json();
       setAdmins(d.admins || []);
+    }
+    if (au && au.ok) {
+      const d = await au.json().catch(() => null);
+      const map: Record<string, { action: string; created_at: string }[]> = {};
+      for (const e of (d?.entries || []) as AuditEntry[]) {
+        if (e.action === 'login' || e.action === 'logout') continue;
+        if ((map[e.actor_login] || []).length < 3) {
+          (map[e.actor_login] = map[e.actor_login] || []).push({ action: AUDIT_ACTION_LABEL[e.action] || e.action, created_at: e.created_at });
+        }
+      }
+      setActivity(map);
     }
   }, []);
 
@@ -1736,6 +2070,24 @@ function TeamTab({ session }: { session: Session }) {
     await load();
   };
 
+  const removeCabinet = async (login: string) => {
+    if (!window.confirm(`Удалить кабинет @${login}? Сотрудник потеряет доступ немедленно.`)) return;
+    await fetch('/api/admin/users', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ login }),
+    }).catch(() => {});
+    await load();
+  };
+
+  const buildAccessText = (login: string, name: string, roles: string[]) =>
+    `Доступ в кабинет BroVerse\n\n` +
+    `Ссылка: https://broverse-client.vercel.app/admin\n` +
+    `Логин: ${login}\n` +
+    `Имя: ${name}\n\n` +
+    `При первом входе зададите свой пароль.\n` +
+    `Разделы: ${roles.map((r) => ROLE_LABEL[r]).filter(Boolean).join(', ') || '—'}`;
+
   if (!admins) {
     return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
   }
@@ -1776,6 +2128,36 @@ function TeamTab({ session }: { session: Session }) {
               );
             })}
           </div>
+          {activity[a.login]?.length > 0 && (
+            <p className="text-[10px] text-zinc-400 mt-2">
+              Действия: {activity[a.login].map((x) => `${x.action} · ${new Date(x.created_at).toLocaleDateString('ru-RU')}`).join(' | ')}
+            </p>
+          )}
+          {canManage && a.login !== session.login && (
+            <div className="flex gap-1.5 mt-3 pt-3 border-t border-zinc-100">
+              <button
+                type="button"
+                onClick={() => { setAccessFor(a.login); setCopied(false); }}
+                className="flex-1 py-2 rounded-xl bg-zinc-900 text-white text-[11px] font-bold active:scale-95 transition-transform"
+              >
+                Отправить доступ
+              </button>
+              <button
+                type="button"
+                onClick={() => setChatWith(a.login)}
+                className="px-3 py-2 rounded-xl bg-zinc-100 text-zinc-700 text-[11px] font-bold active:scale-95 transition-transform"
+              >
+                Чат
+              </button>
+              <button
+                type="button"
+                onClick={() => removeCabinet(a.login)}
+                className="px-3 py-2 rounded-xl bg-white border border-zinc-200 text-zinc-400 text-[11px] font-bold active:scale-95 transition-transform"
+              >
+                Удалить
+              </button>
+            </div>
+          )}
         </div>
       ))}
 
@@ -1826,6 +2208,55 @@ function TeamTab({ session }: { session: Session }) {
             <Plus size={13} /> Пригласить
           </button>
         </form>
+      )}
+
+      {accessFor && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={() => setAccessFor(null)}>
+          <div className="w-full max-w-[400px] bg-white rounded-[24px] p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-[14px] font-bold text-zinc-900 mb-1">Доступ для @{accessFor}</p>
+            <p className="text-[11px] text-zinc-400 mb-3">Скопируйте и отправьте сотруднику в Telegram или мессенджер.</p>
+            <textarea
+              readOnly
+              value={buildAccessText(accessFor, admins?.find((x) => x.login === accessFor)?.display_name || accessFor, admins?.find((x) => x.login === accessFor)?.roles || [])}
+              rows={7}
+              className={`${INPUT} resize-none font-mono text-[11px]`}
+              onFocus={(e) => e.currentTarget.select()}
+            />
+            <div className="flex gap-2 mt-3">
+              <button
+                type="button"
+                onClick={async () => {
+                  const text = buildAccessText(accessFor, admins?.find((x) => x.login === accessFor)?.display_name || accessFor, admins?.find((x) => x.login === accessFor)?.roles || []);
+                  try { await navigator.clipboard.writeText(text); setCopied(true); } catch { setCopied(false); }
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold active:scale-95 transition-transform"
+              >
+                {copied ? 'Скопировано ✓' : 'Скопировать'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setAccessFor(null)}
+                className="px-4 py-2.5 rounded-xl bg-zinc-100 text-zinc-600 text-[12px] font-bold active:scale-95 transition-transform"
+              >
+                Закрыть
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {chatWith && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={() => setChatWith(null)}>
+          <div className="w-full max-w-[420px] max-h-[85vh] overflow-y-auto bg-white rounded-[24px] p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[13px] font-bold text-zinc-900">Чат: @{chatWith}</p>
+              <button type="button" onClick={() => setChatWith(null)} className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500">
+                <X size={15} />
+              </button>
+            </div>
+            <ChatPanel withLogin={chatWith} />
+          </div>
+        </div>
       )}
     </div>
   );

@@ -10,10 +10,11 @@ export type AdminRole =
   | 'team'       // команда/инвайты
   | 'overview'   // сводка руководителя
   | 'tasks'      // задачи мастерам
-  | 'mirror';    // зеркало главной (порядок/контент)
+  | 'mirror'     // зеркало главной (порядок/контент)
+  | 'finance';   // финансы (бухгалтер)
 
 export const ADMIN_ROLES: AdminRole[] = [
-  'requests', 'feedback', 'catalog', 'masters', 'team', 'overview', 'tasks', 'mirror',
+  'requests', 'feedback', 'catalog', 'masters', 'team', 'overview', 'tasks', 'mirror', 'finance',
 ];
 
 export type AdminUser = {
@@ -79,6 +80,11 @@ export async function updateAdminRoles(login: string, roles: string[]): Promise<
     .from('admin_users')
     .update({ roles: roles.filter((r) => ADMIN_ROLES.includes(r as AdminRole)) })
     .eq('login', login);
+  return !error;
+}
+
+export async function deleteAdmin(login: string): Promise<boolean> {
+  const { error } = await sb().from('admin_users').delete().eq('login', login);
   return !error;
 }
 

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createAdmin, updateAdminRoles, listAdmins, writeAudit, ADMIN_ROLES } from '@/lib/admin/store';
+import { createAdmin, updateAdminRoles, deleteAdmin, listAdmins, writeAudit, ADMIN_ROLES } from '@/lib/admin/store';
 import { requireRole, requireSession } from '@/lib/admin/guard';
 import { guardWrite } from '@/lib/admin/security';
 
@@ -75,6 +75,35 @@ export async function PATCH(req: Request) {
     entity_id: login,
     entity_label: login,
     details: { roles },
+  });
+  return NextResponse.json({ ok: true });
+}
+
+/** Удалить кабинет сотрудника (нельзя удалить себя) */
+export async function DELETE(req: Request) {
+  const blocked = guardWrite(req);
+  if (blocked) return blocked;
+  const res = await requireRole('team');
+  if ('error' in res) return res.error;
+
+  const body = await req.json().catch(() => ({}));
+  const login = String(body.login || '').trim().toLowerCase();
+  if (!login) return NextResponse.json({ error: 'Укажите логин' }, { status: 400 });
+  if (login === res.admin.login) {
+    return NextResponse.json({ error: 'Нельзя удалить собственный кабинет' }, { status: 400 });
+  }
+
+  const ok = await deleteAdmin(login);
+  if (!ok) return NextResponse.json({ error: 'Сотрудник не найден' }, { status: 404 });
+
+  await writeAudit({
+    actor_login: res.admin.login,
+    actor_name: res.admin.display_name,
+    action: 'user_delete',
+    entity_type: 'admin',
+    entity_id: login,
+    entity_label: login,
+    details: null,
   });
   return NextResponse.json({ ok: true });
 }
