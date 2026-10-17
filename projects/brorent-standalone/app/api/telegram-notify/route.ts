@@ -8,16 +8,19 @@ type NotifyOrder = {
   title?: string;
   client_name?: string;
   client_phone?: string;
-  address?: string;
-  created_at?: string;
-  metadata?: {
-    description?: string;
-    proposed_price?: string;
-    price?: number | string;
-    comment?: string;
-    domain?: string;
-    photo?: string | null;
-  } | null;
+    address?: string;
+    created_at?: string;
+    metadata?: {
+      description?: string;
+      proposed_price?: string;
+      price?: number | string;
+      comment?: string;
+      domain?: string;
+      photo?: string | null;
+      master_id?: string;
+      master_name?: string;
+      master_phone?: string;
+    } | null;
 };
 
 function esc(s: unknown): string {
@@ -37,6 +40,7 @@ function buildText(order: NotifyOrder): string {
     '📦 <b>Новая заявка!</b>',
     '',
     `🔧 Услуга: <b>${esc(service)}</b>`,
+    meta.master_name ? `🎯 Направлено мастеру: <b>${esc(meta.master_name)}</b>${meta.master_phone ? ` (${esc(meta.master_phone)})` : ''}` : '',
     order.client_name ? `👤 Клиент: ${esc(order.client_name)}` : '',
     `📞 Телефон: <b>${esc(order.client_phone || '—')}</b>`,
     order.address ? `📍 Адрес: ${esc(order.address)}` : '',

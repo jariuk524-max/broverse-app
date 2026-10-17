@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-export type RequestStatus = 'new' | 'review' | 'approved' | 'rejected';
+export type RequestStatus = 'new' | 'review' | 'approved' | 'rejected' | 'accepted' | 'completed';
 
 export type OrderFeedback = {
   resolved: boolean;
@@ -25,6 +25,11 @@ export type ServiceRequest = {
     price?: number | string;
     comment?: string;
     feedback?: OrderFeedback;
+    master_id?: string;
+    master_name?: string;
+    master_phone?: string;
+    master_ad_id?: string;
+    master_service?: string;
   } | null;
 };
 
@@ -167,6 +172,8 @@ export const STATUS_LABEL: Record<RequestStatus, string> = {
   review: 'На рассмотрении',
   approved: 'Одобрена',
   rejected: 'Отклонена',
+  accepted: 'В работе',
+  completed: 'Выполнен',
 };
 
 export const STATUS_COLOR: Record<RequestStatus, string> = {
@@ -174,4 +181,6 @@ export const STATUS_COLOR: Record<RequestStatus, string> = {
   review: 'bg-amber-100 text-amber-700',
   approved: 'bg-emerald-100 text-emerald-700',
   rejected: 'bg-rose-100 text-rose-700',
+  accepted: 'bg-violet-100 text-violet-700',
+  completed: 'bg-emerald-100 text-emerald-700',
 };

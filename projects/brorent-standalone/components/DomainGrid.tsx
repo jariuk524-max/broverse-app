@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import SmartSearch from '@/components/SmartSearch';
 import OrderModal, { type OrderServiceItem } from '@/components/OrderModal';
+import RequestModal from '@/components/RequestModal';
 import { ChevronRight, Shield, Star, Clock, CheckCircle2, Wrench, Phone } from 'lucide-react';
 import { masterAdFallbackImage, type MasterAd } from '@/lib/master-ads';
 import { GARDEN_CATEGORIES } from '@/data/garden-services';
@@ -163,6 +164,7 @@ function adToOrderItem(ad: MasterAd): OrderServiceItem {
 export default function DomainGrid() {
   const [selectedService, setSelectedService] = useState<OrderServiceItem | null>(null);
   const [detailService, setDetailService] = useState<OrderServiceItem | null>(null);
+  const [showRequest, setShowRequest] = useState(false);
   const [filter, setFilter] = useState<string>('all');
   const [services, setServices] = useState<OrderServiceItem[]>([]);
   const [garden, setGarden] = useState<OrderServiceItem[]>([]);
@@ -408,7 +410,7 @@ export default function DomainGrid() {
               <BroVerseLogo className="w-14 h-14 mx-auto mb-4" />
               <h2 className="text-xl font-bold text-zinc-900 mb-2">Нужна помощь с выбором?</h2>
               <p className="text-sm text-zinc-500 mb-6 max-w-md mx-auto">Опишите задачу — подберём мастера</p>
-              <button type="button" className="inline-flex items-center gap-2 bg-zinc-900 text-white text-sm font-bold px-8 py-3.5 rounded-full hover:bg-zinc-800 transition-colors shadow-xl shadow-black/20">
+              <button type="button" onClick={() => setShowRequest(true)} className="inline-flex items-center gap-2 bg-zinc-900 text-white text-sm font-bold px-8 py-3.5 rounded-full hover:bg-zinc-800 transition-colors shadow-xl shadow-black/20">
                 Оставить заявку <ChevronRight size={16} />
               </button>
             </div>
@@ -435,6 +437,15 @@ export default function DomainGrid() {
 
       {detailService && <ServiceDetailModal service={detailService} onOrder={() => setSelectedService(detailService)} onClose={() => setDetailService(null)} />}
       {selectedService && <OrderModal service={selectedService} onClose={() => setSelectedService(null)} />}
+      {showRequest && (
+        <RequestModal
+          serviceName="Подбор мастера"
+          brand="BroVerse"
+          color="#18181b"
+          domain="verse"
+          onClose={() => setShowRequest(false)}
+        />
+      )}
     </div>
   );
 }

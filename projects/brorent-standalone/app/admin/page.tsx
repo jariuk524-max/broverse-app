@@ -283,6 +283,9 @@ function OrdersTab() {
 
               <div className="space-y-1 mb-3">
                 <Row label="📞 Телефон" value={o.client_phone || '—'} />
+                {meta.master_id && (
+                  <Row label="🎯 Направлено мастеру" value={`${meta.master_name || '—'}${meta.master_phone ? ` · ${meta.master_phone}` : ''}`} />
+                )}
                 {o.client_name && <Row label="👤 Имя" value={o.client_name} />}
                 {o.address && <Row label="📍 Адрес" value={o.address} />}
                 {price && <Row label="💰 Цена" value={`${price} ₽`} />}
