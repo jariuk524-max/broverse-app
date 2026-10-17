@@ -34,4 +34,16 @@ export async function requireRole(
   return res;
 }
 
+/** Достаточно любой из ролей (например, каталог ИЛИ зеркало) */
+export async function requireAnyRole(
+  roles: AdminRole[]
+): Promise<{ admin: SessionAdmin } | { error: NextResponse }> {
+  const res = await requireSession();
+  if ('error' in res) return res;
+  if (!roles.some((r) => res.admin.roles.includes(r))) {
+    return { error: NextResponse.json({ error: `Forbidden: needs one of ${roles.join('/')}` }, { status: 403 }) };
+  }
+  return res;
+}
+
 export { writeAudit };

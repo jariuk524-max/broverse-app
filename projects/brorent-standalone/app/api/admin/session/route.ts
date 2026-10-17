@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { hashPassword, verifyPassword, signSession, SESSION_COOKIE, SESSION_TTL_MS } from '@/lib/admin/crypto';
 import { getAdminByLogin, setAdminPassword, touchLastLogin, writeAudit } from '@/lib/admin/store';
 import { currentAdmin } from '@/lib/admin/guard';
+import { originError, loginLocked, loginFail, loginReset } from '@/lib/admin/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,15 +31,28 @@ export async function GET() {
 /** Вход: логин + пароль. Если пароль не задан — new_password создаёт его (invite-модель) */
 export async function POST(req: Request) {
   try {
+    const badOrigin = originError(req);
+    if (badOrigin) return NextResponse.json({ error: badOrigin }, { status: 403 });
+
     const body = await req.json().catch(() => ({}));
-    const login = String(body.login || '').trim().toLowerCase();
-    const password = String(body.password || '');
-    const newPassword = String(body.new_password || '');
+    const login = String(body.login || '').trim().toLowerCase().slice(0, 64);
+    const password = String(body.password || '').slice(0, 128);
+    const newPassword = String(body.new_password || '').slice(0, 128);
 
     if (!login) return NextResponse.json({ error: 'Укажите логин' }, { status: 400 });
 
+    const locked = loginLocked(req, login);
+    if (locked) return locked;
+
     const admin = await getAdminByLogin(login);
-    if (!admin) return NextResponse.json({ error: 'Неверный логин или пароль' }, { status: 401 });
+    if (!admin) {
+      loginFail(req, login);
+      await writeAudit({
+        actor_login: login, action: 'login_failed', entity_type: 'admin',
+        entity_id: login, entity_label: login, details: { reason: 'unknown_login' },
+      });
+      return NextResponse.json({ error: 'Неверный логин или пароль' }, { status: 401 });
+    }
 
     if (!admin.password_hash) {
       if (!newPassword) {
@@ -61,6 +75,7 @@ export async function POST(req: Request) {
         details: { note: 'первый вход: пароль создан сотрудником' },
       });
       await touchLastLogin(login);
+      loginReset(req, login);
       const res = NextResponse.json({ ok: true });
       const c = sessionCookie(login);
       res.cookies.set(c.name, c.value, c.options);
@@ -68,9 +83,18 @@ export async function POST(req: Request) {
     }
 
     const ok = await verifyPassword(password, admin.password_hash);
-    if (!ok) return NextResponse.json({ error: 'Неверный логин или пароль' }, { status: 401 });
+    if (!ok) {
+      loginFail(req, login);
+      await writeAudit({
+        actor_login: login, actor_name: admin.display_name, action: 'login_failed',
+        entity_type: 'admin', entity_id: login, entity_label: admin.display_name,
+        details: { reason: 'wrong_password' },
+      });
+      return NextResponse.json({ error: 'Неверный логин или пароль' }, { status: 401 });
+    }
 
     await touchLastLogin(login);
+    loginReset(req, login);
     await writeAudit({
       actor_login: login,
       actor_name: admin.display_name,

@@ -311,6 +311,12 @@ export default function DomainGrid() {
                 </button>
               );
             })}
+            <Link
+              href="/masters"
+              className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 bg-[#EA4335] text-white shadow-md hover:opacity-90"
+            >
+              <Wrench size={13} /> Стать мастером
+            </Link>
           </div>
 
           {/* Service cards grid */}

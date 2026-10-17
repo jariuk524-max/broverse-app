@@ -12,7 +12,8 @@ export const dynamic = 'force-dynamic';
 
 const EDITS_FILE = path.join(process.cwd(), 'data', 'catalog-edits.json');
 
-type ServiceEdit = { desc?: string; price?: string; time?: string; image?: string };
+type ServiceEdit = { desc?: string; price?: string; time?: string; image?: string; order?: string[] };
+const ORDER_KEY = '__order__';
 
 async function readEdits(): Promise<Record<string, Record<string, ServiceEdit>>> {
   try {
@@ -44,7 +45,20 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ dom
   if (services.length === 0) return NextResponse.json({ error: 'Unknown domain' }, { status: 404 });
 
   const domainEdits = edits[domain] || {};
-  const merged = services.map((s) => ({ ...s, ...(domainEdits[s.name] || {}) }));
+  let merged = services.map((s) => ({ ...s, ...(domainEdits[s.name] || {}) }));
+
+  const order = domainEdits[ORDER_KEY]?.order;
+  if (Array.isArray(order) && order.length > 0) {
+    const pos = new Map(order.map((n, i) => [n, i]));
+    merged = merged
+      .map((s, i) => ({ s, i }))
+      .sort((a, b) => {
+        const pa = pos.has(a.s.name) ? pos.get(a.s.name)! : order.length + a.i;
+        const pb = pos.has(b.s.name) ? pos.get(b.s.name)! : order.length + b.i;
+        return pa - pb;
+      })
+      .map((x) => x.s);
+  }
 
   return NextResponse.json({ services: merged });
 }

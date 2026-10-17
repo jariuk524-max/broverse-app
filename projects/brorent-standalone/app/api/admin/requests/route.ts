@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { writeAudit } from '@/lib/admin/store';
 import { requireRole } from '@/lib/admin/guard';
+import { guardWrite } from '@/lib/admin/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,8 @@ function supabase() {
 
 /** Смена статуса заявки/отзыва с записью в аудит (кто/когда/было→стало) */
 export async function PATCH(req: Request) {
+  const blocked = guardWrite(req);
+  if (blocked) return blocked;
   const body = await req.json().catch(() => ({}));
   const section = body.section === 'feedback' ? 'feedback' : 'orders';
   const res = await requireRole(section === 'feedback' ? 'feedback' : 'requests');
@@ -23,7 +26,7 @@ export async function PATCH(req: Request) {
 
   const id = String(body.id || '');
   const status = String(body.status || '');
-  const comment = body.comment ? String(body.comment) : '';
+  const comment = body.comment ? String(body.comment).slice(0, 500) : '';
   if (!id || !ALLOWED.includes(status)) {
     return NextResponse.json({ error: 'Некорректный запрос' }, { status: 400 });
   }

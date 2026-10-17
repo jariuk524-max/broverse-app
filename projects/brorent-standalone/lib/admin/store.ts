@@ -2,9 +2,19 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 // SERVER-ONLY: service_role (обходит RLS). Не импортировать из клиентских компонентов.
 
-export type AdminRole = 'requests' | 'feedback' | 'catalog' | 'masters' | 'team';
+export type AdminRole =
+  | 'requests'   // заявки
+  | 'feedback'   // отзывы
+  | 'catalog'    // каталог (правки описаний/цен/фото)
+  | 'masters'    // модерация услуг мастеров
+  | 'team'       // команда/инвайты
+  | 'overview'   // сводка руководителя
+  | 'tasks'      // задачи мастерам
+  | 'mirror';    // зеркало главной (порядок/контент)
 
-export const ADMIN_ROLES: AdminRole[] = ['requests', 'feedback', 'catalog', 'masters', 'team'];
+export const ADMIN_ROLES: AdminRole[] = [
+  'requests', 'feedback', 'catalog', 'masters', 'team', 'overview', 'tasks', 'mirror',
+];
 
 export type AdminUser = {
   id: string;

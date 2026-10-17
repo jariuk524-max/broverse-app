@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   CheckCircle2, XCircle, Pencil, Save, RotateCcw, Loader2, Upload,
   ShieldCheck, Package, ImageIcon, Lock, Star, MessageSquare,
-  LogOut, User, History, Plus,
+  LogOut, User, History, Plus, BarChart3, ListTodo, LayoutGrid,
+  ChevronUp, ChevronDown, Send,
 } from 'lucide-react';
 import {
   listServiceRequests,
@@ -20,27 +21,33 @@ type Session = {
   last_login_at: string | null;
 };
 
-type TabId = 'orders' | 'masters' | 'feedback' | 'catalog' | 'audit' | 'team';
+type TabId = 'overview' | 'orders' | 'tasks' | 'masters' | 'feedback' | 'catalog' | 'mirror' | 'audit' | 'team';
 
 const TABS: { id: TabId; label: string; role: string | null }[] = [
+  { id: 'overview', label: 'Обзор', role: 'overview' },
   { id: 'orders', label: 'Заявки', role: 'requests' },
+  { id: 'tasks', label: 'Задачи', role: 'tasks' },
   { id: 'masters', label: 'Мастера', role: 'masters' },
   { id: 'feedback', label: 'Отзывы', role: 'feedback' },
   { id: 'catalog', label: 'Каталог', role: 'catalog' },
+  { id: 'mirror', label: 'Зеркало', role: 'mirror' },
   { id: 'audit', label: 'Аудит', role: null },
   { id: 'team', label: 'Команда', role: 'team' },
 ];
 
 const ROLE_LABEL: Record<string, string> = {
+  overview: 'Обзор',
   requests: 'Заявки',
+  tasks: 'Задачи',
   feedback: 'Отзывы',
   catalog: 'Каталог',
   masters: 'Мастера',
+  mirror: 'Зеркало',
   team: 'Команда',
 };
 
 type CatalogService = { category: string; name: string; desc: string; price: string; time: string; image: string };
-type ServiceEdit = { desc?: string; price?: string; time?: string; image?: string };
+type ServiceEdit = { desc?: string; price?: string; time?: string; image?: string; order?: string[] };
 type CatalogData = {
   domains: Record<string, CatalogService[]>;
   edits: Record<string, Record<string, ServiceEdit>>;
@@ -263,7 +270,7 @@ export default function AdminPage() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-5">
-        {tab === 'orders' ? <OrdersTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : tab === 'catalog' ? <CatalogTab /> : tab === 'team' ? <TeamTab session={session} /> : <AuditTab />}
+        {tab === 'overview' ? <OverviewTab /> : tab === 'orders' ? <OrdersTab /> : tab === 'tasks' ? <TasksTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : tab === 'catalog' ? <CatalogTab /> : tab === 'mirror' ? <MirrorTab /> : tab === 'team' ? <TeamTab session={session} /> : <AuditTab />}
       </main>
 
       {showProfile && (
@@ -909,6 +916,9 @@ const AUDIT_ACTION_LABEL: Record<string, string> = {
   master_service_review: 'Модерация услуги мастера',
   user_add: 'Добавил сотрудника',
   user_roles: 'Изменил роли сотрудника',
+  task_create: 'Поставил задачу мастеру',
+  task_status: 'Изменил статус задачи',
+  mirror_order: 'Поменял порядок услуг (зеркало)',
 };
 
 type AuditEntry = {
@@ -1000,7 +1010,534 @@ function AuditTab() {
   );
 }
 
+/* ────────────────────────── ОБЗОР РУКОВОДИТЕЛЯ ────────────────────────── */
+
+function Stat({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
+  return (
+    <div className="bg-white rounded-[18px] p-4 shadow-sm">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{label}</p>
+      <p className="text-[22px] font-black text-zinc-900 leading-tight mt-1">{value}</p>
+      {sub && <p className="text-[10px] text-zinc-400 mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
+function OverviewTab() {
+  const [orders, setOrders] = useState<ServiceRequest[] | null>(null);
+  const [admins, setAdmins] = useState<{ login: string; display_name: string; last_login_at: string | null }[] | null>(null);
+  const [entries, setEntries] = useState<AuditEntry[] | null>(null);
+  const [ads, setAds] = useState<unknown[] | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const [o, a, au, ad] = await Promise.all([
+        listServiceRequests().catch(() => [] as ServiceRequest[]),
+        fetch('/api/admin/users').then((r) => (r.ok ? r.json().catch(() => null) : null)).catch(() => null),
+        fetch('/api/admin/audit').then((r) => (r.ok ? r.json().catch(() => null) : null)).catch(() => null),
+        fetch('/api/masters/ads').then((r) => (r.ok ? r.json().catch(() => null) : null)).catch(() => null),
+      ]);
+      setOrders(o);
+      setAdmins(Array.isArray(a?.admins) ? a.admins : []);
+      setEntries(Array.isArray(au?.entries) ? au.entries : []);
+      setAds(Array.isArray(ad) ? ad : []);
+    })();
+  }, []);
+
+  if (!orders || !admins || !entries || !ads) {
+    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
+  }
+
+  const todayKey = new Date().toDateString();
+  const todayCount = orders.filter((o) => new Date(o.created_at).toDateString() === todayKey).length;
+
+  const statusCounts: Record<string, number> = {};
+  for (const o of orders) statusCounts[o.status] = (statusCounts[o.status] || 0) + 1;
+
+  const ankety = orders.filter((o) => o.metadata?.domain === 'master');
+  const anketyPending = ankety.filter((o) => o.status === 'review' || o.status === 'new').length;
+
+  const feedbacks = orders
+    .map((o) => o.metadata?.feedback)
+    .filter((f): f is NonNullable<typeof f> => !!f);
+  const rated = feedbacks.filter((f) => typeof f.rating === 'number');
+  const avgRating = rated.length
+    ? (rated.reduce((s, f) => s + (f.rating || 0), 0) / rated.length).toFixed(1)
+    : '—';
+  const unresolvedFb = feedbacks.filter((f) => !f.resolved).length;
+
+  const weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
+  const workByLogin = new Map<string, { count: number; last: string; name: string }>();
+  for (const e of entries) {
+    if (new Date(e.created_at).getTime() < weekAgo) continue;
+    const cur = workByLogin.get(e.actor_login) || { count: 0, last: e.created_at, name: e.actor_name || e.actor_login };
+    cur.count += 1;
+    if (new Date(e.created_at).getTime() > new Date(cur.last).getTime()) cur.last = e.created_at;
+    workByLogin.set(e.actor_login, cur);
+  }
+  const weekWork = [...workByLogin.entries()].sort((a, b) => b[1].count - a[1].count);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-2.5">
+        <Stat label="Заявок всего" value={orders.length} sub={`сегодня: ${todayCount}`} />
+        <Stat label="Открытых заявок" value={(statusCounts.new || 0) + (statusCounts.review || 0)} sub="ждут решения" />
+        <Stat label="Мастеров (услуги)" value={ads.length} sub={`анкет на модерации: ${anketyPending}`} />
+        <Stat label="Сотрудников" value={admins.length} sub={`активны за 7 дней: ${weekWork.length}`} />
+        <Stat label="Отзывов" value={feedbacks.length} sub={`средняя оценка: ${avgRating}`} />
+        <Stat label="Не закрытых отзывов" value={unresolvedFb} sub={unresolvedFb ? 'нужна реакция' : 'всё в порядке'} />
+      </div>
+
+      <div className="bg-white rounded-[18px] p-4 shadow-sm">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Заявки по статусам</p>
+        <div className="flex flex-wrap gap-1.5">
+          {Object.keys(STATUS_LABEL).map((s) => (
+            <span key={s} className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-zinc-100 text-zinc-600">
+              {STATUS_LABEL[s as RequestStatus]}: <span className="text-zinc-900">{statusCounts[s] || 0}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-[18px] p-4 shadow-sm">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Команда за 7 дней</p>
+        {admins.length === 0 ? (
+          <p className="text-[12px] text-zinc-400">Сотрудники ещё не добавлены — вкладка «Команда».</p>
+        ) : (
+          <div className="space-y-2">
+            {admins.map((a) => {
+              const w = workByLogin.get(a.login);
+              return (
+                <div key={a.login} className="flex items-center gap-2 text-[12px]">
+                  <span className="w-7 h-7 rounded-full bg-zinc-900 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+                    {(a.display_name || a.login).slice(0, 1).toUpperCase()}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-zinc-900 truncate">{a.display_name || a.login}</p>
+                    <p className="text-[10px] text-zinc-400">
+                      {w
+                        ? `действий: ${w.count} · последний: ${new Date(w.last).toLocaleDateString('ru-RU')}`
+                        : a.last_login_at
+                          ? `вход: ${new Date(a.last_login_at).toLocaleDateString('ru-RU')}`
+                          : 'за 7 дней без действий'}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ────────────────────────── ЗАДАЧИ МАСТЕРАМ ────────────────────────── */
+
+type AdminTask = {
+  id: string;
+  master_id: string;
+  master_name: string;
+  title: string;
+  body: string;
+  status: 'open' | 'done';
+  author: string;
+  created_at: string;
+  done_at: string | null;
+};
+
+function TasksTab() {
+  const [tasks, setTasks] = useState<AdminTask[] | null>(null);
+  const [ads, setAds] = useState<{ master: { id: string; name: string } }[]>([]);
+  const [masterId, setMasterId] = useState('');
+  const [title, setTitle] = useState('');
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  const load = useCallback(async () => {
+    const [t, a] = await Promise.all([
+      fetch('/api/admin/tasks').then((r) => (r.ok ? r.json().catch(() => ({ tasks: [] })) : { tasks: [] })).catch(() => ({ tasks: [] })),
+      fetch('/api/masters/ads').then((r) => (r.ok ? r.json().catch(() => null) : null)).catch(() => null),
+    ]);
+    setTasks(Array.isArray(t.tasks) ? t.tasks : []);
+    const masters = new Map<string, string>();
+    for (const ad of Array.isArray(a) ? a : []) {
+      const m = (ad as { master?: { id: string; name: string } }).master;
+      if (m?.id) masters.set(m.id, m.name || m.id);
+    }
+    setAds([...masters.entries()].map(([id, name]) => ({ master: { id, name } })));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const create = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (busy || !masterId || !title.trim()) return;
+    setBusy(true);
+    setErr('');
+    try {
+      const ad = ads.find((x) => x.master.id === masterId);
+      const r = await fetch('/api/admin/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ master_id: masterId, master_name: ad?.master.name || '', title, body: text }),
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        setErr(d.error || 'Не удалось создать задачу');
+      } else {
+        setTitle('');
+        setText('');
+        await load();
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const setStatus = async (id: string, status: 'open' | 'done') => {
+    await fetch('/api/admin/tasks', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status }),
+    }).catch(() => {});
+    await load();
+  };
+
+  if (!tasks) {
+    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
+  }
+
+  const open = tasks.filter((t) => t.status === 'open');
+  const done = tasks.filter((t) => t.status === 'done');
+
+  const renderTask = (t: AdminTask) => (
+    <div key={t.id} className="bg-white rounded-[16px] p-3.5 shadow-sm">
+      <div className="flex items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-bold text-zinc-900">{t.title}</p>
+          <p className="text-[11px] text-zinc-500 mt-0.5 break-words">{t.body}</p>
+          <p className="text-[10px] text-zinc-400 mt-1">
+            {t.master_name || t.master_id} · {new Date(t.created_at).toLocaleDateString('ru-RU')} · @{t.author}
+            {t.done_at ? ` · выполнено ${new Date(t.done_at).toLocaleDateString('ru-RU')}` : ''}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setStatus(t.id, t.status === 'open' ? 'done' : 'open')}
+          className={`shrink-0 w-8 h-8 rounded-xl flex items-center justify-center active:scale-95 transition-transform ${t.status === 'open' ? 'bg-zinc-50 text-zinc-400' : 'bg-emerald-50 text-emerald-500'}`}
+          title={t.status === 'open' ? 'Отметить выполненной' : 'Вернуть в работу'}
+        >
+          <CheckCircle2 size={16} />
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <form onSubmit={create} className="bg-white rounded-[18px] p-4 shadow-sm space-y-2">
+        <p className="text-[12px] font-bold text-zinc-900">Новая задача мастеру</p>
+        <select value={masterId} onChange={(e) => setMasterId(e.target.value)} className={INPUT}>
+          <option value="">— выберите мастера —</option>
+          {ads.map((a) => (
+            <option key={a.master.id} value={a.master.id}>{a.master.name}</option>
+          ))}
+          {ads.length === 0 && <option value="master-1">Евгений (демо)</option>}
+        </select>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Заголовок задачи" className={INPUT} maxLength={200} />
+        <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Что нужно сделать (необязательно)" rows={2} className={`${INPUT} resize-none`} maxLength={1000} />
+        {err && <p className="text-[11px] text-rose-500 font-semibold">{err}</p>}
+        <button
+          type="submit"
+          disabled={busy || !masterId || !title.trim()}
+          className="w-full py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform disabled:opacity-40"
+        >
+          {busy ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />} Отправить мастеру
+        </button>
+      </form>
+
+      <div>
+        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 px-1 mb-2">В работе ({open.length})</p>
+        {open.length === 0 ? <p className="text-[12px] text-zinc-400 px-1">Нет открытых задач.</p> : <div className="space-y-2">{open.map(renderTask)}</div>}
+      </div>
+
+      {done.length > 0 && (
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 px-1 mb-2">Выполнены ({done.length})</p>
+          <div className="space-y-2 opacity-70">{done.map(renderTask)}</div>
+        </div>
+      )}
+
+      <p className="text-[10px] text-zinc-300 px-1">
+        Задачи появляются мастеру в кабинете (Заказы) и исчезают после отметки «выполнено».
+      </p>
+    </div>
+  );
+}
+
+/* ────────────────────────── ЗЕРКАЛО ГЛАВНОЙ ────────────────────────── */
+
+function applyServiceOrder<T extends { name: string }>(list: T[], order?: string[]): T[] {
+  if (!order || order.length === 0) return list;
+  const pos = new Map(order.map((n, i) => [n, i]));
+  return [...list]
+    .map((s, i) => ({ s, i }))
+    .sort((a, b) => {
+      const pa = pos.has(a.s.name) ? pos.get(a.s.name)! : order.length + a.i;
+      const pb = pos.has(b.s.name) ? pos.get(b.s.name)! : order.length + b.i;
+      return pa - pb;
+    })
+    .map((x) => x.s);
+}
+
+function MirrorTab() {
+  const [data, setData] = useState<CatalogData | null>(null);
+  const [domain, setDomain] = useState<string>('build');
+  const [editing, setEditing] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [form, setForm] = useState<ServiceEdit>({});
+
+  const load = useCallback(async () => {
+    const res = await fetch('/api/admin/catalog');
+    if (res.ok) setData(await res.json());
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const services = data?.domains?.[domain] || [];
+  const edits = data?.edits?.[domain] || {};
+  const order = edits['__order__']?.order;
+  const ordered = applyServiceOrder(services, order);
+
+  const saveOrder = async (names: string[]) => {
+    setBusy(true);
+    await fetch('/api/admin/catalog', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain, service: '__order__', fields: { order: names } }),
+    });
+    await load();
+    setBusy(false);
+  };
+
+  const move = (index: number, dir: -1 | 1) => {
+    const names = ordered.map((s) => s.name);
+    const j = index + dir;
+    if (j < 0 || j >= names.length) return;
+    [names[index], names[j]] = [names[j], names[index]];
+    void saveOrder(names);
+  };
+
+  const startEdit = (s: CatalogService) => {
+    setEditing(s.name);
+    setForm({ ...(edits[s.name] || {}) });
+  };
+
+  const save = async () => {
+    if (!editing) return;
+    setBusy(true);
+    await fetch('/api/admin/catalog', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain, service: editing, fields: form }),
+    });
+    await load();
+    setBusy(false);
+    setEditing(null);
+  };
+
+  const revert = async (name: string) => {
+    setBusy(true);
+    await fetch('/api/admin/catalog', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain, service: name }),
+    });
+    await load();
+    setBusy(false);
+  };
+
+  const uploadPhoto = async (file: File) => {
+    if (!editing) return;
+    setUploading(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result as string);
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domainId: domain, type: 'service-photo', serviceName: editing, data: dataUrl }),
+      });
+      const json = await res.json();
+      if (json.path) setForm((f) => ({ ...f, image: json.path }));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  if (!data) {
+    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
+  }
+
+  return (
+    <div>
+      <div className="flex gap-1.5 mb-3 overflow-x-auto -mx-1 px-1">
+        {DOMAIN_ORDER.filter((d) => data?.domains?.[d]).map((d) => (
+          <button
+            key={d}
+            type="button"
+            onClick={() => { setDomain(d); setEditing(null); }}
+            className={`shrink-0 px-3.5 py-2 rounded-full text-[11px] font-bold transition-colors ${domain === d ? 'bg-zinc-900 text-white shadow-sm' : 'bg-white text-zinc-500 shadow-sm'}`}
+          >
+            {DOMAIN_LABEL[d] || d}
+          </button>
+        ))}
+      </div>
+
+      <p className="text-[11px] text-zinc-400 mb-3 px-1">
+        Так услуги видит клиент: порядок, фото, описание, цена. Кнопки ↑↓ меняют порядок на всех страницах сайта.
+      </p>
+
+      <div className="space-y-2.5">
+        {ordered.map((s, idx) => {
+          const isEdited = !!edits[s.name] || (!!order && order.includes(s.name));
+          const isEditing = editing === s.name;
+          const current = { ...s, ...(edits[s.name] || {}) };
+
+          return (
+            <div key={s.name} className="bg-white rounded-[20px] shadow-sm overflow-hidden">
+              <div className="flex items-center gap-3 p-3">
+                <div className="flex flex-col gap-0.5 shrink-0">
+                  <button
+                    type="button"
+                    disabled={busy || idx === 0}
+                    onClick={() => move(idx, -1)}
+                    className="w-7 h-7 rounded-lg bg-zinc-50 flex items-center justify-center text-zinc-500 active:scale-95 transition-transform disabled:opacity-30"
+                  >
+                    <ChevronUp size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy || idx === ordered.length - 1}
+                    onClick={() => move(idx, 1)}
+                    className="w-7 h-7 rounded-lg bg-zinc-50 flex items-center justify-center text-zinc-500 active:scale-95 transition-transform disabled:opacity-30"
+                  >
+                    <ChevronDown size={14} />
+                  </button>
+                </div>
+                <div className="w-14 h-14 rounded-xl bg-zinc-100 overflow-hidden shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={current.image} alt={s.name} className="w-full h-full object-cover" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-[13px] font-bold text-zinc-900 truncate">{s.name}</p>
+                    {isEdited && <span className="shrink-0 px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 text-[9px] font-bold">изменено</span>}
+                  </div>
+                  <p className="text-[11px] text-zinc-400 truncate">{current.desc}</p>
+                  <p className="text-[11px] font-bold text-zinc-700 mt-0.5">{current.price} ₽ · {current.time}</p>
+                </div>
+                <div className="flex flex-col gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => (isEditing ? setEditing(null) : startEdit(s))}
+                    className="w-9 h-9 rounded-xl bg-zinc-50 flex items-center justify-center text-zinc-500 active:scale-95 transition-transform"
+                  >
+                    {isEditing ? <XCircle size={15} /> : <Pencil size={15} />}
+                  </button>
+                  {edits[s.name] && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => revert(s.name)}
+                      className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500 active:scale-95 transition-transform"
+                    >
+                      <RotateCcw size={15} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {isEditing && (
+                <div className="border-t border-zinc-100 p-3 space-y-2.5 bg-zinc-50/50">
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Описание</label>
+                    <textarea value={form.desc ?? s.desc} onChange={(e) => setForm((f) => ({ ...f, desc: e.target.value }))} rows={2} className={`${INPUT} resize-none`} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Цена, ₽</label>
+                      <input value={form.price ?? s.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} className={INPUT} inputMode="numeric" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Время</label>
+                      <input value={form.time ?? s.time} onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))} className={INPUT} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Фото</label>
+                    <div className="flex gap-2 items-center">
+                      <button
+                        type="button"
+                        onClick={() => fileRef.current?.click()}
+                        disabled={uploading}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-zinc-200 text-[11px] font-semibold text-zinc-600 active:scale-95 transition-transform disabled:opacity-40"
+                      >
+                        {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />} Загрузить фото
+                      </button>
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-100 shrink-0">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={form.image ?? s.image} alt="" className="w-full h-full object-cover" />
+                      </div>
+                    </div>
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); e.target.value = ''; }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={save}
+                    className="w-full py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform disabled:opacity-40"
+                  >
+                    {busy ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} Сохранить
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 flex items-center gap-2 px-1 text-[10px] text-zinc-300">
+        <LayoutGrid size={11} /> Порядок и правки применяются сразу ко всем страницам сайта
+      </div>
+    </div>
+  );
+}
+
 /* ────────────────────────── КОМАНДА ────────────────────────── */
+
+/* ────────────────────────── КОМАНДА / ИНВАЙТЫ ────────────────────────── */
+
+const ROLE_TEMPLATES: { label: string; roles: string[] }[] = [
+  { label: 'Руководитель', roles: ['overview', 'requests', 'tasks', 'feedback', 'catalog', 'mirror', 'masters', 'team'] },
+  { label: 'Модератор заявок', roles: ['overview', 'requests', 'feedback'] },
+  { label: 'Контент-менеджер', roles: ['overview', 'catalog', 'mirror'] },
+  { label: 'Менеджер мастеров', roles: ['overview', 'masters', 'tasks'] },
+  { label: 'Наблюдатель', roles: ['overview'] },
+];
 
 function TeamTab({ session }: { session: Session }) {
   const canManage = session.roles.includes('team');
@@ -1107,20 +1644,38 @@ function TeamTab({ session }: { session: Session }) {
           <p className="text-[12px] font-bold text-zinc-900">Новый сотрудник</p>
           <input value={newLogin} onChange={(e) => setNewLogin(e.target.value)} placeholder="Логин" className={INPUT} autoCapitalize="none" />
           <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Имя и фамилия" className={INPUT} />
-          <div className="flex flex-wrap gap-1.5">
-            {Object.keys(ROLE_LABEL).map((r) => {
-              const on = newRoles.includes(r);
-              return (
+          <div>
+            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Шаблон доступа</p>
+            <div className="flex flex-wrap gap-1.5">
+              {ROLE_TEMPLATES.map((tp) => (
                 <button
-                  key={r}
+                  key={tp.label}
                   type="button"
-                  onClick={() => setNewRoles((p) => (p.includes(r) ? p.filter((x) => x !== r) : [...p, r]))}
-                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors ${on ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-400'}`}
+                  onClick={() => setNewRoles(tp.roles)}
+                  className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#EA4335]/10 text-[#EA4335] active:scale-95 transition-transform"
                 >
-                  {ROLE_LABEL[r]}
+                  {tp.label}
                 </button>
-              );
-            })}
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Роли</p>
+            <div className="flex flex-wrap gap-1.5">
+              {Object.keys(ROLE_LABEL).map((r) => {
+                const on = newRoles.includes(r);
+                return (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setNewRoles((p) => (p.includes(r) ? p.filter((x) => x !== r) : [...p, r]))}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors ${on ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-400'}`}
+                  >
+                    {ROLE_LABEL[r]}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           {formError && <p className="text-[11px] text-rose-500 font-semibold">{formError}</p>}
           <button

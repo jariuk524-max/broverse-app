@@ -2,11 +2,14 @@ import { NextResponse } from 'next/server';
 import { hashPassword, verifyPassword } from '@/lib/admin/crypto';
 import { setAdminPassword, writeAudit, getAdminByLogin } from '@/lib/admin/store';
 import { requireSession } from '@/lib/admin/guard';
+import { guardWrite } from '@/lib/admin/security';
 
 export const dynamic = 'force-dynamic';
 
 /** Смена пароля в профиле админа */
 export async function POST(req: Request) {
+  const blocked = guardWrite(req);
+  if (blocked) return blocked;
   const res = await requireSession();
   if ('error' in res) return res.error;
 

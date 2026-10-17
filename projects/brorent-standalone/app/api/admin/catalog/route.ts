@@ -7,15 +7,49 @@ import { FRAME_CATEGORIES } from '@/data/frame-services';
 import { MOVE_CATEGORIES } from '@/data/move-services';
 import { GARDEN_CATEGORIES } from '@/data/garden-services';
 import { BRO_DOMAINS } from '@/lib/domains';
-import { requireSession, requireRole, writeAudit } from '@/lib/admin/guard';
+import { requireSession, requireAnyRole, writeAudit } from '@/lib/admin/guard';
+import { guardWrite } from '@/lib/admin/security';
 
 export const dynamic = 'force-dynamic';
 
 const EDITS_FILE = path.join(process.cwd(), 'data', 'catalog-edits.json');
 
-type ServiceEdit = { desc?: string; price?: string; time?: string; image?: string };
+type ServiceEdit = { desc?: string; price?: string; time?: string; image?: string; order?: string[] };
 type CatalogEdits = Record<string, Record<string, ServiceEdit>>;
 type CatalogService = { category: string; name: string; desc: string; price: string; time: string; image: string };
+
+/** Допустимые поля правки: только известные ключи, без «сырых» вставок */
+const EDIT_CAPS: Record<string, number> = { desc: 800, price: 80, time: 80, image: 2048 };
+
+function sanitizeImage(v: unknown): string | null {
+  const s = String(v || '');
+  if (s.length === 0) return '';
+  // Только https-URL (фото грузится через /api/upload в Storage); data:/javascript: — отбраковываем
+  if (!/^https:\/\/[^\s"'<>\\]+$/i.test(s)) return null;
+  return s;
+}
+
+function sanitizeFields(raw: unknown): ServiceEdit | { error: string } {
+  if (!raw || typeof raw !== 'object') return { error: 'Некорректные поля' };
+  const out: ServiceEdit = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (k === 'image') {
+      const img = sanitizeImage(v);
+      if (img === null) return { error: 'Фото должно быть ссылкой https:// — загрузите его кнопкой загрузки' };
+      out.image = img;
+      continue;
+    }
+    if (k === 'order') {
+      if (Array.isArray(v)) out.order = v.map(String).slice(0, 300);
+      continue;
+    }
+    if (k in EDIT_CAPS && typeof v === 'string') {
+      out[k as 'desc' | 'price' | 'time'] = v.slice(0, EDIT_CAPS[k]);
+    }
+  }
+  if (Object.keys(out).length === 0) return { error: 'Нет допустимых полей' };
+  return out;
+}
 
 async function readEdits(): Promise<CatalogEdits> {
   try {
@@ -77,7 +111,9 @@ export async function GET(req: NextRequest) {
 
 /** Сохранить/обновить правку услуги */
 export async function POST(req: NextRequest) {
-  const sess = await requireRole('catalog');
+  const blocked = guardWrite(req);
+  if (blocked) return blocked;
+  const sess = await requireAnyRole(['catalog', 'mirror']);
   if ('error' in sess) return sess.error;
 
   const body = await req.json().catch(() => null);
@@ -85,11 +121,17 @@ export async function POST(req: NextRequest) {
   if (!domain || !service || !fields) {
     return NextResponse.json({ error: 'Missing domain/service/fields' }, { status: 400 });
   }
+  if (String(domain).length > 32 || String(service).length > 200) {
+    return NextResponse.json({ error: 'Слишком длинные идентификаторы' }, { status: 400 });
+  }
+
+  const clean = sanitizeFields(fields);
+  if ('error' in clean) return NextResponse.json({ error: clean.error }, { status: 400 });
 
   const edits = await readEdits();
   const before = edits[domain]?.[service] || null;
   if (!edits[domain]) edits[domain] = {};
-  edits[domain][service] = { ...(edits[domain][service] || {}), ...fields };
+  edits[domain][service] = { ...(edits[domain][service] || {}), ...clean };
   await writeEdits(edits);
 
   await writeAudit({
@@ -107,7 +149,9 @@ export async function POST(req: NextRequest) {
 
 /** Удалить правку (вернуть оригинал из кода) */
 export async function DELETE(req: NextRequest) {
-  const sess = await requireRole('catalog');
+  const blocked = guardWrite(req);
+  if (blocked) return blocked;
+  const sess = await requireAnyRole(['catalog', 'mirror']);
   if ('error' in sess) return sess.error;
 
   const body = await req.json().catch(() => null);

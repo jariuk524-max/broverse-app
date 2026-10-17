@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdmin, updateAdminRoles, listAdmins, writeAudit, ADMIN_ROLES } from '@/lib/admin/store';
 import { requireRole, requireSession } from '@/lib/admin/guard';
+import { guardWrite } from '@/lib/admin/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,8 @@ export async function GET() {
 
 /** Пригласить сотрудника: аккаунт без пароля — он создаст его при первом входе */
 export async function POST(req: Request) {
+  const blocked = guardWrite(req);
+  if (blocked) return blocked;
   const res = await requireRole('team');
   if ('error' in res) return res.error;
 
@@ -48,6 +51,8 @@ export async function POST(req: Request) {
 
 /** Изменить роли сотрудника */
 export async function PATCH(req: Request) {
+  const blocked = guardWrite(req);
+  if (blocked) return blocked;
   const res = await requireRole('team');
   if ('error' in res) return res.error;
 

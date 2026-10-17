@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRole, writeAudit } from '@/lib/admin/guard';
+import { guardWrite } from '@/lib/admin/security';
 
 const MASTERS_API = 'https://broverse-masters.vercel.app/api/master-services';
+const ALLOWED_STATUS = new Set(['approved', 'rejected', 'pending', 'paused']);
 
 /** GET /api/admin/master-services?status=pending&master_id=... — список услуг мастеров (proxy) */
 export async function GET(req: NextRequest) {
@@ -23,18 +25,21 @@ export async function GET(req: NextRequest) {
 
 /** PATCH /api/admin/master-services — одобрить/отклонить услугу мастера (proxy + аудит) */
 export async function PATCH(req: NextRequest) {
+  const blocked = guardWrite(req);
+  if (blocked) return blocked;
   const sess = await requireRole('masters');
   if ('error' in sess) return sess.error;
 
   const body = await req.json();
-  if (!body?.id || !body?.status) {
+  if (!body?.id || !body?.status || !ALLOWED_STATUS.has(String(body.status))) {
     return NextResponse.json({ error: 'id and status required' }, { status: 400 });
   }
+  const comment = body.comment ? String(body.comment).slice(0, 500) : '';
 
   const res = await fetch(MASTERS_API, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id: body.id, status: body.status, ...(body.comment ? { comment: body.comment } : {}) }),
+    body: JSON.stringify({ id: String(body.id).slice(0, 200), status: body.status, ...(comment ? { comment } : {}) }),
   });
   const data = await res.json().catch(() => null);
 
@@ -48,7 +53,7 @@ export async function PATCH(req: NextRequest) {
       entity_label: body.title ? String(body.title) : String(body.id),
       details: {
         to: body.status,
-        ...(body.comment ? { reason: body.comment } : {}),
+        ...(comment ? { reason: comment } : {}),
       },
     });
   }

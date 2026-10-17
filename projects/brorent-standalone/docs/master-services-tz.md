@@ -80,6 +80,41 @@
 
 ---
 
+## Блок D — Безопасность, обзор руководителя, задачи, зеркало, /masters ✅ (17.10.2026)
+
+**D1 — Безопасность админ-панели (песочница):**
+- `lib/admin/security.ts` — `clientIp`, `originError` (запрет cross-site/чужого Origin на запись), `guardWrite` (Origin → размер ≤8МБ → rate limit 90 записей/мин/IP → 429), логины: 5 неудач/15 мин (по IP и по логину) → блок 15 мин.
+- `guardWrite` подключён ко всем изменяющим ручкам `/api/admin/*` (session/password/users/requests/catalog/master-services/tasks) и `/api/upload`.
+- Вход: cap логина/пароля, аудит `login_failed` (unknown_login / wrong_password), сброс счётчика при успехе.
+- Security-заголовки в `next.config.ts`: X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy (camera/geo=(self)), COOP, HSTS.
+- `POST /api/upload` (новый ручей) — валидация mime (png/jpeg/webp/gif/avif) и ≤5МБ, запись в Storage `catalog-photos/edits/...`, возврат https-URL; доступ `requireAnyRole('catalog','mirror')`.
+
+**D2 — Вкладка «Обзор» (`role: overview`):**
+- Квадраты: заявки всего/сегодня, открытых, мастеров-услуг, сотрудников, отзывов (средняя оценка), незакрытых отзывов.
+- Воронка заявок по статусам, список «Команда за 7 дней» (действий из аудита + последний вход).
+
+**D3 — Задачи мастерам (`role: tasks`):**
+- `POST/GET/PATCH /api/admin/tasks` (песочница) — JSON в Storage `catalog-photos/admin/admin_tasks.json` (≤500), аудит `task_create`/`task_status`.
+- Вкладка «Задачи»: форма (мастер из списка анкет, заголовок, текст) + списки «В работе»/«Выполнены».
+- Монолит: `GET/PATCH /api/admin-tasks?master_id=` + карточка `components/AdminTasksCard.tsx` в ленте «Заказы» (опрос 60 с, кнопка «Выполнено», скрывается при пустом списке).
+
+**D4 — Зеркало главной (`role: mirror`):**
+- Вкладка «Зеркало» — так услугу видит клиент: фото, название, цена, описание; ↑↓ меняют порядок (запись `edits[domain]['__order__'].order`), правка описания/цены/времени/фото, ↻ сброс.
+- `GET /api/catalog/[domain]` применяет `__order__` (сортировка с сохранением хвоста неизвестных позиций) — лендинги подхватывают порядок сразу.
+- Роли: `overview | tasks | mirror` добавлены в `AdminRole`; `requireAnyRole(['catalog','mirror'])` для catalog-ручек.
+
+**D5 — Команда:**
+- Шаблоны инвайта: Руководитель / Модератор заявок / Контент-менеджер / Менеджер мастеров / Наблюдатель → подставляют набор ролей (дальше можно донастроить чипами).
+
+**D6 — Рекламная точка входа `/masters` (песочница):**
+- Лендинг: hero, «Как это работает» (4 шага), «Что внутри» (6 карточек), цифры (6 сервисов / 9 направлений / 0 ₽), CTA → `/master` (анкета) и кабинет `broverse-masters.vercel.app`.
+- Ссылка «Стать мастером» — pill в фильтрах главной (`components/DomainGrid.tsx`).
+
+**Проверки:** tsc ✅ (оба) · `next build` ✅ (оба) · `/masters` и `/api/upload` в билде ✅ · деплой — см. ниже.
+**Требует действий пользователя:** SQL `supabase/migrations/002_admin_auth_audit.sql` (вход в /admin блокируется до него: таблицы `admin_users`/`admin_audit_log`).
+
+---
+
 ## Ограничения / известное
 - Storage-хранилище услуг: read-modify-write (мало записей — ок для MVP); конкурентность не защищена.
 - master_id='master-1' захардкожен (демо без auth) — при auth заменить на реальный id.
