@@ -14,9 +14,9 @@ export const dynamic = 'force-dynamic';
 
 const EDITS_FILE = path.join(process.cwd(), 'data', 'catalog-edits.json');
 
-type ServiceEdit = { desc?: string; price?: string; time?: string; image?: string; order?: string[] };
+type ServiceEdit = { desc?: string; price?: string; time?: string; image?: string; order?: string[]; new?: boolean; deleted?: boolean };
 type CatalogEdits = Record<string, Record<string, ServiceEdit>>;
-type CatalogService = { category: string; name: string; desc: string; price: string; time: string; image: string };
+type CatalogService = { category: string; name: string; desc: string; price: string; time: string; image: string; deleted?: boolean; isNew?: boolean };
 
 /** Допустимые поля правки: только известные ключи, без «сырых» вставок */
 const EDIT_CAPS: Record<string, number> = { desc: 800, price: 80, time: 80, image: 2048 };
@@ -41,6 +41,10 @@ function sanitizeFields(raw: unknown): ServiceEdit | { error: string } {
     }
     if (k === 'order') {
       if (Array.isArray(v)) out.order = v.map(String).slice(0, 300);
+      continue;
+    }
+    if (k === 'new' || k === 'deleted') {
+      out[k] = v === true;
       continue;
     }
     if (k in EDIT_CAPS && typeof v === 'string') {
@@ -98,6 +102,22 @@ export async function GET(req: NextRequest) {
   const wash = WASH_SERVICES.map((s) => ({ category: 'Услуги', name: s.name, desc: s.desc, price: s.price, time: s.time, image: s.image }));
 
   const domains: Record<string, CatalogService[]> = { build, wash, ...domainsFromCode() };
+
+  // Новые услуги (из edits) и пометки удалённых — чтобы админка показывала весь CRUD
+  for (const [d, list] of Object.entries(domains)) {
+    const dEdits = edits[d] || {};
+    for (const [name, e] of Object.entries(dEdits)) {
+      if (name === '__order__') continue;
+      const found = list.find((s) => s.name === name);
+      if (found) {
+        if (e.deleted) found.deleted = true;
+        continue;
+      }
+      if (e.new && !e.deleted) {
+        list.push({ category: 'Новые', name, desc: e.desc || '', price: e.price || '', time: e.time || '', image: e.image || '', isNew: true });
+      }
+    }
+  }
 
   return NextResponse.json({
     domains,

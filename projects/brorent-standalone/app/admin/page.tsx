@@ -6,7 +6,7 @@ import {
   ShieldCheck, Package, ImageIcon, Lock, Star, MessageSquare,
   LogOut, User, History, Plus, BarChart3, ListTodo, LayoutGrid,
   ChevronUp, ChevronDown, ChevronRight, Send, Search, Square, CheckSquare, X,
-  Eye, RefreshCw, KeyRound, Users, GripVertical,
+  Eye, RefreshCw, KeyRound, Users, GripVertical, Trash2,
 } from 'lucide-react';
 import {
   listServiceRequests,
@@ -57,8 +57,8 @@ const ROLE_LABEL: Record<string, string> = {
   team: 'Команда',
 };
 
-type CatalogService = { category: string; name: string; desc: string; price: string; time: string; image: string };
-type ServiceEdit = { desc?: string; price?: string; time?: string; image?: string; order?: string[] };
+type CatalogService = { category: string; name: string; desc: string; price: string; time: string; image: string; deleted?: boolean; isNew?: boolean };
+type ServiceEdit = { desc?: string; price?: string; time?: string; image?: string; order?: string[]; new?: boolean; deleted?: boolean };
 type CatalogData = {
   domains: Record<string, CatalogService[]>;
   edits: Record<string, Record<string, ServiceEdit>>;
@@ -1080,7 +1080,7 @@ function CatalogTab() {
         })}
       </div>
 
-      <div className="mt-4 flex items-center gap-2 px-1 text-[10px] text-zinc-300">
+<div className="mt-4 flex items-center gap-2 px-1 text-[10px] text-zinc-300">
         <ImageIcon size={11} /> Фото загружаются в /hero и попадают на страницы сервисов
       </div>
     </div>
@@ -1258,12 +1258,30 @@ function MyCabinetTab({ session, onOpenTab, onAskLocked }: {
 
 /* ────────────────────────── ОБЗОР РУКОВОДИТЕЛЯ ────────────────────────── */
 
-function Stat({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
-  return (
-    <div className="bg-white rounded-[18px] p-4 shadow-sm">
+function Stat({ label, value, sub, onClick }: { label: string; value: string | number; sub?: string; onClick?: () => void }) {
+  const inner = (
+    <>
       <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{label}</p>
       <p className="text-[22px] font-black text-zinc-900 leading-tight mt-1">{value}</p>
       {sub && <p className="text-[10px] text-zinc-400 mt-0.5">{sub}</p>}
+      {onClick && <p className="text-[9.5px] text-zinc-900 font-bold mt-1.5">Показать →</p>}
+    </>
+  );
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className="bg-white rounded-[18px] p-4 shadow-sm text-left w-full active:scale-[0.97] transition-transform">
+        {inner}
+      </button>
+    );
+  }
+  return <div className="bg-white rounded-[18px] p-4 shadow-sm">{inner}</div>;
+}
+
+function OrderRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex gap-2 text-[12px]">
+      <span className="text-zinc-400 w-[104px] shrink-0">{label}</span>
+      <span className="text-zinc-800 font-semibold break-words flex-1">{value}</span>
     </div>
   );
 }
@@ -1286,6 +1304,12 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
   const [copiedFor, setCopiedFor] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const dragLogin = useRef<string | null>(null);
+  const [statusList, setStatusList] = useState<'queue' | 'all' | RequestStatus | null>(null);
+  const [openOrder, setOpenOrder] = useState<string | null>(null);
+  const [openCabinet, setOpenCabinet] = useState<string | null>(null);
+  const [pwValue, setPwValue] = useState('');
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwMsg, setPwMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
   const load = useCallback(async () => {
     const [o, a, au, ad, lay] = await Promise.all([
@@ -1440,6 +1464,42 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
     await load();
   };
 
+  const shareTg = (text: string) => {
+    const url = `https://t.me/share/url?url=${encodeURIComponent('https://broverse-client.vercel.app/admin')}&text=${encodeURIComponent(text)}`;
+    const tg = (window as unknown as { Telegram?: { WebApp?: { openLink?: (u: string) => void } } }).Telegram?.WebApp;
+    if (tg?.openLink) tg.openLink(url);
+    else window.open(url, '_blank');
+  };
+
+  const changePassword = async (login: string, mode: 'set' | 'reset') => {
+    setPwBusy(true);
+    setPwMsg(null);
+    try {
+      const r = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          mode === 'set'
+            ? { login, action: 'set_password', new_password: pwValue }
+            : { login, action: 'reset_password' }
+        ),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) {
+        setPwMsg({
+          type: 'ok',
+          text: mode === 'set' ? 'Пароль задан. Старые входы отключены.' : 'Сброшен. Сотрудник задаст новый при входе.',
+        });
+        setPwValue('');
+        await load();
+      } else {
+        setPwMsg({ type: 'err', text: d.error || 'Не удалось изменить пароль' });
+      }
+    } finally {
+      setPwBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-[24px] p-5 shadow-sm">
@@ -1458,10 +1518,10 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
       </div>
 
       <div className="grid grid-cols-2 gap-2.5">
-        <Stat label="В очереди" value={queueCount} sub="ждут решения" />
-        <Stat label="Одобрено" value={approvedCount} sub="прошли модерацию" />
-        <Stat label="Отклонено" value={statusCounts.rejected || 0} sub="с причинами" />
-        <Stat label="Сегодня / всего" value={`${todayCount} / ${orders.length}`} sub="новые заявки" />
+        <Stat label="В очереди" value={queueCount} sub="ждут решения" onClick={() => setStatusList('queue')} />
+        <Stat label="Одобрено" value={approvedCount} sub="прошли модерацию" onClick={() => setStatusList('approved')} />
+        <Stat label="Отклонено" value={statusCounts.rejected || 0} sub="с причинами" onClick={() => setStatusList('rejected')} />
+        <Stat label="Сегодня / всего" value={`${todayCount} / ${orders.length}`} sub="новые заявки" onClick={() => setStatusList('all')} />
       </div>
 
       <div>
@@ -1487,7 +1547,13 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
               <div
                 key={a.login}
                 data-cabinet={a.login}
-                className={`bg-white rounded-[18px] p-3.5 shadow-sm transition-all ${dragId === a.login ? 'ring-2 ring-zinc-900 opacity-80 scale-[1.01]' : ''}`}
+                onClick={(e) => {
+                  if ((e.target as HTMLElement).closest('button')) return;
+                  setPwMsg(null);
+                  setPwValue('');
+                  setOpenCabinet(a.login);
+                }}
+                className={`bg-white rounded-[18px] p-3.5 shadow-sm transition-all cursor-pointer ${dragId === a.login ? 'ring-2 ring-zinc-900 opacity-80 scale-[1.01]' : ''}`}
               >
                 <div className="flex items-center gap-2">
                   <button
@@ -1576,7 +1642,12 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
               const ok = String(e.details?.to) === 'approved';
               const comment = typeof e.details?.comment === 'string' ? e.details.comment : '';
               return (
-                <div key={e.id} className="flex gap-2.5 items-start py-2 border-b border-zinc-50 last:border-0">
+                <button
+                  key={e.id}
+                  type="button"
+                  onClick={() => setOpenOrder(e.entity_id)}
+                  className="w-full flex gap-2.5 items-start py-2 border-b border-zinc-50 last:border-0 text-left active:bg-zinc-50 transition-colors"
+                >
                   <span className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${ok ? 'bg-zinc-900' : 'bg-white border border-zinc-300'}`}>
                     {ok ? <CheckCircle2 size={13} className="text-white" /> : <XCircle size={13} className="text-zinc-500" />}
                   </span>
@@ -1588,7 +1659,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                     </p>
                     {comment && <p className="text-[10.5px] text-zinc-600 mt-0.5 break-words">«{comment}»</p>}
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -1599,9 +1670,14 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
         <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Заявки по статусам</p>
         <div className="flex flex-wrap gap-1.5">
           {Object.keys(STATUS_LABEL).map((s) => (
-            <span key={s} className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-zinc-100 text-zinc-600">
+            <button
+              key={s}
+              type="button"
+              onClick={() => setStatusList(s as RequestStatus)}
+              className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-zinc-100 text-zinc-600 active:scale-95 transition-transform"
+            >
               {STATUS_LABEL[s as RequestStatus]}: <span className="text-zinc-900">{statusCounts[s] || 0}</span>
-            </span>
+            </button>
           ))}
         </div>
       </div>
@@ -1613,6 +1689,200 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
         <Stat label="Не закрытых отзывов" value={unresolvedFb} sub={unresolvedFb ? 'нужна реакция' : 'всё в порядке'} />
       </div>
 
+      {statusList && (() => {
+        const rows = orders.filter((o) =>
+          statusList === 'all'
+            ? true
+            : statusList === 'queue'
+              ? o.status === 'new' || o.status === 'review'
+              : o.status === statusList
+        );
+        return (
+          <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={() => setStatusList(null)}>
+            <div className="w-full max-w-[420px] bg-white rounded-[24px] shadow-2xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between p-4 border-b border-zinc-100 sticky top-0 bg-white">
+                <p className="text-[13px] font-bold text-zinc-900">
+                  {statusList === 'all' ? 'Все заявки' : statusList === 'queue' ? 'В очереди' : STATUS_LABEL[statusList]}
+                  <span className="text-zinc-400 font-normal"> · {rows.length}</span>
+                </p>
+                <button type="button" onClick={() => setStatusList(null)} className="p-1.5 rounded-full bg-zinc-100 active:scale-90 transition-transform">
+                  <X size={13} />
+                </button>
+              </div>
+              <div className="p-4 space-y-1.5">
+                {rows.length === 0 && <p className="text-[12px] text-zinc-400 py-6 text-center">Заявок нет</p>}
+                {rows.map((o) => (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => { setStatusList(null); setOpenOrder(o.id); }}
+                    className="w-full text-left bg-zinc-50 rounded-[14px] px-3.5 py-3 active:bg-zinc-100 transition-colors"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[12.5px] font-bold text-zinc-900 truncate">{o.service_name}</span>
+                      <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-white text-zinc-500 shrink-0">
+                        {STATUS_LABEL[o.status]}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-zinc-500 mt-1 truncate">{o.client_name} · {o.address}</p>
+                    <p className="text-[10.5px] text-zinc-400 mt-0.5">
+                      {new Date(o.created_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {openOrder && (() => {
+        const o = orders.find((x) => x.id === openOrder);
+        if (!o) return null;
+        const md = o.metadata;
+        const fb = md?.feedback;
+        const decision = entries.find((e) => e.entity_id === o.id && e.action === 'order_status');
+        const comment = typeof decision?.details?.comment === 'string' ? decision.details.comment : '';
+        const decline = md?.decline_reason;
+        return (
+          <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={() => setOpenOrder(null)}>
+            <div className="w-full max-w-[420px] bg-white rounded-[24px] shadow-2xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between p-4 border-b border-zinc-100 sticky top-0 bg-white">
+                <div className="min-w-0">
+                  <p className="text-[13px] font-bold text-zinc-900 truncate">{o.service_name}</p>
+                  <p className="text-[10px] text-zinc-400">{STATUS_LABEL[o.status]}</p>
+                </div>
+                <button type="button" onClick={() => setOpenOrder(null)} className="p-1.5 rounded-full bg-zinc-100 active:scale-90 transition-transform shrink-0">
+                  <X size={13} />
+                </button>
+              </div>
+              <div className="p-4 space-y-2.5">
+                <OrderRow label="Клиент" value={o.client_name} />
+                <OrderRow label="Телефон" value={o.client_phone} />
+                <OrderRow label="Адрес" value={o.address} />
+                <OrderRow label="Создана" value={new Date(o.created_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })} />
+                {md?.domain && <OrderRow label="Сайт" value={md.domain} />}
+                {md?.description && <OrderRow label="Описание" value={md.description} />}
+                {md?.price != null && <OrderRow label="Цена" value={String(md.price)} />}
+                {md?.master_name && <OrderRow label="Мастер" value={`${md.master_name}${md.master_phone ? ` · ${md.master_phone}` : ''}`} />}
+                {fb && <OrderRow label="Отзыв" value={`${fb.rating ?? '—'}★ · ${fb.comment || 'без комментария'}${fb.resolved ? ' · решён' : ' · не решён'}`} />}
+                {decline && <OrderRow label="Причина отказа" value={decline} />}
+                {comment && <OrderRow label="Комментарий" value={comment} />}
+                {decision && (
+                  <OrderRow
+                    label="Решение"
+                    value={`${String(decision.details?.to) === 'approved' ? '✓ Одобрена' : '✕ Отклонена'} · ${decision.actor_name || decision.actor_login}`}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {openCabinet && (() => {
+        const a = admins.find((x) => x.login === openCabinet);
+        if (!a) return null;
+        return (
+          <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={() => setOpenCabinet(null)}>
+            <div className="w-full max-w-[400px] bg-white rounded-[24px] shadow-2xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between p-4 border-b border-zinc-100 sticky top-0 bg-white">
+                <div className="min-w-0">
+                  <p className="text-[13px] font-bold text-zinc-900 truncate">Кабинет @{a.login}</p>
+                  <p className="text-[10px] text-zinc-400 truncate">
+                    {a.display_name}
+                    {a.password_set_at ? ' · пароль задан' : ' · ждёт первый вход'}
+                    {a.last_login_at ? ` · вход ${new Date(a.last_login_at).toLocaleDateString('ru-RU')}` : ''}
+                  </p>
+                </div>
+                <button type="button" onClick={() => setOpenCabinet(null)} className="p-1.5 rounded-full bg-zinc-100 active:scale-90 transition-transform shrink-0">
+                  <X size={13} />
+                </button>
+              </div>
+              <div className="p-4 space-y-3">
+                <div className="flex flex-wrap gap-1">
+                  {a.roles.length === 0 && <span className="text-[10px] text-zinc-400">без разделов</span>}
+                  {a.roles.map((r) => (
+                    <span key={r} className="px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 text-[9.5px] font-bold">
+                      {ROLE_LABEL[r] || r}
+                    </span>
+                  ))}
+                </div>
+                {activityMap[a.login]?.length ? (
+                  <p className="text-[10px] text-zinc-400">{activityMap[a.login].map((x) => `${x.action} · ${new Date(x.created_at).toLocaleDateString('ru-RU')}`).join(' · ')}</p>
+                ) : null}
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => { setOpenCabinet(null); setChatWith(a.login); }}
+                    className="py-2 rounded-xl bg-zinc-900 text-white text-[11px] font-bold active:scale-95 transition-transform"
+                  >
+                    Чат
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setOpenCabinet(null); onOpenTab('team'); }}
+                    className="py-2 rounded-xl bg-zinc-100 text-zinc-700 text-[11px] font-bold active:scale-95 transition-transform"
+                  >
+                    Навыки
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => copyAccess(a)}
+                    className="py-2 rounded-xl bg-zinc-100 text-zinc-700 text-[11px] font-bold active:scale-95 transition-transform"
+                  >
+                    {copiedFor === a.login ? '✓ Скопировано' : 'Доступ'}
+                  </button>
+                </div>
+
+                <div className="bg-zinc-50 rounded-[14px] p-3">
+                  <p className="text-[10.5px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Пароль</p>
+                  <input
+                    type="text"
+                    value={pwValue}
+                    onChange={(e) => setPwValue(e.target.value)}
+                    placeholder="Новый пароль (мин. 6 символов)"
+                    className="w-full px-3 py-2 rounded-xl border border-zinc-200 bg-white text-[12.5px] outline-none focus:border-zinc-400"
+                  />
+                  <div className="grid grid-cols-2 gap-1.5 mt-2">
+                    <button
+                      type="button"
+                      disabled={pwBusy || pwValue.trim().length < 6}
+                      onClick={() => changePassword(a.login, 'set')}
+                      className="py-2 rounded-xl bg-zinc-900 text-white text-[11px] font-bold active:scale-95 transition-transform disabled:opacity-40 flex items-center justify-center gap-1.5"
+                    >
+                      {pwBusy ? <Loader2 size={12} className="animate-spin" /> : <KeyRound size={12} />} Задать
+                    </button>
+                    <button
+                      type="button"
+                      disabled={pwBusy}
+                      onClick={() => changePassword(a.login, 'reset')}
+                      className="py-2 rounded-xl bg-white border border-zinc-200 text-zinc-600 text-[11px] font-bold active:scale-95 transition-transform disabled:opacity-40 flex items-center justify-center gap-1.5"
+                    >
+                      <RefreshCw size={12} /> Сбросить
+                    </button>
+                  </div>
+                  {pwMsg && (
+                    <p className={`text-[10.5px] mt-2 ${pwMsg.type === 'ok' ? 'text-emerald-600' : 'text-red-500'}`}>{pwMsg.text}</p>
+                  )}
+                  <p className="text-[9.5px] text-zinc-400 mt-2 leading-relaxed">
+                    Смена пароля отключает все текущие входы сотрудника.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => { setOpenCabinet(null); removeCabinet(a.login); }}
+                  className="w-full py-2 rounded-xl bg-white border border-zinc-200 text-red-500 text-[11px] font-bold active:scale-95 transition-transform"
+                >
+                  Удалить кабинет
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {(createOpen || createDone) && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={() => { setCreateOpen(false); setCreateDone(''); }}>
           <div className="w-full max-w-[400px] bg-white rounded-[24px] p-5 shadow-2xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -1622,7 +1892,17 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                 <p className="text-[11px] text-zinc-400 mt-1.5 leading-relaxed">
                   Ссылка постоянная. Отправьте её сотруднику — он задаст пароль при первом входе.
                 </p>
-                <div className="flex gap-2 mt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const a = admins.find((x) => x.login === createDone);
+                    shareTg(accessMessage(createDone, a?.display_name || createDone, a?.roles || []));
+                  }}
+                  className="w-full mt-4 py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                >
+                  <Send size={13} /> Отправить в Telegram
+                </button>
+                <div className="flex gap-2 mt-2">
                   <button
                     type="button"
                     onClick={async () => {
@@ -1909,6 +2189,16 @@ function MirrorTab() {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<ServiceEdit>({});
+  const [view, setView] = useState<'list' | 'client'>('list');
+  const [cardEdit, setCardEdit] = useState<CatalogService | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const [mf, setMf] = useState<ServiceEdit>({});
+  const [mfName, setMfName] = useState('');
+  const [mfErr, setMfErr] = useState('');
+  const cardFileRef = useRef<HTMLInputElement>(null);
+  const [cardUploading, setCardUploading] = useState(false);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/catalog');
@@ -1992,6 +2282,119 @@ function MirrorTab() {
     }
   };
 
+  const openEdit = (sv: CatalogService) => {
+    setCardEdit(sv);
+    setAddOpen(false);
+    setMfErr('');
+    setMf({ desc: sv.desc, price: sv.price, time: sv.time, image: sv.image });
+    setMfName(sv.name);
+  };
+
+  const openAdd = () => {
+    setCardEdit(null);
+    setAddOpen(true);
+    setMfErr('');
+    setMf({ desc: '', price: '', time: '', image: '' });
+    setMfName('');
+  };
+
+  const closeCard = () => {
+    setCardEdit(null);
+    setAddOpen(false);
+    setMfErr('');
+  };
+
+  const saveCard = async () => {
+    const name = addOpen ? mfName.trim() : cardEdit?.name || '';
+    if (!name) { setMfErr('Укажите название услуги'); return; }
+    setBusy(true);
+    setMfErr('');
+    try {
+      const fields: ServiceEdit = {
+        desc: mf.desc || '',
+        price: mf.price || '',
+        time: mf.time || '',
+        image: mf.image || '',
+      };
+      if (addOpen || cardEdit?.isNew) fields.new = true;
+      const r = await fetch('/api/admin/catalog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain, service: name, fields }),
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        setMfErr(d.error || 'Не удалось сохранить');
+        return;
+      }
+      await load();
+      closeCard();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const deleteCard = async (sv: CatalogService) => {
+    if (!window.confirm(`Удалить услугу «${sv.name}»? Она исчезнет со всех страниц сайта.`)) return;
+    setBusy(true);
+    const fields: ServiceEdit = { deleted: true };
+    if (sv.isNew) fields.new = true;
+    await fetch('/api/admin/catalog', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain, service: sv.name, fields }),
+    }).catch(() => {});
+    await load();
+    closeCard();
+    setBusy(false);
+  };
+
+  const restoreCard = async (sv: CatalogService) => {
+    setBusy(true);
+    await fetch('/api/admin/catalog', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain, service: sv.name }),
+    }).catch(() => {});
+    await load();
+    closeCard();
+    setBusy(false);
+  };
+
+  const uploadCardPhoto = async (file: File) => {
+    setCardUploading(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result as string);
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domainId: domain,
+          type: 'service-photo',
+          serviceName: addOpen ? mfName.trim() || 'new' : cardEdit?.name || '',
+          data: dataUrl,
+        }),
+      });
+      const json = await res.json();
+      if (json.path) setMf((f) => ({ ...f, image: json.path }));
+    } finally {
+      setCardUploading(false);
+    }
+  };
+
+  const dragMove = (from: number, to: number) => {
+    if (from === to || to < 0 || to >= ordered.length) return;
+    const names = ordered.map((x) => x.name);
+    const [item] = names.splice(from, 1);
+    names.splice(to, 0, item);
+    void saveOrder(names);
+  };
+
   if (!data) {
     return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
   }
@@ -2011,10 +2414,33 @@ function MirrorTab() {
         ))}
       </div>
 
-      <p className="text-[11px] text-zinc-400 mb-3 px-1">
-        Так услуги видит клиент: порядок, фото, описание, цена. Кнопки ↑↓ меняют порядок на всех страницах сайта.
-      </p>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="flex gap-1 bg-zinc-100 rounded-full p-1">
+          <button
+            type="button"
+            onClick={() => setView('list')}
+            className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${view === 'list' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500'}`}
+          >
+            Список
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('client')}
+            className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${view === 'client' ? 'bg-zinc-900 text-white shadow-sm' : 'text-zinc-500'}`}
+          >
+            Как видит клиент
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={openAdd}
+          className="ml-auto px-3 py-2 rounded-xl bg-zinc-900 text-white text-[11px] font-bold flex items-center gap-1 active:scale-95 transition-transform"
+        >
+          <Plus size={12} /> Добавить
+        </button>
+      </div>
 
+      {view === 'list' && (
       <div className="space-y-2.5">
         {ordered.map((s, idx) => {
           const isEdited = !!edits[s.name] || (!!order && order.includes(s.name));
@@ -2129,10 +2555,116 @@ function MirrorTab() {
           );
         })}
       </div>
+      )}
 
       <div className="mt-4 flex items-center gap-2 px-1 text-[10px] text-zinc-300">
         <LayoutGrid size={11} /> Порядок и правки применяются сразу ко всем страницам сайта
       </div>
+
+      {(cardEdit || addOpen) && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={closeCard}>
+          <div className="w-full max-w-[400px] bg-white rounded-[24px] shadow-2xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-zinc-100 sticky top-0 bg-white">
+              <p className="text-[13px] font-bold text-zinc-900">
+                {addOpen ? 'Новая услуга' : cardEdit?.deleted ? 'Услуга удалена' : 'Редактировать услугу'}
+              </p>
+              <button type="button" onClick={closeCard} className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500">
+                <X size={15} />
+              </button>
+            </div>
+            <div className="p-4 space-y-3">
+              {cardEdit?.deleted ? (
+                <div className="space-y-3">
+                  <p className="text-[12px] text-zinc-500 leading-relaxed">
+                    «{cardEdit.name}» скрыта со всех страниц сайта. Восстановить — и она вернётся с исходными данными.
+                  </p>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => restoreCard(cardEdit)}
+                    className="w-full py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform disabled:opacity-40"
+                  >
+                    <RotateCcw size={13} /> Восстановить услугу
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Фото</label>
+                    <div className="flex gap-2 items-center">
+                      <button
+                        type="button"
+                        onClick={() => cardFileRef.current?.click()}
+                        disabled={cardUploading}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-[11px] font-semibold text-zinc-600 active:scale-95 transition-transform disabled:opacity-40"
+                      >
+                        {cardUploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />} Загрузить фото
+                      </button>
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-100 shrink-0">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={mf.image || ''} alt="" className="w-full h-full object-cover" />
+                      </div>
+                    </div>
+                    <input
+                      ref={cardFileRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadCardPhoto(f); e.target.value = ''; }}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Название</label>
+                    <input
+                      value={mfName}
+                      onChange={(e) => setMfName(e.target.value)}
+                      disabled={!!cardEdit && !cardEdit.isNew}
+                      className={`${INPUT} disabled:opacity-50`}
+                      placeholder="Название услуги"
+                    />
+                    {!!cardEdit && !cardEdit.isNew && (
+                      <p className="text-[9.5px] text-zinc-300 mt-1">Название нельзя менять — оно «привязано» к сайту</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Описание</label>
+                    <textarea value={mf.desc || ''} onChange={(e) => setMf((f) => ({ ...f, desc: e.target.value }))} rows={2} className={`${INPUT} resize-none`} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Цена, ₽</label>
+                      <input value={mf.price || ''} onChange={(e) => setMf((f) => ({ ...f, price: e.target.value }))} className={INPUT} inputMode="numeric" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Время</label>
+                      <input value={mf.time || ''} onChange={(e) => setMf((f) => ({ ...f, time: e.target.value }))} className={INPUT} />
+                    </div>
+                  </div>
+                  {mfErr && <p className="text-[11px] text-zinc-800 font-semibold">{mfErr}</p>}
+                  <button
+                    type="button"
+                    disabled={busy || !mfName.trim()}
+                    onClick={saveCard}
+                    className="w-full py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform disabled:opacity-40"
+                  >
+                    {busy ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} Сохранить
+                  </button>
+                  {cardEdit && !cardEdit.isNew && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => deleteCard(cardEdit)}
+                      className="w-full py-2.5 rounded-xl bg-zinc-50 text-zinc-500 text-[12px] font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform disabled:opacity-40"
+                    >
+                      <Trash2 size={13} /> Удалить услугу
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

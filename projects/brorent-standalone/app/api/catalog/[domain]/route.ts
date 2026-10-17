@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 
 const EDITS_FILE = path.join(process.cwd(), 'data', 'catalog-edits.json');
 
-type ServiceEdit = { desc?: string; price?: string; time?: string; image?: string; order?: string[] };
+type ServiceEdit = { desc?: string; price?: string; time?: string; image?: string; order?: string[]; new?: boolean; deleted?: boolean };
 const ORDER_KEY = '__order__';
 
 async function readEdits(): Promise<Record<string, Record<string, ServiceEdit>>> {
@@ -45,7 +45,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ dom
   if (services.length === 0) return NextResponse.json({ error: 'Unknown domain' }, { status: 404 });
 
   const domainEdits = edits[domain] || {};
-  let merged = services.map((s) => ({ ...s, ...(domainEdits[s.name] || {}) }));
+  let merged = services
+    .filter((s) => !domainEdits[s.name]?.deleted)
+    .map((s) => ({ ...s, ...(domainEdits[s.name] || {}) }));
+
+  // Услуги, добавленные из админки
+  for (const [name, e] of Object.entries(domainEdits)) {
+    if (name === '__order__' || !e.new || e.deleted) continue;
+    merged.push({ name, desc: e.desc || '', price: e.price || '', time: e.time || '', image: e.image || '' });
+  }
 
   const order = domainEdits[ORDER_KEY]?.order;
   if (Array.isArray(order) && order.length > 0) {
