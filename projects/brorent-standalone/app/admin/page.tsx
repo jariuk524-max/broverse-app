@@ -2,15 +2,41 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  CheckCircle2, XCircle, Trash2, Pencil, Save, RotateCcw, Loader2, Upload,
+  CheckCircle2, XCircle, Pencil, Save, RotateCcw, Loader2, Upload,
   ShieldCheck, Package, ImageIcon, Lock, Star, MessageSquare,
+  LogOut, User, History, Plus,
 } from 'lucide-react';
 import {
-  listServiceRequests, setRequestStatus, deleteRequest,
+  listServiceRequests,
   STATUS_LABEL, STATUS_COLOR, type ServiceRequest, type RequestStatus,
 } from '@/lib/requests';
 
-const PIN_KEY = 'broverse-admin-pin';
+type Session = {
+  login: string;
+  display_name: string;
+  roles: string[];
+  password_set_at: string | null;
+  last_login_at: string | null;
+};
+
+type TabId = 'orders' | 'masters' | 'feedback' | 'catalog' | 'audit' | 'team';
+
+const TABS: { id: TabId; label: string; role: string | null }[] = [
+  { id: 'orders', label: 'Заявки', role: 'requests' },
+  { id: 'masters', label: 'Мастера', role: 'masters' },
+  { id: 'feedback', label: 'Отзывы', role: 'feedback' },
+  { id: 'catalog', label: 'Каталог', role: 'catalog' },
+  { id: 'audit', label: 'Аудит', role: null },
+  { id: 'team', label: 'Команда', role: 'team' },
+];
+
+const ROLE_LABEL: Record<string, string> = {
+  requests: 'Заявки',
+  feedback: 'Отзывы',
+  catalog: 'Каталог',
+  masters: 'Мастера',
+  team: 'Команда',
+};
 
 type CatalogService = { category: string; name: string; desc: string; price: string; time: string; image: string };
 type ServiceEdit = { desc?: string; price?: string; time?: string; image?: string };
@@ -58,56 +84,134 @@ const MASTER_STATUS_COLOR: Record<string, string> = {
 };
 
 export default function AdminPage() {
-  const [pin, setPin] = useState('');
-  const [authed, setAuthed] = useState(false);
-  const [pinError, setPinError] = useState(false);
-  const [tab, setTab] = useState<'orders' | 'masters' | 'catalog' | 'feedback'>('orders');
+  const [session, setSession] = useState<Session | null>(null);
+  const [checking, setChecking] = useState(true);
+  const [login, setLogin] = useState('');
+  const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [needSetup, setNeedSetup] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [authBusy, setAuthBusy] = useState(false);
+  const [tab, setTab] = useState<TabId>('orders');
+  const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
-    const saved = typeof window !== 'undefined' ? localStorage.getItem(PIN_KEY) : null;
-    if (saved) setPin(saved);
+    fetch('/api/admin/session')
+      .then(async (r) => {
+        if (r.ok) {
+          const d = await r.json().catch(() => null);
+          if (d?.admin) {
+            setSession(d.admin);
+            const first = TABS.find((t) => !t.role || d.admin.roles.includes(t.role));
+            if (first) setTab(first.id);
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => setChecking(false));
   }, []);
 
-  const tryAuth = useCallback(async (value: string) => {
-    const res = await fetch('/api/admin/catalog', { headers: { 'x-admin-pin': value } });
-    if (res.ok) {
-      localStorage.setItem(PIN_KEY, value);
-      setAuthed(true);
-      setPinError(false);
-    } else {
-      setPinError(true);
+  const submitAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!login.trim() || authBusy) return;
+    setAuthBusy(true);
+    setAuthError('');
+    try {
+      const res = await fetch('/api/admin/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          needSetup ? { login, new_password: newPassword } : { login, password }
+        ),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (data?.need_setup) setNeedSetup(true);
+        else setAuthError(data?.error || 'Ошибка входа');
+        return;
+      }
+      const s = await fetch('/api/admin/session');
+      if (s.ok) {
+        const d = await s.json().catch(() => null);
+        if (d?.admin) {
+          setSession(d.admin);
+          const first = TABS.find((t) => !t.role || d.admin.roles.includes(t.role));
+          if (first) setTab(first.id);
+        }
+      }
+      setPassword('');
+      setNewPassword('');
+      setNeedSetup(false);
+    } catch {
+      setAuthError('Нет связи с сервером');
+    } finally {
+      setAuthBusy(false);
     }
-  }, []);
+  };
 
-  if (!authed) {
+  const logout = async () => {
+    await fetch('/api/admin/session', { method: 'DELETE' }).catch(() => {});
+    setSession(null);
+    setLogin('');
+    setPassword('');
+    setNeedSetup(false);
+    setShowProfile(false);
+  };
+
+  if (checking) {
+    return (
+      <div className="min-h-[100dvh] bg-[#F2F2F7] flex items-center justify-center">
+        <Loader2 size={26} className="animate-spin text-zinc-400" />
+      </div>
+    );
+  }
+
+  if (!session) {
     return (
       <div className="min-h-[100dvh] bg-[#F2F2F7] flex items-center justify-center px-4">
         <form
-          onSubmit={(e) => { e.preventDefault(); tryAuth(pin); }}
+          onSubmit={submitAuth}
           className="w-full max-w-[360px] bg-white rounded-[24px] p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)]"
         >
           <div className="w-12 h-12 rounded-2xl bg-zinc-900 flex items-center justify-center mb-4">
             <Lock size={20} className="text-white" />
           </div>
           <h1 className="text-lg font-bold text-zinc-900 mb-1">BroVerse Админ</h1>
-          <p className="text-[12px] text-zinc-400 mb-4">Введите PIN-код для входа в мини-ап</p>
+          <p className="text-[12px] text-zinc-400 mb-4">
+            {needSetup
+              ? 'Пароль ещё не задан — придумайте свой (от 6 символов)'
+              : 'Вход для сотрудников. Пароль создаётся при первом входе.'}
+          </p>
           <input
-            type="password"
-            inputMode="numeric"
-            value={pin}
-            onChange={(e) => setPin(e.target.value)}
-            placeholder="PIN-код"
+            type="text"
+            autoCapitalize="none"
+            value={login}
+            onChange={(e) => setLogin(e.target.value)}
+            placeholder="Логин"
             className={INPUT}
             autoFocus
           />
-          {pinError && <p className="text-[11px] text-rose-500 font-semibold mt-2">Неверный PIN-код</p>}
-          <button type="submit" className="w-full mt-4 py-3 rounded-2xl bg-zinc-900 text-white text-sm font-bold active:scale-[0.98] transition-transform">
-            Войти
+          <input
+            type="password"
+            value={needSetup ? newPassword : password}
+            onChange={(e) => (needSetup ? setNewPassword(e.target.value) : setPassword(e.target.value))}
+            placeholder={needSetup ? 'Новый пароль' : 'Пароль'}
+            className={`${INPUT} mt-2`}
+          />
+          {authError && <p className="text-[11px] text-rose-500 font-semibold mt-2">{authError}</p>}
+          <button
+            type="submit"
+            disabled={authBusy}
+            className="w-full mt-4 py-3 rounded-2xl bg-zinc-900 text-white text-sm font-bold active:scale-[0.98] transition-transform disabled:opacity-50"
+          >
+            {authBusy ? '…' : needSetup ? 'Создать пароль и войти' : 'Войти'}
           </button>
         </form>
       </div>
     );
   }
+
+  const visibleTabs = TABS.filter((t) => !t.role || session.roles.includes(t.role));
 
   return (
     <div className="min-h-[100dvh] bg-[#F2F2F7]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", system-ui, sans-serif' }}>
@@ -119,45 +223,45 @@ export default function AdminPage() {
             </div>
             <div>
               <h1 className="text-[14px] font-bold text-zinc-900 leading-tight">BroVerse Админ</h1>
-              <p className="text-[10px] text-zinc-400">Модерация и каталог · @Broverse_Admin_bot</p>
+              <p className="text-[10px] text-zinc-400">{session.display_name || session.login}</p>
             </div>
           </div>
-          <div className="flex gap-1 bg-zinc-100 rounded-full p-1">
-            <button
-              type="button"
-              onClick={() => setTab('orders')}
-              className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${tab === 'orders' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500'}`}
-            >
-              Заявки
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab('masters')}
-              className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${tab === 'masters' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500'}`}
-            >
-              Мастеры
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab('feedback')}
-              className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${tab === 'feedback' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500'}`}
-            >
-              Отзывы
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab('catalog')}
-              className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${tab === 'catalog' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500'}`}
-            >
-              Каталог
-            </button>
+          <button
+            type="button"
+            onClick={() => setShowProfile(true)}
+            className="flex items-center gap-1.5 bg-zinc-100 hover:bg-zinc-200 rounded-full pl-3 pr-2 py-1.5 transition-colors"
+          >
+            <span className="text-[11px] font-bold text-zinc-700 max-w-[110px] truncate">
+              {session.display_name || session.login}
+            </span>
+            <span className="w-6 h-6 rounded-full bg-zinc-900 flex items-center justify-center">
+              <User size={12} className="text-white" />
+            </span>
+          </button>
+        </div>
+        <div className="max-w-2xl mx-auto px-4 pb-3 flex gap-1 bg-zinc-100 rounded-none">
+          <div className="flex gap-1 bg-zinc-100 rounded-full p-1 overflow-x-auto">
+            {visibleTabs.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors whitespace-nowrap ${tab === t.id ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500'}`}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-4 pb-16">
-        {tab === 'orders' ? <OrdersTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : <CatalogTab />}
+      <main className="max-w-2xl mx-auto px-4 py-5">
+        {tab === 'orders' ? <OrdersTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : tab === 'catalog' ? <CatalogTab /> : tab === 'team' ? <TeamTab session={session} /> : <AuditTab />}
       </main>
+
+      {showProfile && (
+        <ProfilePanel session={session} onClose={() => setShowProfile(false)} onLogout={logout} />
+      )}
     </div>
   );
 }
@@ -176,10 +280,13 @@ function OrdersTab() {
 
   useEffect(() => { load(); }, [load]);
 
-  const act = async (id: string, action: 'approved' | 'rejected' | 'delete') => {
+  const act = async (id: string, action: 'approved' | 'rejected') => {
     setBusyId(id);
-    if (action === 'delete') await deleteRequest(id);
-    else await setRequestStatus(id, action);
+    await fetch('/api/admin/requests', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status: action, section: 'orders' }),
+    }).catch(() => {});
     await load();
     setBusyId(null);
   };
@@ -319,14 +426,6 @@ function OrdersTab() {
                     <XCircle size={13} /> Отклонить
                   </button>
                 )}
-                <button
-                  type="button"
-                  disabled={busyId === o.id}
-                  onClick={() => act(o.id, 'delete')}
-                  className="w-11 flex items-center justify-center py-2.5 rounded-xl bg-zinc-50 text-zinc-400 active:scale-[0.98] transition-transform disabled:opacity-40"
-                >
-                  <Trash2 size={13} />
-                </button>
               </div>
             </div>
           );
@@ -356,8 +455,7 @@ function MastersTab() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const saved = localStorage.getItem(PIN_KEY) || '';
-      const res = await fetch('/api/admin/master-services', { headers: { 'x-admin-pin': saved } });
+      const res = await fetch('/api/admin/master-services');
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) setList(data);
@@ -369,13 +467,19 @@ function MastersTab() {
   useEffect(() => { load(); }, [load]);
 
   const act = async (id: string, status: 'approved' | 'rejected') => {
+    let comment = '';
+    if (status === 'rejected') {
+      const reason = window.prompt('Причина отклонения (видна мастеру):');
+      if (reason === null) return;
+      comment = reason.trim();
+      if (!comment) return;
+    }
     setBusyId(id);
     try {
-      const saved = localStorage.getItem(PIN_KEY) || '';
       const res = await fetch('/api/admin/master-services', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'x-admin-pin': saved },
-        body: JSON.stringify({ id, status }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status, ...(comment ? { comment } : {}) }),
       });
       if (res.ok) {
         setList(prev => prev.map(s => s.id === id ? { ...s, status } : s));
@@ -492,13 +596,6 @@ function FeedbackTab() {
     [orders]
   );
 
-  const remove = async (id: string) => {
-    setBusyId(id);
-    await deleteRequest(id);
-    await load();
-    setBusyId(null);
-  };
-
   if (!orders) {
     return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
   }
@@ -527,14 +624,6 @@ function FeedbackTab() {
                   {o.metadata?.domain ? ` · ${o.metadata.domain}` : ''}
                 </p>
               </div>
-              <button
-                type="button"
-                disabled={busyId === o.id}
-                onClick={() => remove(o.id)}
-                className="w-9 h-9 flex items-center justify-center rounded-xl bg-zinc-50 text-zinc-400 active:scale-95 transition-transform disabled:opacity-40 shrink-0"
-              >
-                <Trash2 size={13} />
-              </button>
             </div>
 
             <div className="mb-2">
@@ -577,12 +666,10 @@ function CatalogTab() {
 
   const [form, setForm] = useState<ServiceEdit>({});
 
-  const pin = typeof window !== 'undefined' ? localStorage.getItem(PIN_KEY) || '' : '';
-
   const load = useCallback(async () => {
-    const res = await fetch('/api/admin/catalog', { headers: { 'x-admin-pin': pin } });
+    const res = await fetch('/api/admin/catalog');
     if (res.ok) setData(await res.json());
-  }, [pin]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -599,7 +686,7 @@ function CatalogTab() {
     setBusy(true);
     await fetch('/api/admin/catalog', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-pin': pin },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ domain, service: editing, fields: form }),
     });
     await load();
@@ -611,7 +698,7 @@ function CatalogTab() {
     setBusy(true);
     await fetch('/api/admin/catalog', {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json', 'x-admin-pin': pin },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ domain, service: name }),
     });
     await load();
@@ -773,6 +860,329 @@ function CatalogTab() {
 
       <div className="mt-4 flex items-center gap-2 px-1 text-[10px] text-zinc-300">
         <ImageIcon size={11} /> Фото загружаются в /hero и попадают на страницы сервисов
+      </div>
+    </div>
+  );
+}
+
+/* ────────────────────────── АУДИТ (не удаляется) ────────────────────────── */
+
+const AUDIT_ACTION_LABEL: Record<string, string> = {
+  login: 'Вход в систему',
+  logout: 'Выход',
+  password_setup: 'Создал пароль',
+  password_change: 'Сменил пароль',
+  order_status: 'Изменил статус заявки',
+  catalog_edit: 'Правка каталога',
+  catalog_revert: 'Сброс правки каталога',
+  master_service_review: 'Модерация услуги мастера',
+  user_add: 'Добавил сотрудника',
+  user_roles: 'Изменил роли сотрудника',
+};
+
+type AuditEntry = {
+  id: string;
+  actor_login: string;
+  actor_name: string;
+  action: string;
+  entity_type: string;
+  entity_id: string;
+  entity_label: string;
+  details: Record<string, unknown> | null;
+  created_at: string;
+};
+
+function auditDiff(e: AuditEntry): string {
+  const d = e.details || {};
+  const bits: string[] = [];
+  if (typeof d.from === 'string' && typeof d.to === 'string') bits.push(`${d.from} → ${d.to}`);
+  else if (typeof d.to === 'string') bits.push(`→ ${d.to}`);
+  if (typeof d.comment === 'string' && d.comment) bits.push(`«${d.comment}»`);
+  if (typeof d.reason === 'string' && d.reason) bits.push(`причина: «${d.reason}»`);
+  if (Array.isArray(d.roles)) bits.push(`роли: ${(d.roles as string[]).join(', ')}`);
+  if (d.from && d.to && typeof d.from === 'object' && typeof d.to === 'object') {
+    const a = d.from as Record<string, unknown>;
+    const b = d.to as Record<string, unknown>;
+    const keys = Array.from(new Set([...Object.keys(a), ...Object.keys(b)]));
+    for (const k of keys) {
+      if (JSON.stringify(a[k]) !== JSON.stringify(b[k])) bits.push(`${k}: ${a[k] ?? '—'} → ${b[k] ?? '—'}`);
+    }
+  }
+  if (typeof d.note === 'string' && d.note) bits.push(d.note);
+  return bits.join(' · ');
+}
+
+function AuditTab() {
+  const [entries, setEntries] = useState<AuditEntry[] | null>(null);
+
+  useEffect(() => {
+    fetch('/api/admin/audit')
+      .then(async (r) => { if (r.ok) { const d = await r.json(); setEntries(d.entries || []); } })
+      .catch(() => setEntries([]));
+  }, []);
+
+  if (!entries) {
+    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
+  }
+
+  if (entries.length === 0) {
+    return (
+      <div className="bg-white rounded-[20px] p-8 text-center shadow-sm">
+        <History size={28} className="text-zinc-300 mx-auto mb-2" />
+        <p className="text-[13px] text-zinc-400">Пока нет записей</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <p className="text-[11px] text-zinc-400 mb-3 px-1">
+        Журнал действий — кто и когда принял решение. Записи хранятся без возможности удаления.
+      </p>
+      <div className="space-y-2">
+        {entries.map((e) => (
+          <div key={e.id} className="bg-white rounded-[16px] p-3.5 shadow-sm flex gap-3">
+            <div className="w-8 h-8 rounded-full bg-zinc-900 flex items-center justify-center shrink-0 mt-0.5">
+              <span className="text-[10px] font-black text-white">
+                {(e.actor_name || e.actor_login || '?').slice(0, 1).toUpperCase()}
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline gap-1.5 flex-wrap">
+                <span className="text-[12px] font-bold text-zinc-900">{e.actor_name || e.actor_login}</span>
+                <span className="text-[10px] text-zinc-400">
+                  {new Date(e.created_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}
+                </span>
+              </div>
+              <p className="text-[12px] text-zinc-700 mt-0.5">
+                {AUDIT_ACTION_LABEL[e.action] || e.action}
+                {e.entity_label ? <span className="text-zinc-500"> · {e.entity_label}</span> : null}
+              </p>
+              {auditDiff(e) && (
+                <p className="text-[11px] text-[#EA4335] mt-1 break-words">{auditDiff(e)}</p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ────────────────────────── КОМАНДА ────────────────────────── */
+
+function TeamTab({ session }: { session: Session }) {
+  const canManage = session.roles.includes('team');
+  const [admins, setAdmins] = useState<{ login: string; display_name: string; roles: string[]; password_set_at: string | null; last_login_at: string | null }[] | null>(null);
+  const [newLogin, setNewLogin] = useState('');
+  const [newName, setNewName] = useState('');
+  const [newRoles, setNewRoles] = useState<string[]>(['requests']);
+  const [formError, setFormError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    const r = await fetch('/api/admin/users');
+    if (r.ok) {
+      const d = await r.json();
+      setAdmins(d.admins || []);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setFormError('');
+    try {
+      const r = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ login: newLogin, display_name: newName, roles: newRoles }),
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        setFormError(d.error || 'Не удалось добавить');
+      } else {
+        setNewLogin('');
+        setNewName('');
+        setNewRoles(['requests']);
+        await load();
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleRole = async (login: string, role: string) => {
+    const target = admins?.find((a) => a.login === login);
+    if (!target) return;
+    const roles = target.roles.includes(role)
+      ? target.roles.filter((r) => r !== role)
+      : [...target.roles, role];
+    await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ login, roles }),
+    }).catch(() => {});
+    await load();
+  };
+
+  if (!admins) {
+    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-[11px] text-zinc-400 px-1">
+        Сотрудник входит по логину — пароль он создаёт сам при первом входе.
+      </p>
+
+      {admins.map((a) => (
+        <div key={a.login} className="bg-white rounded-[18px] p-4 shadow-sm">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[13px] font-bold text-zinc-900">{a.display_name || a.login}</span>
+            <span className="text-[11px] text-zinc-400">@{a.login}</span>
+            <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${a.password_set_at ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+              {a.password_set_at ? 'пароль задан' : 'ждёт первый вход'}
+            </span>
+          </div>
+          <p className="text-[10px] text-zinc-400 mb-2">
+            {a.last_login_at
+              ? `Входил: ${new Date(a.last_login_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}`
+              : 'Ещё не входил'}
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {Object.keys(ROLE_LABEL).map((r) => {
+              const on = a.roles.includes(r);
+              return (
+                <button
+                  key={r}
+                  type="button"
+                  disabled={!canManage || a.login === session.login && r === 'team' && on && a.roles.filter(x => x !== 'team').length === 0}
+                  onClick={() => toggleRole(a.login, r)}
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors ${on ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-400'} disabled:opacity-40`}
+                >
+                  {ROLE_LABEL[r]}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {canManage && (
+        <form onSubmit={add} className="bg-white rounded-[18px] p-4 shadow-sm space-y-2">
+          <p className="text-[12px] font-bold text-zinc-900">Новый сотрудник</p>
+          <input value={newLogin} onChange={(e) => setNewLogin(e.target.value)} placeholder="Логин" className={INPUT} autoCapitalize="none" />
+          <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Имя и фамилия" className={INPUT} />
+          <div className="flex flex-wrap gap-1.5">
+            {Object.keys(ROLE_LABEL).map((r) => {
+              const on = newRoles.includes(r);
+              return (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setNewRoles((p) => (p.includes(r) ? p.filter((x) => x !== r) : [...p, r]))}
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors ${on ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-400'}`}
+                >
+                  {ROLE_LABEL[r]}
+                </button>
+              );
+            })}
+          </div>
+          {formError && <p className="text-[11px] text-rose-500 font-semibold">{formError}</p>}
+          <button
+            type="submit"
+            disabled={busy || !newLogin.trim() || !newName.trim()}
+            className="w-full py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform disabled:opacity-40"
+          >
+            <Plus size={13} /> Пригласить
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+/* ────────────────────────── ПРОФИЛЬ (пароль) ────────────────────────── */
+
+function ProfilePanel({ session, onClose, onLogout }: { session: Session; onClose: () => void; onLogout: () => void }) {
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const change = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await fetch('/api/admin/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) {
+        setMsg({ type: 'ok', text: 'Пароль обновлён' });
+        setOldPassword('');
+        setNewPassword('');
+      } else {
+        setMsg({ type: 'err', text: d.error || 'Не удалось сменить пароль' });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/45" onClick={onClose} />
+      <div className="relative w-full sm:max-w-[380px] mx-4 mb-0 sm:mb-0 bg-white rounded-t-[24px] sm:rounded-[24px] p-6 shadow-2xl max-h-[90vh] overflow-y-auto anim-sheet">
+        <div className="flex items-center gap-3 mb-4">
+          <span className="w-11 h-11 rounded-full bg-zinc-900 flex items-center justify-center text-white font-black">
+            {(session.display_name || session.login).slice(0, 1).toUpperCase()}
+          </span>
+          <div className="min-w-0">
+            <p className="text-[15px] font-bold text-zinc-900 truncate">{session.display_name || session.login}</p>
+            <p className="text-[11px] text-zinc-400">@{session.login}</p>
+          </div>
+          <button type="button" onClick={onClose} className="ml-auto text-[11px] font-bold text-zinc-400 px-2 py-1">Закрыть</button>
+        </div>
+
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {session.roles.map((r) => (
+            <span key={r} className="px-2.5 py-1 rounded-full bg-zinc-100 text-zinc-700 text-[10px] font-bold">
+              {ROLE_LABEL[r] || r}
+            </span>
+          ))}
+        </div>
+        {session.last_login_at && (
+          <p className="text-[10px] text-zinc-400 mb-4">
+            Последний вход: {new Date(session.last_login_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}
+          </p>
+        )}
+
+        <form onSubmit={change} className="space-y-2 border-t border-zinc-100 pt-4">
+          <p className="text-[12px] font-bold text-zinc-900">Смена пароля</p>
+          <input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} placeholder="Текущий пароль" className={INPUT} />
+          <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Новый пароль (от 6)" className={INPUT} />
+          {msg && (
+            <p className={`text-[11px] font-semibold ${msg.type === 'ok' ? 'text-emerald-600' : 'text-rose-500'}`}>{msg.text}</p>
+          )}
+          <button type="submit" disabled={busy || !oldPassword || newPassword.length < 6} className="w-full py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold disabled:opacity-40">
+            {busy ? '…' : 'Сменить пароль'}
+          </button>
+        </form>
+
+        <button
+          type="button"
+          onClick={onLogout}
+          className="w-full mt-4 py-2.5 rounded-xl bg-rose-50 text-rose-600 text-[12px] font-bold flex items-center justify-center gap-1.5"
+        >
+          <LogOut size={13} /> Выйти
+        </button>
       </div>
     </div>
   );

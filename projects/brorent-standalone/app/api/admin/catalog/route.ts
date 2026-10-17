@@ -7,12 +7,11 @@ import { FRAME_CATEGORIES } from '@/data/frame-services';
 import { MOVE_CATEGORIES } from '@/data/move-services';
 import { GARDEN_CATEGORIES } from '@/data/garden-services';
 import { BRO_DOMAINS } from '@/lib/domains';
+import { requireSession, requireRole, writeAudit } from '@/lib/admin/guard';
 
 export const dynamic = 'force-dynamic';
 
 const EDITS_FILE = path.join(process.cwd(), 'data', 'catalog-edits.json');
-
-const ADMIN_PIN = process.env.NEXT_PUBLIC_ADMIN_PIN || 'broverse2026';
 
 type ServiceEdit = { desc?: string; price?: string; time?: string; image?: string };
 type CatalogEdits = Record<string, Record<string, ServiceEdit>>;
@@ -28,10 +27,6 @@ async function readEdits(): Promise<CatalogEdits> {
 
 async function writeEdits(edits: CatalogEdits) {
   await writeFile(EDITS_FILE, JSON.stringify(edits, null, 2));
-}
-
-function pinOk(req: NextRequest): boolean {
-  return req.headers.get('x-admin-pin') === ADMIN_PIN;
 }
 
 /** Услуги из lib/domains.ts для сайтов без отдельного data-модуля */
@@ -57,7 +52,9 @@ function domainsFromCode(): Record<string, CatalogService[]> {
 
 /** Каталог из кода + текущие правки из админки (все 6+ сайтов) */
 export async function GET(req: NextRequest) {
-  if (!pinOk(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  void req;
+  const sess = await requireSession();
+  if ('error' in sess) return sess.error;
 
   const edits = await readEdits();
 
@@ -80,7 +77,8 @@ export async function GET(req: NextRequest) {
 
 /** Сохранить/обновить правку услуги */
 export async function POST(req: NextRequest) {
-  if (!pinOk(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const sess = await requireRole('catalog');
+  if ('error' in sess) return sess.error;
 
   const body = await req.json().catch(() => null);
   const { domain, service, fields } = body || {};
@@ -89,16 +87,28 @@ export async function POST(req: NextRequest) {
   }
 
   const edits = await readEdits();
+  const before = edits[domain]?.[service] || null;
   if (!edits[domain]) edits[domain] = {};
   edits[domain][service] = { ...(edits[domain][service] || {}), ...fields };
   await writeEdits(edits);
+
+  await writeAudit({
+    actor_login: sess.admin.login,
+    actor_name: sess.admin.display_name,
+    action: 'catalog_edit',
+    entity_type: 'service',
+    entity_id: `${domain}/${service}`,
+    entity_label: service,
+    details: { domain, from: before, to: edits[domain][service] },
+  });
 
   return NextResponse.json({ ok: true, edit: edits[domain][service] });
 }
 
 /** Удалить правку (вернуть оригинал из кода) */
 export async function DELETE(req: NextRequest) {
-  if (!pinOk(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const sess = await requireRole('catalog');
+  if ('error' in sess) return sess.error;
 
   const body = await req.json().catch(() => null);
   const { domain, service } = body || {};
@@ -107,11 +117,22 @@ export async function DELETE(req: NextRequest) {
   }
 
   const edits = await readEdits();
+  const before = edits[domain]?.[service] || null;
   if (edits[domain]) {
     delete edits[domain][service];
     if (Object.keys(edits[domain]).length === 0) delete edits[domain];
   }
   await writeEdits(edits);
+
+  await writeAudit({
+    actor_login: sess.admin.login,
+    actor_name: sess.admin.display_name,
+    action: 'catalog_revert',
+    entity_type: 'service',
+    entity_id: `${domain}/${service}`,
+    entity_label: service,
+    details: { domain, from: before, to: null },
+  });
 
   return NextResponse.json({ ok: true });
 }
