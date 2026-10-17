@@ -5,7 +5,7 @@ import {
   CheckCircle2, XCircle, Pencil, Save, RotateCcw, Loader2, Upload,
   ShieldCheck, Package, ImageIcon, Lock, Star, MessageSquare,
   LogOut, User, History, Plus, BarChart3, ListTodo, LayoutGrid,
-  ChevronUp, ChevronDown, Send,
+  ChevronUp, ChevronDown, Send, Search, Square, CheckSquare, X,
 } from 'lucide-react';
 import {
   listServiceRequests,
@@ -295,6 +295,11 @@ function OrdersTab() {
   const [orders, setOrders] = useState<ServiceRequest[] | null>(null);
   const [filter, setFilter] = useState<'all' | RequestStatus>('all');
   const [domainFilter, setDomainFilter] = useState<string>('all');
+  const [period, setPeriod] = useState<'all' | 'today' | '7' | '30'>('all');
+  const [query, setQuery] = useState('');
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -325,6 +330,43 @@ function OrdersTab() {
     setBusyId(null);
   };
 
+  const actBulk = async (action: 'approved' | 'rejected') => {
+    const targets = (orders || []).filter((o) => selected.has(o.id));
+    if (targets.length === 0 || bulkBusy) return;
+    let comment = '';
+    if (action === 'rejected') {
+      const reason = window.prompt(`Причина отклонения (видна мастерам, ${targets.length} шт.):`);
+      if (reason === null) return;
+      comment = reason.trim();
+      if (!comment) return;
+    }
+    setBulkBusy(true);
+    for (const o of targets) {
+      await fetch('/api/admin/requests', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: o.id, status: action, section: 'orders', ...(comment ? { comment } : {}) }),
+      }).catch(() => {});
+      const meta = o.metadata;
+      if (action === 'approved' && meta?.unlock_direction && meta.master_id) {
+        await unlockDirectionForMaster(meta.master_id, meta.unlock_direction, meta.master_name);
+      }
+    }
+    setSelected(new Set());
+    setSelectMode(false);
+    await load();
+    setBulkBusy(false);
+  };
+
+  const toggleSelected = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const orderDomain = (o: ServiceRequest): string => o.metadata?.domain || '—';
 
   const visible = useMemo(() => {
@@ -332,8 +374,26 @@ function OrdersTab() {
     let list = orders;
     if (filter !== 'all') list = list.filter((o) => o.status === filter);
     if (domainFilter !== 'all') list = list.filter((o) => orderDomain(o) === domainFilter);
+    if (period !== 'all') {
+      const now = new Date();
+      const start = new Date(
+        period === 'today'
+          ? new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+          : now.getTime() - Number(period) * 24 * 3600 * 1000
+      );
+      list = list.filter((o) => new Date(o.created_at).getTime() >= start.getTime());
+    }
+    const q = query.trim().toLowerCase();
+    if (q) {
+      list = list.filter((o) => {
+        const m = o.metadata || {};
+        const hay = [o.service_name, o.client_phone, o.client_name, o.address, m.master_name, m.master_phone, m.description]
+          .filter(Boolean).join(' ').toLowerCase();
+        return hay.includes(q);
+      });
+    }
     return list;
-  }, [orders, filter, domainFilter]);
+  }, [orders, filter, domainFilter, period, query]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: orders?.length || 0 };
@@ -396,6 +456,38 @@ function OrdersTab() {
         </div>
       )}
 
+      {/* Поиск + период + массовый выбор */}
+      <div className="flex gap-1.5 mb-2">
+        <div className="relative flex-1 min-w-0">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Поиск: телефон, имя, услуга, адрес"
+            className={`${INPUT} pl-8`}
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => { setSelectMode((v) => !v); setSelected(new Set()); }}
+          className={`shrink-0 px-3 rounded-xl text-[11px] font-bold transition-colors ${selectMode ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-500 shadow-sm'}`}
+        >
+          {selectMode ? 'Отмена' : 'Выбрать'}
+        </button>
+      </div>
+      <div className="flex gap-1.5 overflow-x-auto pb-3 -mx-1 px-1">
+        {([['all', 'Весь период'], ['today', 'Сегодня'], ['7', '7 дней'], ['30', '30 дней']] as const).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setPeriod(id)}
+            className={`shrink-0 px-3 py-1.5 rounded-full text-[10px] font-bold transition-colors ${period === id ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-400 shadow-sm'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {visible.length === 0 && (
         <div className="bg-white rounded-[20px] p-8 text-center shadow-sm">
           <Package size={28} className="text-zinc-300 mx-auto mb-2" />
@@ -408,7 +500,17 @@ function OrdersTab() {
           const meta = o.metadata || {};
           const price = meta.proposed_price || (meta.price ? String(meta.price) : '');
           return (
-            <div key={o.id} className="bg-white rounded-[20px] p-4 shadow-sm">
+            <div
+              key={o.id}
+              onClick={selectMode ? () => toggleSelected(o.id) : undefined}
+              className={`bg-white rounded-[20px] p-4 shadow-sm transition-shadow ${selectMode ? 'cursor-pointer' : ''} ${selected.has(o.id) ? 'ring-2 ring-zinc-900' : ''}`}
+            >
+              {selectMode && (
+                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-zinc-100">
+                  {selected.has(o.id) ? <CheckSquare size={16} className="text-zinc-900" /> : <Square size={16} className="text-zinc-300" />}
+                  <span className="text-[11px] font-bold text-zinc-500">{selected.has(o.id) ? 'Выбрано' : 'Отметить заявку'}</span>
+                </div>
+              )}
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="min-w-0">
                   <p className="text-[13px] font-bold text-zinc-900 leading-tight">{o.service_name}</p>
@@ -452,6 +554,7 @@ function OrdersTab() {
                 )}
               </div>
 
+              {!selectMode && (
               <div className="flex gap-2">
                 {o.status !== 'approved' && (
                   <button
@@ -474,10 +577,38 @@ function OrdersTab() {
                   </button>
                 )}
               </div>
+              )}
             </div>
           );
         })}
       </div>
+
+      {/* Панель массовых действий */}
+      {selectMode && (
+        <div className="fixed bottom-0 inset-x-0 z-20 px-4 pb-4 pt-3 bg-white/95 backdrop-blur-xl border-t border-zinc-200 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+          <div className="max-w-2xl mx-auto flex items-center gap-2">
+            <span className="text-[11px] font-bold text-zinc-500 shrink-0">Выбрано: {selected.size}</span>
+            <div className="flex-1" />
+            <button
+              type="button"
+              disabled={bulkBusy || selected.size === 0}
+              onClick={() => actBulk('rejected')}
+              className="px-3.5 py-2.5 rounded-xl bg-white text-zinc-500 border border-zinc-200 text-[12px] font-bold active:scale-95 transition-transform disabled:opacity-40"
+            >
+              <XCircle size={13} className="inline mr-1" />Отклонить
+            </button>
+            <button
+              type="button"
+              disabled={bulkBusy || selected.size === 0}
+              onClick={() => actBulk('approved')}
+              className="px-3.5 py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold active:scale-95 transition-transform disabled:opacity-40"
+            >
+              {bulkBusy ? <Loader2 size={13} className="inline animate-spin mr-1" /> : <CheckCircle2 size={13} className="inline mr-1" />}
+              Одобрить
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
