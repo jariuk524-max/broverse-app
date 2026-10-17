@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  CheckCircle2, XCircle, Pencil, Save, RotateCcw, Loader2, Upload,
+  CheckCircle2, XCircle, Pencil, Save, RotateCcw, Loader2, Upload, ArrowLeft,
   ShieldCheck, Package, ImageIcon, Lock, Star, MessageSquare,
   LogOut, User, History, Plus, BarChart3, ListTodo, LayoutGrid,
   ChevronUp, ChevronDown, ChevronRight, Send, Search, Square, CheckSquare, X,
@@ -254,6 +254,16 @@ export default function AdminPage() {
       <header className="sticky top-0 z-10 bg-white/70 backdrop-blur-xl border-b border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
+            {tab !== 'overview' && (
+              <button
+                type="button"
+                onClick={() => { setLockedTab(null); setTab('overview'); }}
+                className="w-8 h-8 rounded-lg bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-700 transition-colors active:scale-95 shrink-0"
+                title="Назад — к кабинету"
+              >
+                <ArrowLeft size={16} />
+              </button>
+            )}
             <div className="w-8 h-8 rounded-lg bg-zinc-900 flex items-center justify-center">
               <ShieldCheck size={15} className="text-white" />
             </div>
@@ -312,6 +322,7 @@ export default function AdminPage() {
         {lockedTab ? (
           <LockedSection
             label={tabLabel(lockedTab, session.roles)}
+            onBack={() => setLockedTab(null)}
             onAsk={async () => {
               const label = tabLabel(lockedTab, session.roles);
               await fetch('/api/admin/chat', {
@@ -2806,10 +2817,17 @@ function FinanceTab() {
 
 /* ────────────────────────── ЗАКРЫТЫЙ РАЗДЕЛ + ЧАТ ────────────────────────── */
 
-function LockedSection({ label, onAsk }: { label: string; onAsk: () => void }) {
+function LockedSection({ label, onAsk, onBack }: { label: string; onAsk: () => void; onBack: () => void }) {
   const [sent, setSent] = useState(false);
   return (
     <div className="bg-white rounded-[24px] p-8 text-center shadow-sm">
+      <button
+        type="button"
+        onClick={onBack}
+        className="inline-flex items-center gap-1 text-[12px] font-bold text-zinc-500 hover:text-zinc-800 transition-colors active:scale-95 mb-4"
+      >
+        <ArrowLeft size={14} /> Назад
+      </button>
       <div className="w-14 h-14 rounded-2xl bg-zinc-100 flex items-center justify-center mx-auto mb-4">
         <Lock size={22} className="text-zinc-400" />
       </div>
