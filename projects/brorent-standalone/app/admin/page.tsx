@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import {
   listServiceRequests,
-  STATUS_LABEL, STATUS_COLOR, type ServiceRequest, type RequestStatus,
+  STATUS_LABEL, type ServiceRequest, type RequestStatus,
 } from '@/lib/requests';
 import { unlockDirectionForMaster } from '@/lib/admin/unlock';
 
@@ -54,7 +54,7 @@ type CatalogData = {
 };
 
 const INPUT =
-  'w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#EA4335] focus:ring-2 focus:ring-[#EA4335]/20 transition-all';
+  'w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 transition-all';
 
 const DOMAIN_LABEL: Record<string, string> = {
   build: 'BroBuild', wash: 'BroWash', frame: 'BroFrame', move: 'BroMove',
@@ -91,10 +91,19 @@ const MASTER_STATUS_LABEL: Record<string, string> = {
   paused: 'Приостановлено',
 };
 const MASTER_STATUS_COLOR: Record<string, string> = {
-  pending: 'bg-amber-100 text-amber-700',
-  approved: 'bg-emerald-100 text-emerald-700',
-  rejected: 'bg-rose-100 text-rose-500',
+  pending: 'bg-zinc-200 text-zinc-700',
+  approved: 'bg-zinc-900 text-white',
+  rejected: 'bg-white text-zinc-400 border border-zinc-200',
   paused: 'bg-zinc-100 text-zinc-500',
+};
+
+const ADMIN_STATUS_COLOR: Record<string, string> = {
+  new: 'bg-zinc-900 text-white',
+  review: 'bg-zinc-200 text-zinc-700',
+  approved: 'bg-zinc-100 text-zinc-500',
+  rejected: 'bg-white text-zinc-400 border border-zinc-200',
+  accepted: 'bg-zinc-700 text-white',
+  completed: 'bg-zinc-100 text-zinc-400',
 };
 
 export default function AdminPage() {
@@ -212,7 +221,7 @@ export default function AdminPage() {
             placeholder={needSetup ? 'Новый пароль' : 'Пароль'}
             className={`${INPUT} mt-2`}
           />
-          {authError && <p className="text-[11px] text-rose-500 font-semibold mt-2">{authError}</p>}
+          {authError && <p className="text-[11px] text-zinc-800 font-semibold mt-2">{authError}</p>}
           <button
             type="submit"
             disabled={authBusy}
@@ -370,7 +379,7 @@ function OrdersTab() {
           <button
             type="button"
             onClick={() => setDomainFilter('all')}
-            className={`shrink-0 px-3 py-1.5 rounded-full text-[10px] font-bold transition-colors ${domainFilter === 'all' ? 'bg-[#EA4335] text-white' : 'bg-white text-zinc-400 shadow-sm'}`}
+            className={`shrink-0 px-3 py-1.5 rounded-full text-[10px] font-bold transition-colors ${domainFilter === 'all' ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-400 shadow-sm'}`}
           >
             Все сайты
           </button>
@@ -379,7 +388,7 @@ function OrdersTab() {
               key={d}
               type="button"
               onClick={() => setDomainFilter(d)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-[10px] font-bold transition-colors ${domainFilter === d ? 'bg-[#EA4335] text-white' : 'bg-white text-zinc-400 shadow-sm'}`}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-[10px] font-bold transition-colors ${domainFilter === d ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-400 shadow-sm'}`}
             >
               {d}
             </button>
@@ -408,14 +417,14 @@ function OrdersTab() {
                     {meta.domain ? ` · ${DOMAIN_BADGE[meta.domain] || meta.domain}` : ''}
                   </p>
                   {meta.unlock_direction && (
-                    <span className="mt-1 inline-flex items-center gap-1 rounded-lg bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-600">
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-lg bg-zinc-900 px-2 py-0.5 text-[10px] font-bold text-white">
                       <Lock size={10} />
                       {meta.unlock_type === 'brocare' ? 'BroCare-сертификация' : 'Открытие направления'}
                       · {UNLOCK_DIR_LABEL[meta.unlock_direction] || meta.unlock_direction}
                     </span>
                   )}
                 </div>
-                <span className={`shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold ${STATUS_COLOR[o.status] || 'bg-zinc-100 text-zinc-500'}`}>
+                <span className={`shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold ${ADMIN_STATUS_COLOR[o.status] || 'bg-zinc-100 text-zinc-500'}`}>
                   {STATUS_LABEL[o.status] || o.status}
                 </span>
               </div>
@@ -449,7 +458,7 @@ function OrdersTab() {
                     type="button"
                     disabled={busyId === o.id}
                     onClick={() => act(o, 'approved')}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-50 text-emerald-600 text-[12px] font-bold active:scale-[0.98] transition-transform disabled:opacity-40"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold active:scale-[0.98] transition-transform disabled:opacity-40"
                   >
                     {busyId === o.id ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />} Одобрить
                   </button>
@@ -459,7 +468,7 @@ function OrdersTab() {
                     type="button"
                     disabled={busyId === o.id}
                     onClick={() => act(o, 'rejected')}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-rose-50 text-rose-500 text-[12px] font-bold active:scale-[0.98] transition-transform disabled:opacity-40"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white text-zinc-500 border border-zinc-200 text-[12px] font-bold active:scale-[0.98] transition-transform disabled:opacity-40"
                   >
                     <XCircle size={13} /> Отклонить
                   </button>
@@ -590,7 +599,7 @@ function MastersTab() {
                   type="button"
                   disabled={busyId === s.id}
                   onClick={() => act(s.id, 'approved')}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-50 text-emerald-600 text-[12px] font-bold active:scale-[0.98] transition-transform disabled:opacity-40"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold active:scale-[0.98] transition-transform disabled:opacity-40"
                 >
                   {busyId === s.id ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />} Одобрить
                 </button>
@@ -600,7 +609,7 @@ function MastersTab() {
                   type="button"
                   disabled={busyId === s.id}
                   onClick={() => act(s.id, 'rejected')}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-rose-50 text-rose-500 text-[12px] font-bold active:scale-[0.98] transition-transform disabled:opacity-40"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white text-zinc-500 border border-zinc-200 text-[12px] font-bold active:scale-[0.98] transition-transform disabled:opacity-40"
                 >
                   <XCircle size={13} /> Отклонить
                 </button>
@@ -665,7 +674,7 @@ function FeedbackTab() {
             </div>
 
             <div className="mb-2">
-              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold ${fb.resolved ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-500'}`}>
+              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold ${fb.resolved ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-500 border border-zinc-200'}`}>
                 {fb.resolved ? '✓ Вопрос решён' : '✗ Вопрос не решён'}
               </span>
             </div>
@@ -673,7 +682,7 @@ function FeedbackTab() {
             {fb.rating ? (
               <div className="flex gap-0.5 mb-2">
                 {[1, 2, 3, 4, 5].map((n) => (
-                  <Star key={n} size={14} className={n <= fb.rating! ? 'text-amber-400 fill-amber-400' : 'text-zinc-200'} />
+                  <Star key={n} size={14} className={n <= fb.rating! ? 'text-zinc-900 fill-zinc-900' : 'text-zinc-200'} />
                 ))}
               </div>
             ) : null}
@@ -779,7 +788,7 @@ function CatalogTab() {
             key={d}
             type="button"
             onClick={() => { setDomain(d); setEditing(null); }}
-            className={`shrink-0 px-3.5 py-2 rounded-full text-[11px] font-bold transition-colors ${domain === d ? 'bg-[#EA4335] text-white shadow-sm' : 'bg-white text-zinc-500 shadow-sm'}`}
+            className={`shrink-0 px-3.5 py-2 rounded-full text-[11px] font-bold transition-colors ${domain === d ? 'bg-zinc-900 text-white shadow-sm' : 'bg-white text-zinc-500 shadow-sm'}`}
           >
             {DOMAIN_LABEL[d] || d} · {(data?.domains?.[d] || []).length}
           </button>
@@ -813,7 +822,7 @@ function CatalogTab() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <p className="text-[13px] font-bold text-zinc-900 truncate">{s.name}</p>
-                      {isEdited && <span className="shrink-0 px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 text-[9px] font-bold">изменено</span>}
+                      {isEdited && <span className="shrink-0 px-1.5 py-0.5 rounded bg-zinc-900 text-white text-[9px] font-bold">изменено</span>}
                     </div>
                     <p className="text-[11px] text-zinc-400 truncate">{current.desc}</p>
                     <p className="text-[11px] font-bold text-zinc-700 mt-0.5">{current.price} ₽ · {current.time}</p>
@@ -831,7 +840,7 @@ function CatalogTab() {
                         type="button"
                         disabled={busy}
                         onClick={() => revert(s.name)}
-                        className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500 active:scale-95 transition-transform"
+                        className="w-9 h-9 rounded-xl bg-zinc-900 flex items-center justify-center text-white active:scale-95 transition-transform"
                       >
                         <RotateCcw size={15} />
                       </button>
@@ -1000,7 +1009,7 @@ function AuditTab() {
                 {e.entity_label ? <span className="text-zinc-500"> · {e.entity_label}</span> : null}
               </p>
               {auditDiff(e) && (
-                <p className="text-[11px] text-[#EA4335] mt-1 break-words">{auditDiff(e)}</p>
+                <p className="text-[11px] text-zinc-900 font-semibold mt-1 break-words">{auditDiff(e)}</p>
               )}
             </div>
           </div>
@@ -1225,7 +1234,7 @@ function TasksTab() {
         <button
           type="button"
           onClick={() => setStatus(t.id, t.status === 'open' ? 'done' : 'open')}
-          className={`shrink-0 w-8 h-8 rounded-xl flex items-center justify-center active:scale-95 transition-transform ${t.status === 'open' ? 'bg-zinc-50 text-zinc-400' : 'bg-emerald-50 text-emerald-500'}`}
+          className={`shrink-0 w-8 h-8 rounded-xl flex items-center justify-center active:scale-95 transition-transform ${t.status === 'open' ? 'bg-zinc-100 text-zinc-400' : 'bg-zinc-900 text-white'}`}
           title={t.status === 'open' ? 'Отметить выполненной' : 'Вернуть в работу'}
         >
           <CheckCircle2 size={16} />
@@ -1247,7 +1256,7 @@ function TasksTab() {
         </select>
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Заголовок задачи" className={INPUT} maxLength={200} />
         <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Что нужно сделать (необязательно)" rows={2} className={`${INPUT} resize-none`} maxLength={1000} />
-        {err && <p className="text-[11px] text-rose-500 font-semibold">{err}</p>}
+        {err && <p className="text-[11px] text-zinc-800 font-semibold">{err}</p>}
         <button
           type="submit"
           disabled={busy || !masterId || !title.trim()}
@@ -1439,7 +1448,7 @@ function MirrorTab() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <p className="text-[13px] font-bold text-zinc-900 truncate">{s.name}</p>
-                    {isEdited && <span className="shrink-0 px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 text-[9px] font-bold">изменено</span>}
+                    {isEdited && <span className="shrink-0 px-1.5 py-0.5 rounded bg-zinc-900 text-white text-[9px] font-bold">изменено</span>}
                   </div>
                   <p className="text-[11px] text-zinc-400 truncate">{current.desc}</p>
                   <p className="text-[11px] font-bold text-zinc-700 mt-0.5">{current.price} ₽ · {current.time}</p>
@@ -1457,7 +1466,7 @@ function MirrorTab() {
                       type="button"
                       disabled={busy}
                       onClick={() => revert(s.name)}
-                      className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500 active:scale-95 transition-transform"
+                      className="w-9 h-9 rounded-xl bg-zinc-900 flex items-center justify-center text-white active:scale-95 transition-transform"
                     >
                       <RotateCcw size={15} />
                     </button>
@@ -1611,7 +1620,7 @@ function TeamTab({ session }: { session: Session }) {
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[13px] font-bold text-zinc-900">{a.display_name || a.login}</span>
             <span className="text-[11px] text-zinc-400">@{a.login}</span>
-            <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${a.password_set_at ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+            <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${a.password_set_at ? 'bg-zinc-100 text-zinc-500' : 'bg-zinc-900 text-white'}`}>
               {a.password_set_at ? 'пароль задан' : 'ждёт первый вход'}
             </span>
           </div>
@@ -1652,7 +1661,7 @@ function TeamTab({ session }: { session: Session }) {
                   key={tp.label}
                   type="button"
                   onClick={() => setNewRoles(tp.roles)}
-                  className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#EA4335]/10 text-[#EA4335] active:scale-95 transition-transform"
+                  className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-white text-zinc-700 border border-zinc-300 active:scale-95 transition-transform"
                 >
                   {tp.label}
                 </button>
@@ -1677,7 +1686,7 @@ function TeamTab({ session }: { session: Session }) {
               })}
             </div>
           </div>
-          {formError && <p className="text-[11px] text-rose-500 font-semibold">{formError}</p>}
+          {formError && <p className="text-[11px] text-zinc-800 font-semibold">{formError}</p>}
           <button
             type="submit"
             disabled={busy || !newLogin.trim() || !newName.trim()}
@@ -1755,7 +1764,7 @@ function ProfilePanel({ session, onClose, onLogout }: { session: Session; onClos
           <input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} placeholder="Текущий пароль" className={INPUT} />
           <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Новый пароль (от 6)" className={INPUT} />
           {msg && (
-            <p className={`text-[11px] font-semibold ${msg.type === 'ok' ? 'text-emerald-600' : 'text-rose-500'}`}>{msg.text}</p>
+            <p className={`text-[11px] font-semibold ${msg.type === 'ok' ? 'text-zinc-900' : 'text-zinc-700'}`}>{msg.text}</p>
           )}
           <button type="submit" disabled={busy || !oldPassword || newPassword.length < 6} className="w-full py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold disabled:opacity-40">
             {busy ? '…' : 'Сменить пароль'}
@@ -1765,7 +1774,7 @@ function ProfilePanel({ session, onClose, onLogout }: { session: Session; onClos
         <button
           type="button"
           onClick={onLogout}
-          className="w-full mt-4 py-2.5 rounded-xl bg-rose-50 text-rose-600 text-[12px] font-bold flex items-center justify-center gap-1.5"
+          className="w-full mt-4 py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold flex items-center justify-center gap-1.5"
         >
           <LogOut size={13} /> Выйти
         </button>
