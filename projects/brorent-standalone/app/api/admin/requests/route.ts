@@ -29,11 +29,19 @@ export async function PATCH(req: Request) {
   }
 
   const db = supabase();
-  const { data: before } = await db.from('orders').select('status, service_name').eq('id', id).single();
+  const { data: before } = await db.from('orders').select('status, service_name, metadata').eq('id', id).single();
   if (!before) return NextResponse.json({ error: 'Заявка не найдена' }, { status: 404 });
 
   const { error } = await db.from('orders').update({ status }).eq('id', id);
   if (error) return NextResponse.json({ error: 'Supabase error' }, { status: 500 });
+
+  // Причина отклонения — в metadata заявки (видна админу и мастеру)
+  if (comment && section === 'orders' && status === 'rejected') {
+    await db
+      .from('orders')
+      .update({ metadata: { ...(before.metadata || {}), decline_reason: comment } })
+      .eq('id', id);
+  }
 
   await writeAudit({
     actor_login: res.admin.login,

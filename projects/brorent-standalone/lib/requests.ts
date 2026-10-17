@@ -30,6 +30,15 @@ export type ServiceRequest = {
     master_phone?: string;
     master_ad_id?: string;
     master_service?: string;
+    /** рейтинг анкеты мастера (для карточки в /admin) */
+    master_rating?: number;
+    /** заявка на открытие направления (навыка) */
+    unlock_direction?: string;
+    unlock_type?: 'manual' | 'brocare';
+    unlock_equipment?: string;
+    unlock_score?: number;
+    /** причина отклонения заявки (видна мастеру/админу) */
+    decline_reason?: string;
   } | null;
 };
 

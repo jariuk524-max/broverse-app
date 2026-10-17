@@ -10,6 +10,7 @@ import {
   listServiceRequests,
   STATUS_LABEL, STATUS_COLOR, type ServiceRequest, type RequestStatus,
 } from '@/lib/requests';
+import { unlockDirectionForMaster } from '@/lib/admin/unlock';
 
 type Session = {
   login: string;
@@ -54,6 +55,12 @@ const DOMAIN_LABEL: Record<string, string> = {
 };
 const DOMAIN_ORDER = ['build', 'wash', 'frame', 'move', 'rent', 'garden', 'verse'];
 const DOMAIN_BADGE: Record<string, string> = { master: 'Анкета мастера' };
+
+const UNLOCK_DIR_LABEL: Record<string, string> = {
+  cleaning: 'Химчистка', plumbing: 'Сантехника', electric: 'Электрика',
+  repair: 'Стройка и ремонт', appliance: 'Ремонт техники', electronics: 'Гаджеты',
+  moving: 'Переезды', rental: 'Аренда оборудования', garden: 'Сад и участок',
+};
 
 type MasterService = {
   id: string;
@@ -280,13 +287,24 @@ function OrdersTab() {
 
   useEffect(() => { load(); }, [load]);
 
-  const act = async (id: string, action: 'approved' | 'rejected') => {
-    setBusyId(id);
+  const act = async (o: ServiceRequest, action: 'approved' | 'rejected') => {
+    let comment = '';
+    if (action === 'rejected') {
+      const reason = window.prompt('Причина отклонения (видна мастеру):');
+      if (reason === null) return;
+      comment = reason.trim();
+      if (!comment) return;
+    }
+    setBusyId(o.id);
     await fetch('/api/admin/requests', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, status: action, section: 'orders' }),
+      body: JSON.stringify({ id: o.id, status: action, section: 'orders', ...(comment ? { comment } : {}) }),
     }).catch(() => {});
+    const meta = o.metadata;
+    if (action === 'approved' && meta?.unlock_direction && meta.master_id) {
+      await unlockDirectionForMaster(meta.master_id, meta.unlock_direction, meta.master_name);
+    }
     await load();
     setBusyId(null);
   };
@@ -382,6 +400,13 @@ function OrdersTab() {
                     {new Date(o.created_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}
                     {meta.domain ? ` · ${DOMAIN_BADGE[meta.domain] || meta.domain}` : ''}
                   </p>
+                  {meta.unlock_direction && (
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-lg bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-600">
+                      <Lock size={10} />
+                      {meta.unlock_type === 'brocare' ? 'BroCare-сертификация' : 'Открытие направления'}
+                      · {UNLOCK_DIR_LABEL[meta.unlock_direction] || meta.unlock_direction}
+                    </span>
+                  )}
                 </div>
                 <span className={`shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold ${STATUS_COLOR[o.status] || 'bg-zinc-100 text-zinc-500'}`}>
                   {STATUS_LABEL[o.status] || o.status}
@@ -396,8 +421,14 @@ function OrdersTab() {
                 {o.client_name && <Row label="👤 Имя" value={o.client_name} />}
                 {o.address && <Row label="📍 Адрес" value={o.address} />}
                 {price && <Row label="💰 Цена" value={`${price} ₽`} />}
+                {meta.master_rating !== undefined && meta.master_rating !== null && (
+                  <Row label="⭐ Рейтинг мастера" value={`${meta.master_rating} / 5`} />
+                )}
+                {meta.unlock_equipment && <Row label="🧰 Оборудование" value={meta.unlock_equipment} />}
+                {meta.unlock_score !== undefined && <Row label="📝 Тест BroCare" value={`${meta.unlock_score} / 5`} />}
                 {meta.description && <Row label="📝 Описание" value={meta.description} />}
                 {meta.comment && <Row label="💬 Комментарий" value={meta.comment} />}
+                {meta.decline_reason && <Row label="🚫 Причина отклонения" value={meta.decline_reason} />}
                 {meta.photo && (
                   <div className="pt-1">
                     <img src={meta.photo} alt="Фото заявки" className="w-full max-h-48 object-cover rounded-xl" />
@@ -410,7 +441,7 @@ function OrdersTab() {
                   <button
                     type="button"
                     disabled={busyId === o.id}
-                    onClick={() => act(o.id, 'approved')}
+                    onClick={() => act(o, 'approved')}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-50 text-emerald-600 text-[12px] font-bold active:scale-[0.98] transition-transform disabled:opacity-40"
                   >
                     {busyId === o.id ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />} Одобрить
@@ -420,7 +451,7 @@ function OrdersTab() {
                   <button
                     type="button"
                     disabled={busyId === o.id}
-                    onClick={() => act(o.id, 'rejected')}
+                    onClick={() => act(o, 'rejected')}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-rose-50 text-rose-500 text-[12px] font-bold active:scale-[0.98] transition-transform disabled:opacity-40"
                   >
                     <XCircle size={13} /> Отклонить
