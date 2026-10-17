@@ -129,6 +129,15 @@ export default function AdminPage() {
   const [tab, setTab] = useState<TabId>('orders');
   const [lockedTab, setLockedTab] = useState<TabId | null>(null);
   const [showProfile, setShowProfile] = useState(false);
+  const [cabinetLink, setCabinetLink] = useState<string | null>(null);
+
+  useEffect(() => {
+    const c = new URLSearchParams(window.location.search).get('c')?.trim().toLowerCase() || '';
+    if (/^[a-z0-9][a-z0-9-]{1,38}$/.test(c)) {
+      setCabinetLink(c);
+      setLogin(c);
+    }
+  }, []);
 
   useEffect(() => {
     fetch('/api/admin/session')
@@ -208,6 +217,17 @@ export default function AdminPage() {
           onSubmit={submitAuth}
           className="w-full max-w-[360px] bg-white rounded-[24px] p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)]"
         >
+          {cabinetLink && (
+            <div className="flex items-center gap-3 mb-4 bg-zinc-50 rounded-2xl p-3">
+              <span className="w-10 h-10 rounded-xl bg-zinc-900 text-white text-[15px] font-black flex items-center justify-center shrink-0">
+                {cabinetLink.slice(0, 1).toUpperCase()}
+              </span>
+              <div className="min-w-0">
+                <p className="text-[11px] text-zinc-400">Кабинет сотрудника</p>
+                <p className="text-[13px] font-bold text-zinc-900 truncate">@{cabinetLink}</p>
+              </div>
+            </div>
+          )}
           <div className="w-12 h-12 rounded-2xl bg-zinc-900 flex items-center justify-center mb-4">
             <Lock size={20} className="text-white" />
           </div>
@@ -224,7 +244,7 @@ export default function AdminPage() {
             onChange={(e) => setLogin(e.target.value)}
             placeholder="Логин"
             className={INPUT}
-            autoFocus
+            autoFocus={!cabinetLink}
           />
           <input
             type="password"
@@ -232,6 +252,7 @@ export default function AdminPage() {
             onChange={(e) => (needSetup ? setNewPassword(e.target.value) : setPassword(e.target.value))}
             placeholder={needSetup ? 'Новый пароль' : 'Пароль'}
             className={`${INPUT} mt-2`}
+            autoFocus={!!cabinetLink}
           />
           {authError && <p className="text-[11px] text-zinc-800 font-semibold mt-2">{authError}</p>}
           <button
@@ -1509,8 +1530,9 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
     await load();
   };
 
-  const shareTg = (text: string) => {
-    const url = `https://t.me/share/url?url=${encodeURIComponent('https://broverse-client.vercel.app/admin')}&text=${encodeURIComponent(text)}`;
+  const shareTg = (text: string, cabinet?: string) => {
+    const target = `https://broverse-client.vercel.app/admin${cabinet ? `/${cabinet}` : ''}`;
+    const url = `https://t.me/share/url?url=${encodeURIComponent(target)}&text=${encodeURIComponent(text)}`;
     const tg = (window as unknown as { Telegram?: { WebApp?: { openLink?: (u: string) => void } } }).Telegram?.WebApp;
     if (tg?.openLink) tg.openLink(url);
     else window.open(url, '_blank');
@@ -1939,13 +1961,16 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
               <div>
                 <p className="text-[14px] font-bold text-zinc-900">Кабинет @{createDone} создан</p>
                 <p className="text-[11px] text-zinc-400 mt-1.5 leading-relaxed">
-                  Ссылка постоянная. Отправьте её сотруднику — он задаст пароль при первом входе.
+                  Персональная ссылка кабинета — отправьте её сотруднику, он задаст пароль при первом входе.
                 </p>
+                <div className="mt-2 px-3 py-2 rounded-xl bg-zinc-50 text-[11.5px] font-semibold text-zinc-700 break-all">
+                  broverse-client.vercel.app/admin/{createDone}
+                </div>
                 <button
                   type="button"
                   onClick={() => {
                     const a = admins.find((x) => x.login === createDone);
-                    shareTg(accessMessage(createDone, a?.display_name || createDone, a?.roles || []));
+                    shareTg(accessMessage(createDone, a?.display_name || createDone, a?.roles || []), createDone);
                   }}
                   className="w-full mt-4 py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
                 >
@@ -3016,7 +3041,7 @@ const ROLE_TEMPLATES: { label: string; roles: string[] }[] = [
 /** Готовое сообщение-доступ для сотрудника (копируется в буфер) */
 const accessMessage = (login: string, name: string, roles: string[]) =>
   `Доступ в кабинет BroVerse\n\n` +
-  `Ссылка: https://broverse-client.vercel.app/admin\n` +
+  `Ссылка: https://broverse-client.vercel.app/admin/${login}\n` +
   `Логин: ${login}\n` +
   `Имя: ${name}\n\n` +
   `При первом входе зададите свой пароль.\n` +
@@ -3166,7 +3191,7 @@ function TeamTab({ session }: { session: Session }) {
   return (
     <div className="space-y-3">
       <p className="text-[11px] text-zinc-400 px-1">
-        Ссылка одна и постоянная: broverse-client.vercel.app/admin. Сотрудник входит по логину;
+        У каждого кабинета своя ссылка: broverse-client.vercel.app/admin/логин. Сотрудник входит по логину;
         пароль создаёт сам при первом входе, а при смене человека — «Сменить пароль» здесь.
       </p>
 
