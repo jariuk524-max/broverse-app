@@ -4,6 +4,7 @@ import { hashPassword, verifyPassword, signSession, SESSION_COOKIE, SESSION_TTL_
 import { getAdminByLogin, setAdminPassword, touchLastLogin, writeAudit } from '@/lib/admin/store';
 import { currentAdmin } from '@/lib/admin/guard';
 import { originError, loginLocked, loginFail, loginReset } from '@/lib/admin/security';
+import { getAvatars, setAvatar, saveAvatarDataUrl } from '@/lib/admin/avatars';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +26,8 @@ function sessionCookie(login: string) {
 export async function GET() {
   const admin = await currentAdmin();
   if (!admin) return NextResponse.json({ admin: null }, { status: 401 });
-  return NextResponse.json({ admin });
+  const avatars = await getAvatars();
+  return NextResponse.json({ admin: { ...admin, avatar_url: avatars[admin.login] || null } });
 }
 
 /** Вход: логин + пароль. Если пароль не задан — new_password создаёт его (invite-модель) */
@@ -38,6 +40,7 @@ export async function POST(req: Request) {
     const login = String(body.login || '').trim().toLowerCase().slice(0, 64);
     const password = String(body.password || '').slice(0, 128);
     const newPassword = String(body.new_password || '').slice(0, 128);
+    const avatar = typeof body.avatar === 'string' ? body.avatar : '';
 
     if (!login) return NextResponse.json({ error: 'Укажите логин' }, { status: 400 });
 
@@ -65,6 +68,10 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Пароль должен быть не короче 6 символов' }, { status: 400 });
       }
       await setAdminPassword(login, await hashPassword(newPassword));
+      if (avatar) {
+        const up = await saveAvatarDataUrl(login, avatar);
+        if ('url' in up) await setAvatar(login, up.url);
+      }
       await writeAudit({
         actor_login: login,
         actor_name: admin.display_name,

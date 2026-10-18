@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { requireAnyRole } from '@/lib/admin/guard';
+import { requireSession } from '@/lib/admin/guard';
+import { saveAvatarDataUrl } from '@/lib/admin/avatars';
 import { guardWrite } from '@/lib/admin/security';
 
 export const dynamic = 'force-dynamic';
@@ -23,17 +24,29 @@ function slug(s: string): string {
 }
 
 /**
- * Загрузка фото в Storage (каталог/зеркало главной).
- * POST { domainId, type, serviceName, data: dataURL }
+ * Загрузка фото в Storage (каталог/зеркало/аватар профиля).
+ * POST { type: 'avatar', data } — любой вошедший, путь avatars/<login>.
+ * POST { domainId, type, serviceName, data } — роли catalog/mirror.
  * → { path: publicUrl }. Валидация: mime/размер, только изображения.
  */
 export async function POST(req: Request) {
   const blocked = guardWrite(req);
   if (blocked) return blocked;
-  const sess = await requireAnyRole(['catalog', 'mirror']);
+  const sess = await requireSession();
   if ('error' in sess) return sess.error;
 
   const body = await req.json().catch(() => null);
+
+  if (String(body?.type || '') === 'avatar') {
+    const r = await saveAvatarDataUrl(sess.admin.login, String(body?.data || ''));
+    if ('error' in r) return NextResponse.json({ error: r.error }, { status: r.status || 400 });
+    return NextResponse.json({ path: r.url, ok: true });
+  }
+
+  if (!sess.admin.roles.some((r) => r === 'catalog' || r === 'mirror')) {
+    return NextResponse.json({ error: 'Forbidden', needs: 'catalog/mirror' }, { status: 403 });
+  }
+
   const domain = String(body?.domainId || '').slice(0, 32);
   const serviceName = String(body?.serviceName || '').slice(0, 200);
   const data = String(body?.data || '');

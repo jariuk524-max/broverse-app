@@ -20,6 +20,7 @@ type Session = {
   roles: string[];
   password_set_at: string | null;
   last_login_at: string | null;
+  avatar_url?: string | null;
 };
 
 type TabId = 'overview' | 'orders' | 'chat' | 'tasks' | 'finance' | 'masters' | 'feedback' | 'catalog' | 'mirror' | 'audit' | 'team';
@@ -117,6 +118,42 @@ const ADMIN_STATUS_COLOR: Record<string, string> = {
   completed: 'bg-zinc-100 text-zinc-400',
 };
 
+const fileToDataUrl = (f: File): Promise<string | null> =>
+  new Promise((res) => {
+    const r = new FileReader();
+    r.onload = () => res(typeof r.result === 'string' ? r.result : null);
+    r.onerror = () => res(null);
+    r.readAsDataURL(f);
+  });
+
+/** dataURL → публичный URL аватара (Storage avatars/<login>) */
+const uploadAvatarData = async (data: string): Promise<{ url?: string; error?: string }> => {
+  const r = await fetch('/api/upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'avatar', data }),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.path) return { error: d.error || 'Не удалось загрузить фото' };
+  return { url: d.path };
+};
+
+const uploadAvatar = async (f: File): Promise<{ url?: string; error?: string }> => {
+  const data = await fileToDataUrl(f);
+  if (!data) return { error: 'Не удалось прочитать файл' };
+  return uploadAvatarData(data);
+};
+
+/** Сохранить аватар в профиле (свой или чужой — по праву роли) */
+const setAvatarFor = async (login: string, url: string): Promise<boolean> => {
+  const r = await fetch('/api/admin/users', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ login, action: 'set_avatar', avatar_url: url }),
+  });
+  return r.ok;
+};
+
 export default function AdminPage({ cabinet }: { cabinet?: string } = {}) {
   const [session, setSession] = useState<Session | null>(null);
   const [checking, setChecking] = useState(true);
@@ -130,6 +167,7 @@ export default function AdminPage({ cabinet }: { cabinet?: string } = {}) {
   const [lockedTab, setLockedTab] = useState<TabId | null>(null);
   const [showProfile, setShowProfile] = useState(false);
   const [cabinetLink, setCabinetLink] = useState<string | null>(null);
+  const [setupAvatar, setSetupAvatar] = useState<string | null>(null);
 
   useEffect(() => {
     const fromUrl = new URLSearchParams(window.location.search).get('c')?.trim().toLowerCase() || '';
@@ -166,7 +204,9 @@ export default function AdminPage({ cabinet }: { cabinet?: string } = {}) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
-          needSetup ? { login, new_password: newPassword } : { login, password }
+          needSetup
+            ? { login, new_password: newPassword, ...(setupAvatar ? { avatar: setupAvatar } : {}) }
+            : { login, password }
         ),
       });
       const data = await res.json().catch(() => ({}));
@@ -187,6 +227,7 @@ export default function AdminPage({ cabinet }: { cabinet?: string } = {}) {
       setPassword('');
       setNewPassword('');
       setNeedSetup(false);
+      setSetupAvatar(null);
     } catch {
       setAuthError('Нет связи с сервером');
     } finally {
@@ -255,6 +296,24 @@ export default function AdminPage({ cabinet }: { cabinet?: string } = {}) {
             className={`${INPUT} mt-2`}
             autoFocus={!!cabinetLink}
           />
+          {needSetup && (
+            <label className="mt-2 flex items-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 text-[12px] font-semibold text-zinc-600 cursor-pointer active:scale-[0.99] transition-transform">
+              {setupAvatar ? '✓ Фото добавлено — заменить' : '＋ Добавить фото профиля (необязательно)'}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = '';
+                  if (!f) return;
+                  const data = await fileToDataUrl(f);
+                  if (data) setSetupAvatar(data);
+                }}
+              />
+              {setupAvatar && <img src={setupAvatar} alt="" className="w-8 h-8 rounded-full object-cover ml-auto" />}
+            </label>
+          )}
           {authError && <p className="text-[11px] text-zinc-800 font-semibold mt-2">{authError}</p>}
           <button
             type="submit"
@@ -286,12 +345,16 @@ export default function AdminPage({ cabinet }: { cabinet?: string } = {}) {
                 <ArrowLeft size={16} />
               </button>
             )}
-            <div className="w-8 h-8 rounded-lg bg-zinc-900 flex items-center justify-center">
-              <ShieldCheck size={15} className="text-white" />
+            <div className="w-8 h-8 rounded-lg bg-zinc-900 flex items-center justify-center overflow-hidden shrink-0">
+              {session.avatar_url ? (
+                <img src={session.avatar_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <ShieldCheck size={15} className="text-white" />
+              )}
             </div>
             <div>
               <h1 className="text-[14px] font-bold text-zinc-900 leading-tight">BroVerse Админ</h1>
-              <p className="text-[10px] text-zinc-400">{session.display_name || session.login}</p>
+              <p className="text-[10px] text-zinc-400">Администратор: {session.display_name || session.login}</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -360,7 +423,7 @@ export default function AdminPage({ cabinet }: { cabinet?: string } = {}) {
       </main>
 
       {showProfile && (
-        <ProfilePanel session={session} onClose={() => setShowProfile(false)} onLogout={logout} />
+        <ProfilePanel session={session} onClose={() => setShowProfile(false)} onLogout={logout} onAvatar={(url) => setSession((s) => (s ? { ...s, avatar_url: url } : s))} />
       )}
     </div>
   );
@@ -1147,6 +1210,7 @@ const AUDIT_ACTION_LABEL: Record<string, string> = {
   user_delete: 'Удалил кабинет сотрудника',
   password_set_by_admin: 'Задал пароль сотруднику',
   password_reset_by_admin: 'Сбросил пароль сотруднику',
+  avatar_set: 'Обновил фото профиля',
 };
 
 type AuditEntry = {
@@ -1255,9 +1319,13 @@ function MyCabinetTab({ session, onOpenTab, onAskLocked }: {
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-[24px] p-5 shadow-sm flex items-center gap-3.5">
-        <span className="w-14 h-14 rounded-2xl bg-zinc-900 text-white text-[20px] font-black flex items-center justify-center shrink-0">
-          {(session.display_name || session.login).slice(0, 1).toUpperCase()}
-        </span>
+        {session.avatar_url ? (
+          <img src={session.avatar_url} alt="" className="w-14 h-14 rounded-2xl object-cover shrink-0" />
+        ) : (
+          <span className="w-14 h-14 rounded-2xl bg-zinc-900 text-white text-[20px] font-black flex items-center justify-center shrink-0">
+            {(session.display_name || session.login).slice(0, 1).toUpperCase()}
+          </span>
+        )}
         <div className="min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Мой кабинет</p>
           <p className="text-[16px] font-black text-zinc-900 truncate">{session.display_name || session.login}</p>
@@ -1328,7 +1396,7 @@ function OrderRow({ label, value }: { label: string; value: string }) {
 
 function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id: TabId) => void }) {
   const [orders, setOrders] = useState<ServiceRequest[] | null>(null);
-  const [admins, setAdmins] = useState<{ login: string; display_name: string; roles: string[]; password_set_at: string | null; last_login_at: string | null }[] | null>(null);
+  const [admins, setAdmins] = useState<{ login: string; display_name: string; roles: string[]; password_set_at: string | null; last_login_at: string | null; avatar_url?: string | null }[] | null>(null);
   const [entries, setEntries] = useState<AuditEntry[] | null>(null);
   const [ads, setAds] = useState<unknown[] | null>(null);
   const [cabOrder, setCabOrder] = useState<string[]>([]);
@@ -1339,6 +1407,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
   const [loginTouched, setLoginTouched] = useState(false);
   const [createRoles, setCreateRoles] = useState<string[]>(['requests']);
   const [createErr, setCreateErr] = useState('');
+  const [createAvatar, setCreateAvatar] = useState<string | null>(null);
   const [createBusy, setCreateBusy] = useState(false);
   const [chatWith, setChatWith] = useState<string | null>(null);
   const [copiedFor, setCopiedFor] = useState<string | null>(null);
@@ -1492,10 +1561,20 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
     setCreateBusy(true);
     setCreateErr('');
     try {
+      let avatarUrl = '';
+      if (createAvatar) {
+        const up = await uploadAvatarData(createAvatar);
+        if (up.url) avatarUrl = up.url;
+      }
       const r = await fetch('/api/admin/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ login: effLogin, display_name: createName.trim(), roles: createRoles }),
+        body: JSON.stringify({
+          login: effLogin,
+          display_name: createName.trim(),
+          roles: createRoles,
+          ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
+        }),
       });
       if (!r.ok) {
         const d = await r.json().catch(() => ({}));
@@ -1506,6 +1585,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
         setCreateLogin('');
         setLoginTouched(false);
         setCreateRoles(['requests']);
+        setCreateAvatar(null);
         await load();
       }
     } finally {
@@ -1636,9 +1716,13 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                   >
                     <GripVertical size={16} />
                   </button>
-                  <span className="w-9 h-9 rounded-xl bg-zinc-900 text-white text-[13px] font-black flex items-center justify-center shrink-0">
-                    {(a.display_name || a.login).slice(0, 1).toUpperCase()}
-                  </span>
+                  {a.avatar_url ? (
+                    <img src={a.avatar_url} alt="" className="w-9 h-9 rounded-xl object-cover shrink-0" />
+                  ) : (
+                    <span className="w-9 h-9 rounded-xl bg-zinc-900 text-white text-[13px] font-black flex items-center justify-center shrink-0">
+                      {(a.display_name || a.login).slice(0, 1).toUpperCase()}
+                    </span>
+                  )}
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-bold text-zinc-900 truncate">{a.display_name || a.login}</p>
                     <p className="text-[10px] text-zinc-400 truncate">
@@ -1858,8 +1942,15 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
         return (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={() => setOpenCabinet(null)}>
             <div className="w-full max-w-[400px] bg-white rounded-[24px] shadow-2xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between p-4 border-b border-zinc-100 sticky top-0 bg-white">
-                <div className="min-w-0">
+              <div className="flex items-center gap-2.5 p-4 border-b border-zinc-100 sticky top-0 bg-white">
+                {a.avatar_url ? (
+                  <img src={a.avatar_url} alt="" className="w-11 h-11 rounded-xl object-cover shrink-0" />
+                ) : (
+                  <span className="w-11 h-11 rounded-xl bg-zinc-900 text-white text-[16px] font-black flex items-center justify-center shrink-0">
+                    {(a.display_name || a.login).slice(0, 1).toUpperCase()}
+                  </span>
+                )}
+                <div className="min-w-0 flex-1">
                   <p className="text-[13px] font-bold text-zinc-900 truncate">Кабинет @{a.login}</p>
                   <p className="text-[10px] text-zinc-400 truncate">
                     {a.display_name}
@@ -1867,6 +1958,25 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                     {a.last_login_at ? ` · вход ${new Date(a.last_login_at).toLocaleDateString('ru-RU')}` : ''}
                   </p>
                 </div>
+                <label
+                  className="px-2.5 py-1.5 rounded-xl bg-zinc-100 text-[10.5px] font-bold text-zinc-700 cursor-pointer active:scale-95 transition-transform shrink-0"
+                  title="Заменить фото"
+                >
+                  Фото
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = '';
+                      if (!f) return;
+                      const up = await uploadAvatar(f);
+                      if (up.error) { window.alert(up.error); return; }
+                      if (up.url && (await setAvatarFor(a.login, up.url))) await load();
+                    }}
+                  />
+                </label>
                 <button type="button" onClick={() => setOpenCabinet(null)} className="p-1.5 rounded-full bg-zinc-100 active:scale-90 transition-transform shrink-0">
                   <X size={13} />
                 </button>
@@ -1956,7 +2066,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
       })()}
 
       {(createOpen || createDone) && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={() => { setCreateOpen(false); setCreateDone(''); }}>
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={() => { setCreateOpen(false); setCreateDone(''); setCreateAvatar(null); }}>
           <div className="w-full max-w-[400px] bg-white rounded-[24px] p-5 shadow-2xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             {createDone ? (
               <div>
@@ -2002,7 +2112,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                 </div>
                 <button
                   type="button"
-                  onClick={() => { setCreateOpen(false); setCreateDone(''); }}
+                  onClick={() => { setCreateOpen(false); setCreateDone(''); setCreateAvatar(null); }}
                   className="w-full mt-2 py-2.5 rounded-xl bg-white border border-zinc-200 text-zinc-500 text-[12px] font-bold active:scale-95 transition-transform"
                 >
                   Закрыть
@@ -2025,6 +2135,22 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                   className={INPUT}
                   autoCapitalize="none"
                 />
+                <label className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 text-[12px] font-semibold text-zinc-600 cursor-pointer active:scale-[0.99] transition-transform">
+                  {createAvatar ? '✓ Фото сотрудника — заменить' : '＋ Фото сотрудника (необязательно)'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = '';
+                      if (!f) return;
+                      const data = await fileToDataUrl(f);
+                      if (data) setCreateAvatar(data);
+                    }}
+                  />
+                  {createAvatar && <img src={createAvatar} alt="" className="w-8 h-8 rounded-full object-cover ml-auto" />}
+                </label>
                 <div>
                   <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Шаблон доступа</p>
                   <div className="flex flex-wrap gap-1.5">
@@ -3067,7 +3193,7 @@ const toLogin = (s: string): string =>
 
 function TeamTab({ session }: { session: Session }) {
   const canManage = session.roles.includes('team');
-  const [admins, setAdmins] = useState<{ login: string; display_name: string; roles: string[]; password_set_at: string | null; last_login_at: string | null }[] | null>(null);
+  const [admins, setAdmins] = useState<{ login: string; display_name: string; roles: string[]; password_set_at: string | null; last_login_at: string | null; avatar_url?: string | null }[] | null>(null);
   const [newLogin, setNewLogin] = useState('');
   const [newName, setNewName] = useState('');
   const [newRoles, setNewRoles] = useState<string[]>(['requests']);
@@ -3198,7 +3324,14 @@ function TeamTab({ session }: { session: Session }) {
 
       {admins.map((a) => (
         <div key={a.login} className="bg-white rounded-[18px] p-4 shadow-sm">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2.5 mb-1">
+            {a.avatar_url ? (
+              <img src={a.avatar_url} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+            ) : (
+              <span className="w-9 h-9 rounded-full bg-zinc-900 text-white text-[12px] font-black flex items-center justify-center shrink-0">
+                {(a.display_name || a.login).slice(0, 1).toUpperCase()}
+              </span>
+            )}
             <span className="text-[13px] font-bold text-zinc-900">{a.display_name || a.login}</span>
             <span className="text-[11px] text-zinc-400">@{a.login}</span>
             <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${a.password_set_at ? 'bg-zinc-100 text-zinc-500' : 'bg-zinc-900 text-white'}`}>
@@ -3425,7 +3558,7 @@ function TeamTab({ session }: { session: Session }) {
 
 /* ────────────────────────── ПРОФИЛЬ (пароль) ────────────────────────── */
 
-function ProfilePanel({ session, onClose, onLogout }: { session: Session; onClose: () => void; onLogout: () => void }) {
+function ProfilePanel({ session, onClose, onLogout, onAvatar }: { session: Session; onClose: () => void; onLogout: () => void; onAvatar: (url: string) => void }) {
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
@@ -3459,9 +3592,34 @@ function ProfilePanel({ session, onClose, onLogout }: { session: Session; onClos
       <div className="absolute inset-0 bg-black/45" onClick={onClose} />
       <div className="relative w-full sm:max-w-[380px] mx-4 mb-0 sm:mb-0 bg-white rounded-t-[24px] sm:rounded-[24px] p-6 shadow-2xl max-h-[90vh] overflow-y-auto anim-sheet">
         <div className="flex items-center gap-3 mb-4">
-          <span className="w-11 h-11 rounded-full bg-zinc-900 flex items-center justify-center text-white font-black">
-            {(session.display_name || session.login).slice(0, 1).toUpperCase()}
-          </span>
+          <label
+            className="relative w-11 h-11 rounded-full bg-zinc-900 flex items-center justify-center text-white font-black overflow-hidden cursor-pointer group shrink-0"
+            title="Заменить фото"
+          >
+            {session.avatar_url ? (
+              <img src={session.avatar_url} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <span className="w-full h-full flex items-center justify-center">
+                {(session.display_name || session.login).slice(0, 1).toUpperCase()}
+              </span>
+            )}
+            <span className="absolute inset-0 bg-black/45 text-white text-[8px] font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              Фото
+            </span>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (e) => {
+                const f = e.target.files?.[0];
+                e.target.value = '';
+                if (!f) return;
+                const up = await uploadAvatar(f);
+                if (up.error) { window.alert(up.error); return; }
+                if (up.url && (await setAvatarFor(session.login, up.url))) onAvatar(up.url);
+              }}
+            />
+          </label>
           <div className="min-w-0">
             <p className="text-[15px] font-bold text-zinc-900 truncate">{session.display_name || session.login}</p>
             <p className="text-[11px] text-zinc-400">@{session.login}</p>
