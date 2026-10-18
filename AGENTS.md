@@ -43,9 +43,41 @@
 - Добавлять новые зависимости только после подтверждения.
 
 ## Стек
-- Next.js 14 (App Router)
-- React 18 + TypeScript 5.4
+- Next.js 16.2.4 (App Router)
+- React 19.2.4 + TypeScript 5.4
 - TailwindCSS 4
 - Supabase (backend)
 - Socket.io (realtime)
+
+## Новая админка (ОСНОВНАЯ — дорабатываем)
+Код: projects/brorent-standalone/app/chief/page.tsx + app/admin/page.tsx (~3800 строк) + app/api/admin/*
+- https://broverse-client.vercel.app/chief — Кабинет руководителя (хаб): кабинеты администраторам,
+  должности/навыки, статистика сотрудников, заявки на доступ, роли (CHIEF_ONLY: team/audit)
+- https://broverse-client.vercel.app/admin — личный кабинет администратора (вход по паролю)
+- https://broverse-client.vercel.app/admin/<login> — персональная ссылка сотрудника
+- Временный открытый вход: OPEN_CHIEF_LOGIN=true в app/api/admin/session/route.ts (вернуть false после настройки)
+- Данные: Supabase (users/requests/audit/...) + Storage JSON (admin/*.json: chats, layout, avatars, profiles)
+- Деплой: npx -y vercel --prod --yes ИЗ папки проекта; git-коммиты из корня репо с путями projects/brorent-standalone/...
+
+## Старая админка (источник функционала — ТОЛЬКО ЧТЕНИЕ)
+Путь: /Applications/broverse/apps/admin · Домен: admin-psi-two-25.vercel.app · Вход: ?secret=broverse_admin_2024
+Бот: Broverse_Admin_bot (webhook: /Applications/broverse/apps/monolith/app/api/admin-webhook/route.ts):
+/start, /pending, inline-кнопки approve/reject анкет, уведомления мастеру.
+Страницы: /admin-mobile — CRUD каталога услуг (6 брендов, фото, порядок drag/↑↓),
+/admin-browash — галерея «Мои фото» песочницы (до 10, Supabase),
+/admin-moderation — анкеты мастеров + чаты поддержки + услуги мастеров.
+Данные: catalog/master-profiles/master-services/support-chats → https://broverse-masters.vercel.app;
+services/images/text → локальные JSON; browash → Supabase.
+
+### Статус переноса в новую админку
+- [x] Модерация анкет мастеров (вкладка «Мастера»)
+- [x] Модерация услуг мастеров (api/admin/master-services + вкладка «Мастера»)
+- [x] Редактирование услуг каталога с фото (вкладка «Каталог»)
+- [x] Заявки/отзывы всех 6 сайтов (вкладки «Заявки», «Отзывы»)
+- [ ] Чаты поддержки (support-chats: фильтр все/открытые/закрытые, ответ админа, закрытие)
+- [ ] Порядок услуг в каталоге (drag/↑↓, orderedIds)
+- [ ] Добавление/удаление услуг в каталоге (полный CRUD)
+- [ ] BroWash галерея (до 10 фото песочницы, Supabase)
+- [x] Мультимодальное фото услуги (карусель/до-после, photos[]) — «Зеркало» → «Как видит клиент» →
+      клик по карточке: просмотр + галерея (камера/файл, порядок ◀▶), хранение data/images.json (POST /api/images)
 

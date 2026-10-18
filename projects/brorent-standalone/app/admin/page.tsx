@@ -6,7 +6,7 @@ import {
   ShieldCheck, Package, ImageIcon, Lock, Star, MessageSquare,
   LogOut, User, History, Plus, BarChart3, ListTodo, LayoutGrid,
   ChevronUp, ChevronDown, ChevronRight, Send, Search, Square, CheckSquare, X,
-  Eye, RefreshCw, KeyRound, Users, GripVertical, Trash2,
+  Eye, RefreshCw, KeyRound, Users, GripVertical, Trash2, Camera, ImagePlus,
 } from 'lucide-react';
 import {
   listServiceRequests,
@@ -2670,6 +2670,11 @@ function MirrorTab() {
   const [cardUploading, setCardUploading] = useState(false);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const [clientCard, setClientCard] = useState<CatalogService | null>(null);
+  const [clientPhotos, setClientPhotos] = useState<string[]>([]);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const photoFileRef = useRef<HTMLInputElement>(null);
+  const photoCamRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/catalog');
@@ -2866,6 +2871,84 @@ function MirrorTab() {
     void saveOrder(names);
   };
 
+  const openClientCard = async (s: CatalogService) => {
+    setClientCard(s);
+    setClientPhotos([]);
+    try {
+      const res = await fetch(`/api/images?domainId=${domain}`);
+      if (res.ok) {
+        const d = await res.json();
+        setClientPhotos(Array.isArray(d.services?.[s.name]) ? d.services[s.name] : []);
+      }
+    } catch {}
+  };
+
+  const saveClientPhotos = async (next: string[]): Promise<boolean> => {
+    if (!clientCard) return false;
+    setPhotoBusy(true);
+    let ok = false;
+    try {
+      const res = await fetch('/api/images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domainId: domain, serviceName: clientCard.name, photos: next }),
+      });
+      ok = res.ok;
+    } catch {}
+    if (ok) setClientPhotos(next);
+    setPhotoBusy(false);
+    return ok;
+  };
+
+  const uploadClientPhoto = async (file: File) => {
+    if (!clientCard || photoBusy) return;
+    setPhotoBusy(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result as string);
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domainId: domain, type: 'service-photo', serviceName: clientCard.name, data: dataUrl }),
+      });
+      const json = await res.json();
+      if (json.path) {
+        const next = [...clientPhotos, json.path];
+        let ok = false;
+        try {
+          const r2 = await fetch('/api/images', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ domainId: domain, serviceName: clientCard.name, photos: next }),
+          });
+          ok = r2.ok;
+        } catch {}
+        if (ok) setClientPhotos(next);
+      }
+    } catch {}
+    setPhotoBusy(false);
+  };
+
+  const removeClientPhoto = async (i: number) => {
+    if (photoBusy) return;
+    await saveClientPhotos(clientPhotos.filter((_, idx) => idx !== i));
+  };
+
+  const moveClientPhoto = async (i: number, dir: -1 | 1) => {
+    if (photoBusy) return;
+    const j = i + dir;
+    if (j < 0 || j >= clientPhotos.length) return;
+    const next = [...clientPhotos];
+    [next[i], next[j]] = [next[j], next[i]];
+    await saveClientPhotos(next);
+  };
+
+  const cCard = clientCard ? { ...clientCard, ...(edits[clientCard.name] || {}) } : null;
+
   if (!data) {
     return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
   }
@@ -2877,7 +2960,7 @@ function MirrorTab() {
           <button
             key={d}
             type="button"
-            onClick={() => { setDomain(d); setEditing(null); }}
+            onClick={() => { setDomain(d); setEditing(null); setClientCard(null); }}
             className={`shrink-0 px-3.5 py-2 rounded-full text-[11px] font-bold transition-colors ${domain === d ? 'bg-zinc-900 text-white shadow-sm' : 'bg-white text-zinc-500 shadow-sm'}`}
           >
             {DOMAIN_LABEL[d] || d}
@@ -3028,6 +3111,38 @@ function MirrorTab() {
       </div>
       )}
 
+      {view === 'client' && (
+      <div className="grid grid-cols-2 gap-2.5">
+        {ordered.map((s) => {
+          const current = { ...s, ...(edits[s.name] || {}) };
+          if (current.deleted) return null;
+          return (
+            <button
+              key={s.name}
+              type="button"
+              onClick={() => void openClientCard(s)}
+              className="text-left rounded-2xl border border-zinc-100 overflow-hidden bg-white active:scale-[0.98] transition-transform"
+            >
+              <div className="relative aspect-[16/10] overflow-hidden bg-zinc-100">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={current.image} alt={s.name} loading="lazy" className="w-full h-full object-cover" />
+                <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/50 text-[9px] font-bold text-white">{DOMAIN_LABEL[domain] || domain}</span>
+                <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full bg-black/50 text-[9px] font-bold text-white">{current.time}</span>
+              </div>
+              <div className="p-3">
+                <p className="text-[13px] font-semibold text-zinc-800 leading-tight line-clamp-1">{s.name}</p>
+                <p className="text-[11px] text-zinc-400 mt-0.5 line-clamp-1">{current.desc}</p>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-sm font-bold text-zinc-900">от {current.price} ₽</span>
+                  <span className="text-[10px] font-semibold text-zinc-400">Открыть →</span>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      )}
+
       <div className="mt-4 flex items-center gap-2 px-1 text-[10px] text-zinc-300">
         <LayoutGrid size={11} /> Порядок и правки применяются сразу ко всем страницам сайта
       </div>
@@ -3132,6 +3247,141 @@ function MirrorTab() {
                   )}
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {clientCard && cCard && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={() => setClientCard(null)}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div
+            className="relative w-full sm:max-w-md mx-0 sm:mx-4 bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden transition-all duration-300 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={cCard.image} alt={clientCard.name} className="w-full h-48 sm:h-56 object-cover bg-zinc-100" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+              <button
+                type="button"
+                onClick={() => setClientCard(null)}
+                className="absolute top-3 right-3 p-2 rounded-full bg-black/40 text-white active:bg-black/60 transition-colors"
+              >
+                <X size={18} />
+              </button>
+              <div className="absolute bottom-3 left-4 right-4">
+                <span className="inline-block px-2.5 py-1 rounded-full bg-black/40 text-[10px] font-bold text-white mb-1.5">
+                  {DOMAIN_LABEL[domain] || domain} • {cCard.time}
+                </span>
+                <h2 className="text-xl font-black text-white">{clientCard.name}</h2>
+              </div>
+            </div>
+
+            <div className="p-5">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-2xl font-black text-zinc-900">от {cCard.price} ₽</span>
+                <span className="text-xs text-zinc-400">{cCard.time}</span>
+              </div>
+              <p className="text-sm text-zinc-600 leading-relaxed mb-4">{cCard.desc}</p>
+
+              <div className="space-y-2 mb-5">
+                <div className="flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /><span className="text-xs text-zinc-600">Бесплатный выезд</span></div>
+                <div className="flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /><span className="text-xs text-zinc-600">Фиксированная цена</span></div>
+                <div className="flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-500" /><span className="text-xs text-zinc-600">Гарантия до 12 мес</span></div>
+              </div>
+
+              <div className="border-t border-zinc-100 pt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                    Галерея — карусель / до-после ({clientPhotos.length})
+                  </p>
+                  {photoBusy && <Loader2 size={13} className="animate-spin text-zinc-400" />}
+                </div>
+
+                {clientPhotos.length > 0 && (
+                  <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
+                    {clientPhotos.map((p, i) => (
+                      <div key={`${p}-${i}`} className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0 group border border-zinc-100 bg-zinc-100">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={p} alt="" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          disabled={photoBusy}
+                          onClick={() => void removeClientPhoto(i)}
+                          className="absolute top-1 right-1 p-1 rounded-full bg-red-500 text-white opacity-80 active:opacity-100 transition-opacity disabled:opacity-40"
+                        >
+                          <Trash2 size={10} />
+                        </button>
+                        <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-1 bg-black/40 py-0.5">
+                          <button
+                            type="button"
+                            disabled={photoBusy || i === 0}
+                            onClick={() => void moveClientPhoto(i, -1)}
+                            className="px-1.5 text-white text-[9px] font-bold disabled:opacity-30"
+                          >
+                            ◀
+                          </button>
+                          <button
+                            type="button"
+                            disabled={photoBusy || i === clientPhotos.length - 1}
+                            onClick={() => void moveClientPhoto(i, 1)}
+                            className="px-1.5 text-white text-[9px] font-bold disabled:opacity-30"
+                          >
+                            ▶
+                          </button>
+                        </div>
+                        <span className="absolute bottom-1 left-1 w-4 h-4 rounded-full bg-black/50 text-white text-[8px] font-bold flex items-center justify-center">{i + 1}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={photoBusy}
+                    onClick={() => photoCamRef.current?.click()}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-50 text-emerald-600 text-xs font-bold active:bg-emerald-100 transition-colors disabled:opacity-50"
+                  >
+                    <Camera size={14} /> {photoBusy ? '...' : 'Камера'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={photoBusy}
+                    onClick={() => photoFileRef.current?.click()}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-blue-50 text-blue-600 text-xs font-bold active:bg-blue-100 transition-colors disabled:opacity-50"
+                  >
+                    <ImagePlus size={14} /> Файл
+                  </button>
+                </div>
+                <input
+                  ref={photoCamRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadClientPhoto(f); e.target.value = ''; }}
+                />
+                <input
+                  ref={photoFileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadClientPhoto(f); e.target.value = ''; }}
+                />
+                <p className="text-[9.5px] text-zinc-300 mt-2 text-center">Порядок ◀▶ — как в карусели клиента</p>
+              </div>
+            </div>
+
+            <div className="sticky bottom-0 bg-white border-t border-zinc-100 p-4">
+              <button
+                type="button"
+                onClick={() => setClientCard(null)}
+                className="w-full py-3.5 rounded-2xl bg-zinc-900 text-white text-sm font-bold active:scale-[0.98] transition-transform"
+              >
+                Закрыть
+              </button>
             </div>
           </div>
         </div>
