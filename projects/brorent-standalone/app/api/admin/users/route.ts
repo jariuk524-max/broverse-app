@@ -6,6 +6,7 @@ import { hashPassword } from '@/lib/admin/crypto';
 import { revokeSessions } from '@/lib/admin/revocations';
 import { getAvatars, setAvatar } from '@/lib/admin/avatars';
 import { getProfiles, setTitle } from '@/lib/admin/profiles';
+import { readThreads, writeThreads, ensureThread, markAccountDeleted } from '@/lib/admin/chat';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +51,13 @@ export async function POST(req: Request) {
   if (!ok) return NextResponse.json({ error: 'Такой логин уже есть' }, { status: 409 });
   if (avatarUrl) await setAvatar(login, avatarUrl);
   if (title) await setTitle(login, title);
+
+  // Чат с сотрудником — сразу с его именем (история переживает удаление кабинета)
+  try {
+    const threads = await readThreads();
+    ensureThread(threads, `emp:${login}`, { title: displayName, kind: 'employee', login, role: title || null });
+    await writeThreads(threads);
+  } catch { /* чат не должен ломать создание кабинета */ }
 
   await writeAudit({
     actor_login: res.admin.login,
@@ -211,6 +219,9 @@ export async function DELETE(req: Request) {
 
   const ok = await deleteAdmin(login);
   if (!ok) return NextResponse.json({ error: 'Сотрудник не найден' }, { status: 404 });
+
+  // История переписки сохраняется: тред помечается «кабинет удалён», но не удаляется
+  await markAccountDeleted(login).catch(() => {});
 
   await writeAudit({
     actor_login: res.admin.login,

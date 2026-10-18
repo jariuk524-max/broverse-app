@@ -107,6 +107,10 @@ export default function Header() {
                 className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-zinc-100 text-zinc-600 text-[13px] font-bold hover:bg-zinc-200 active:scale-95 transition-all">
                 <Star size={14} /> Отзыв
               </button>
+              <Link href="/chat"
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-zinc-100 text-zinc-600 text-[13px] font-bold hover:bg-zinc-200 active:scale-95 transition-all">
+                <MessageCircle size={14} /> Чат
+              </Link>
               <Link href="/admin" aria-label="Админ-панель" title="Админ-панель"
                 className="flex items-center justify-center w-10 h-10 rounded-full bg-zinc-100 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-600 active:scale-95 transition-all">
                 <ShieldCheck size={16} />

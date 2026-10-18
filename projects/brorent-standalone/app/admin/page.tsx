@@ -2492,12 +2492,14 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
         <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={() => setChatWith(null)}>
           <div className="w-full max-w-[420px] max-h-[85vh] overflow-y-auto bg-white rounded-[24px] p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-[13px] font-bold text-zinc-900">Чат: @{chatWith}</p>
+              <p className="text-[13px] font-bold text-zinc-900">
+                Чат: {admins?.find((a) => a.login === chatWith)?.display_name || `@${chatWith}`}
+              </p>
               <button type="button" onClick={() => setChatWith(null)} className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500">
                 <X size={15} />
               </button>
             </div>
-            <ChatPanel withLogin={chatWith} />
+            <ChatPanel threadId={`emp:${chatWith}`} mySide="admin" peerLabel={admins?.find((a) => a.login === chatWith)?.display_name || chatWith} />
           </div>
         </div>
       )}
@@ -3776,21 +3778,26 @@ function LockedSection({ label, onAsk, onBack, toChief = false }: { label: strin
   );
 }
 
-type ChatMsg = { id: string; from: 'staff' | 'admin'; login: string; text: string; created_at: string };
+type ChatMsg = { id: string; from: 'staff' | 'admin' | 'client' | 'master'; author?: string; login?: string; text: string; created_at: string };
 
-function ChatPanel({ withLogin }: { withLogin?: string }) {
+/**
+ * Лента одного треда (сотрудник / клиент / мастер / поддержка).
+ * threadId — идентификатор треда (emp:/client:/master:); без него сотрудник читает свой тред.
+ * mySide — чья сторона справа: 'staff' — пишет сотрудник, 'admin' — пишет руководитель.
+ */
+function ChatPanel({ threadId, mySide = 'staff', peerLabel }: { threadId?: string; mySide?: 'admin' | 'staff'; peerLabel?: string }) {
   const [msgs, setMsgs] = useState<ChatMsg[] | null>(null);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const url = withLogin ? `/api/admin/chat?with=${encodeURIComponent(withLogin)}` : '/api/admin/chat';
+    const url = threadId ? `/api/admin/chat?with=${encodeURIComponent(threadId)}` : '/api/admin/chat';
     const r = await fetch(url).catch(() => null);
     if (r && r.ok) {
       const d = await r.json().catch(() => null);
       setMsgs(Array.isArray(d?.messages) ? d.messages : []);
     } else setMsgs([]);
-  }, [withLogin]);
+  }, [threadId]);
 
   useEffect(() => {
     load();
@@ -3806,7 +3813,7 @@ function ChatPanel({ withLogin }: { withLogin?: string }) {
     await fetch('/api/admin/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...(withLogin ? { to: withLogin } : {}), text: t }),
+      body: JSON.stringify({ ...(threadId ? { to: threadId } : {}), text: t }),
     }).catch(() => {});
     setText('');
     await load();
@@ -3822,25 +3829,29 @@ function ChatPanel({ withLogin }: { withLogin?: string }) {
       <div className="space-y-2 py-1 min-h-[200px]">
         {msgs.length === 0 && (
           <p className="text-center text-[12px] text-zinc-600 py-8">
-            Сообщений пока нет. Напишите первым — собеседник увидит сообщение в кабинете.
+            Сообщений пока нет. Напишите первым — собеседник увидит сообщение в своём кабинете.
           </p>
         )}
-        {msgs.map((m) => (
-          <div key={m.id} className={`flex ${m.from === 'staff' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 ${m.from === 'staff' ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-800 shadow-sm'}`}>
-              <p className="text-[13px] leading-snug break-words">{m.text}</p>
-              <p className={`text-[9px] mt-1 ${m.from === 'staff' ? 'text-zinc-600' : 'text-zinc-600'}`}>
-                {m.from === 'admin' ? `${m.login} · ` : ''}{new Date(m.created_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-              </p>
+        {msgs.map((m) => {
+          const own = m.from === mySide;
+          const author = own ? '' : (m.author || m.login || '');
+          return (
+            <div key={m.id} className={`flex ${own ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 ${own ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-800 shadow-sm'}`}>
+                <p className="text-[13px] leading-snug break-words">{m.text}</p>
+                <p className="text-[9px] mt-1 text-zinc-500">
+                  {author ? `${author} · ` : ''}{new Date(m.created_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <form onSubmit={send} className="flex gap-2 mt-3 sticky bottom-3">
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={withLogin ? `Сообщение: ${withLogin}…` : 'Сообщение руководителю…'}
+          placeholder={peerLabel ? `Сообщение: ${peerLabel}…` : threadId ? 'Сообщение…' : 'Сообщение руководителю…'}
           className={INPUT}
           maxLength={1000}
         />
@@ -3856,17 +3867,47 @@ function ChatPanel({ withLogin }: { withLogin?: string }) {
   );
 }
 
+type ChatListItem = {
+  id: string;
+  title: string;
+  kind: 'employee' | 'client' | 'master' | 'support';
+  role?: string | null;
+  account_deleted?: boolean;
+  count: number;
+  last: ChatMsg | null;
+  fresh?: boolean;
+};
+
+const CHAT_KIND_LABEL: Record<string, string> = {
+  employee: 'Сотрудник',
+  client: 'Клиент',
+  master: 'Мастер',
+  support: 'Поддержка',
+};
+
+function chatBadge(c: ChatListItem): string {
+  if (c.kind === 'employee') return c.role || 'Сотрудник';
+  return CHAT_KIND_LABEL[c.kind] || 'Чат';
+}
+
 function ChatTab({ session }: { session: Session }) {
   const isChief = session.roles.includes('team');
-  const [list, setList] = useState<{ login: string; count: number; last: ChatMsg | null }[] | null>(null);
-  const [withLogin, setWithLogin] = useState<string | null>(null);
+  const [list, setList] = useState<ChatListItem[] | null>(null);
+  const [filter, setFilter] = useState<'all' | 'employee' | 'client' | 'master'>('all');
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [openTitle, setOpenTitle] = useState('');
 
   useEffect(() => {
     if (!isChief) return;
-    fetch('/api/admin/chat?list=1')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setList(Array.isArray(d?.chats) ? d.chats : []))
-      .catch(() => setList([]));
+    let alive = true;
+    const load = () =>
+      fetch('/api/admin/chat?list=1')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (alive) setList(Array.isArray(d?.chats) ? d.chats : []); })
+        .catch(() => { if (alive) setList([]); });
+    load();
+    const t = setInterval(load, 8000);
+    return () => { alive = false; clearInterval(t); };
   }, [isChief]);
 
   if (!isChief) {
@@ -3878,18 +3919,23 @@ function ChatTab({ session }: { session: Session }) {
     );
   }
 
-  if (withLogin) {
+  if (openId) {
     return (
       <div>
         <button
           type="button"
-          onClick={() => setWithLogin(null)}
+          onClick={() => { setOpenId(null); setOpenTitle(''); }}
           className="mb-3 px-3 py-1.5 rounded-full bg-white text-[11px] font-bold text-zinc-500 shadow-sm"
         >
           ← Все чаты
         </button>
-        <p className="text-[12px] font-bold text-zinc-900 mb-2 px-1">Чат: {withLogin}</p>
-        <ChatPanel withLogin={withLogin} />
+        <div className="flex items-center gap-2 mb-2 px-1">
+          <p className="text-[12px] font-bold text-zinc-900">{openTitle}</p>
+          <span className="px-2 py-0.5 rounded-full bg-zinc-100 text-[10px] font-bold text-zinc-500">
+            {CHAT_KIND_LABEL[list?.find((c) => c.id === openId)?.kind || 'employee']}
+          </span>
+        </div>
+        <ChatPanel threadId={openId} mySide="admin" peerLabel={openTitle} />
       </div>
     );
   }
@@ -3898,31 +3944,78 @@ function ChatTab({ session }: { session: Session }) {
     return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-600" /></div>;
   }
 
+  const counts = {
+    employee: list.filter((c) => c.kind === 'employee').length,
+    client: list.filter((c) => c.kind === 'client').length,
+    master: list.filter((c) => c.kind === 'master').length,
+  };
+  const filtered = list.filter((c) => filter === 'all' || c.kind === filter);
+
+  const FILTERS: { id: 'all' | 'employee' | 'client' | 'master'; label: string }[] = [
+    { id: 'all', label: `Все (${list.length})` },
+    { id: 'employee', label: `Сотрудники (${counts.employee})` },
+    { id: 'client', label: `Клиенты (${counts.client})` },
+    { id: 'master', label: `Мастера (${counts.master})` },
+  ];
+
   return (
     <div className="space-y-2">
-      <p className="text-[11px] text-zinc-600 px-1">Сообщения сотрудников. Ответы видит только этот сотрудник.</p>
-      {list.length === 0 && (
+      <p className="text-[11px] text-zinc-600 px-1">
+        Общая переписка: сотрудники, клиенты и мастера пишут со своих кабинетов — вы отвечаете здесь.
+        История хранится, даже если кабинет удалён.
+      </p>
+
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {FILTERS.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            onClick={() => setFilter(f.id)}
+            className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-bold transition-colors ${filter === f.id ? 'bg-zinc-900 text-white shadow-sm' : 'bg-white text-zinc-500 shadow-sm'}`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {filtered.length === 0 && (
         <div className="bg-white rounded-[20px] p-8 text-center shadow-sm">
           <MessageSquare size={26} className="text-zinc-500 mx-auto mb-2" />
-          <p className="text-[13px] text-zinc-600">Сотрудники ещё не писали</p>
+          <p className="text-[13px] text-zinc-600">Чатов пока нет</p>
         </div>
       )}
-      {list.map((c) => (
+
+      {filtered.map((c) => (
         <button
-          key={c.login}
+          key={c.id}
           type="button"
-          onClick={() => setWithLogin(c.login)}
+          onClick={() => { setOpenId(c.id); setOpenTitle(c.title); }}
           className="w-full text-left bg-white rounded-[16px] p-3.5 shadow-sm flex items-center gap-3 active:scale-[0.99] transition-transform"
         >
           <span className="w-9 h-9 rounded-full bg-zinc-900 text-white text-[12px] font-black flex items-center justify-center shrink-0">
-            {c.login.slice(0, 1).toUpperCase()}
+            {c.title.slice(0, 1).toUpperCase()}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-bold text-zinc-900">@{c.login}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-[13px] font-bold text-zinc-900 truncate">{c.title}</p>
+              <span className="px-1.5 py-0.5 rounded-full bg-zinc-100 text-[9px] font-bold text-zinc-500 shrink-0">
+                {chatBadge(c)}
+              </span>
+              {c.account_deleted && (
+                <span className="px-1.5 py-0.5 rounded-full bg-red-50 text-[9px] font-bold text-red-500 shrink-0">
+                  кабинет удалён
+                </span>
+              )}
+            </div>
             <p className="text-[11px] text-zinc-600 truncate">
-              {c.last ? `${c.last.from === 'admin' ? 'Вы: ' : ''}${c.last.text}` : ''}
+              {c.last
+                ? `${c.last.from === 'admin' ? 'Вы: ' : ''}${c.last.text}`
+                : c.fresh
+                  ? 'Нет сообщений — напишите первым'
+                  : ''}
             </p>
           </div>
+          <span className="text-[10px] text-zinc-400 shrink-0">{c.count || ''}</span>
           <ChevronRight size={15} className="text-zinc-500 shrink-0" />
         </button>
       ))}
@@ -4322,12 +4415,14 @@ function TeamTab({ session }: { session: Session }) {
         <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={() => setChatWith(null)}>
           <div className="w-full max-w-[420px] max-h-[85vh] overflow-y-auto bg-white rounded-[24px] p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-[13px] font-bold text-zinc-900">Чат: @{chatWith}</p>
+              <p className="text-[13px] font-bold text-zinc-900">
+                Чат: {admins?.find((a) => a.login === chatWith)?.display_name || `@${chatWith}`}
+              </p>
               <button type="button" onClick={() => setChatWith(null)} className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500">
                 <X size={15} />
               </button>
             </div>
-            <ChatPanel withLogin={chatWith} />
+            <ChatPanel threadId={`emp:${chatWith}`} mySide="admin" peerLabel={admins?.find((a) => a.login === chatWith)?.display_name || chatWith} />
           </div>
         </div>
       )}
