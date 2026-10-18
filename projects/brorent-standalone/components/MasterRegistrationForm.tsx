@@ -4,6 +4,9 @@ import { useState, useRef } from 'react';
 import { ArrowLeft, Camera, CheckCircle2, Loader2, Lock, Send } from 'lucide-react';
 import Link from 'next/link';
 import { createServiceRequest } from '@/lib/requests';
+import ConsentCheckbox from '@/components/ConsentCheckbox';
+import DevStub from '@/components/DevStub';
+import { DATA_COLLECTION_LOCKED } from '@/lib/site-config';
 
 const SPECIALIZATIONS = [
   { id: 'wash', label: 'Химчистка мебели', emoji: '🛋️' },
@@ -33,6 +36,7 @@ export default function MasterRegistrationForm() {
   const [experience, setExperience] = useState('middle');
   const [city, setCity] = useState('');
   const [about, setAbout] = useState('');
+  const [pdConsent, setPdConsent] = useState(false);
 
   const handlePhotoClick = () => fileInputRef.current?.click();
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,7 +53,7 @@ export default function MasterRegistrationForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (sending) return;
+    if (sending || !pdConsent) return; // 152-ФЗ: без согласия отправка запрещена
     setSending(true);
     setError('');
 
@@ -80,6 +84,9 @@ export default function MasterRegistrationForm() {
       setError('Не удалось отправить заявку. Проверьте соединение и попробуйте ещё раз.');
     }
   };
+
+  // 152-ФЗ: на время разработки вход закрыт заглушкой — данные не собираются
+  if (DATA_COLLECTION_LOCKED) return <DevStub variant="page" title="Регистрация мастеров временно закрыта" />;
 
   if (submitted) {
     return (
@@ -238,9 +245,11 @@ export default function MasterRegistrationForm() {
             </p>
           )}
 
+          <ConsentCheckbox checked={pdConsent} onChange={setPdConsent} />
+
           <button
             type="submit"
-            disabled={sending}
+            disabled={sending || !pdConsent}
             className="w-full rounded-[18px] bg-[#1C1C1E] px-6 py-4 text-[16px] font-bold text-white shadow-[0_8px_30px_rgba(0,0,0,0.2)] transition-all active:scale-[0.98] hover:bg-[#2C2C2E] disabled:opacity-50"
           >
             <span className="flex items-center justify-center gap-2">

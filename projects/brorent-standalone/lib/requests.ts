@@ -39,6 +39,8 @@ export type ServiceRequest = {
     unlock_score?: number;
     /** причина отклонения заявки (видна мастеру/админу) */
     decline_reason?: string;
+    /** 152-ФЗ: факт и время согласия на обработку ПДн при отправке формы */
+    consent?: { personal_data?: boolean; cookies?: boolean; at?: string };
   } | null;
 };
 
@@ -78,6 +80,8 @@ export async function createServiceRequest(input: {
         description: input.description || '',
         proposed_price: input.proposedPrice || '',
         domain: input.domain || 'wash',
+        // 152-ФЗ: согласие получено чекбоксом до отправки формы
+        consent: { personal_data: true, cookies: true, at: new Date().toISOString() },
       },
     })
     .select()

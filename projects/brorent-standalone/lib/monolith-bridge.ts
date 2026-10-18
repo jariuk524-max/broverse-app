@@ -29,6 +29,8 @@ export async function createOrderInSupabase(payload: {
   client_comment?: string;
   client_chat_id?: string;
   master?: { id?: string; name?: string; phone?: string; adId?: string; service?: string };
+  /** 152-ФЗ: момент согласия пользователя (форма без галочки не отправляется) */
+  consentAt?: string;
 }) {
   const { data, error } = await getSupabase()
     .from('orders')
@@ -52,6 +54,9 @@ export async function createOrderInSupabase(payload: {
               master_ad_id: payload.master.adId || '',
               master_service: payload.master.service || '',
             }
+          : {}),
+        ...(payload.consentAt
+          ? { consent: { personal_data: true, cookies: true, at: payload.consentAt } }
           : {}),
       },
     })

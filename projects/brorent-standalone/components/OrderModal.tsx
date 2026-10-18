@@ -5,6 +5,9 @@ import { CheckCircle2, X, Phone, MessageCircle, Zap, Minus, Plus, Truck, Chevron
 import { createOrderInSupabase } from '@/lib/monolith-bridge';
 import MasterOrderStatus from '@/components/MasterOrderStatus';
 import { saveOrder } from '@/components/Header';
+import ConsentCheckbox from '@/components/ConsentCheckbox';
+import DevStub from '@/components/DevStub';
+import { DATA_COLLECTION_LOCKED } from '@/lib/site-config';
 
 export type OrderServiceItem = {
   name: string;
@@ -105,11 +108,15 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
   const [submitted, setSubmitted] = useState(false);
   const [orderId, setOrderId] = useState('');
   const [closing, setClosing] = useState(false);
+  const [pdConsent, setPdConsent] = useState(false);
 
   const handleClose = useCallback(() => {
     setClosing(true);
     setTimeout(onClose, 300);
   }, [onClose]);
+
+  // 152-ФЗ: на время разработки вход закрыт заглушкой — данные не собираются
+  if (DATA_COLLECTION_LOCKED) return <DevStub variant="card" onClose={onClose} title="Заказы временно закрыты" />;
 
   const today = new Date();
   const tomorrow = new Date(today);
@@ -136,13 +143,14 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
   const grandTotal = isMasterOrder ? dayPrice : rentalTotal + deliveryCost + returnCost + addonsTotal;
 
   const canProceed = dateOption && timeSlot;
-  const canSubmit = name && phone && (isMasterOrder ? !!address : (deliveryType === 'pickup' || address));
+  const canSubmit = name && phone && pdConsent && (isMasterOrder ? !!address : (deliveryType === 'pickup' || address));
 
   const toggleAddon = (id: string) => {
     setSelectedAddons(prev => prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]);
   };
 
   const handleSubmit = useCallback(async () => {
+    if (!canSubmit) return; // 152-ФЗ: без согласия отправка запрещена
     const timeLabel = TIME_SLOTS.find(t => t.id === timeSlot)?.label || timeSlot;
     const dateLabel = dateOption === 'custom' ? customDate : dateOptions.find(d => d.id === dateOption)?.label;
     const addons = ADDON_PRODUCTS.filter(p => selectedAddons.includes(p.id)).map(p => p.name).join(', ');
@@ -164,6 +172,7 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
       master: service.isMaster
         ? { id: service.masterId || '', name: service.masterName || '', phone: service.masterPhone || '', adId: service.adId || '', service: service.name }
         : undefined,
+      consentAt: new Date().toISOString(),
     });
     if (created) {
       setOrderId(created.id || '');
@@ -189,7 +198,7 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
       createdAt: new Date().toISOString(),
     });
     setSubmitted(true);
-  }, [service.name, service.brand, items, address, dateOption, customDate, timeSlot, rentDays, name, phone, comment, grandTotal, deliveryType, returnType, paymentMethod, selectedAddons]);
+  }, [canSubmit, service.name, service.brand, items, address, dateOption, customDate, timeSlot, rentDays, name, phone, comment, grandTotal, deliveryType, returnType, paymentMethod, selectedAddons]);
 
   if (submitted) {
     return (
@@ -660,10 +669,15 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
               Далее →
             </button>
           ) : (
-            <button type="button" onClick={handleSubmit} disabled={!canSubmit}
-              className="w-full py-3.5 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold disabled:opacity-30 hover:bg-[#0097A7] transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2 touch-manipulation">
-              <Zap size={14} /> {isMasterOrder ? 'Отправить заявку мастеру' : `Забронировать за ${grandTotal.toLocaleString('ru')} ₽`}
-            </button>
+            <>
+              <div className="pb-1">
+                <ConsentCheckbox checked={pdConsent} onChange={setPdConsent} />
+              </div>
+              <button type="button" onClick={handleSubmit} disabled={!canSubmit}
+                className="w-full py-3.5 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold disabled:opacity-30 hover:bg-[#0097A7] transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2 touch-manipulation">
+                <Zap size={14} /> {isMasterOrder ? 'Отправить заявку мастеру' : `Забронировать за ${grandTotal.toLocaleString('ru')} ₽`}
+              </button>
+            </>
           )}
           <div className="flex gap-2 mt-2">
             <a href="tel:+79001234567" className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-[10px] font-semibold text-zinc-500 hover:bg-zinc-100 transition-colors">

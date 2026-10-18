@@ -49,6 +49,20 @@
 - Supabase (backend)
 - Socket.io (realtime)
 
+## 152-ФЗ — персональные данные (ОБЯЗАТЕЛЬНО)
+Проект обязан соответствовать 152-ФЗ (персональные данные, cookie):
+- ФЛАГ ЗАГЛУШКИ: `DATA_COLLECTION_LOCKED = true` в `lib/site-config.ts` — на время разработки
+  все публичные формы сбора ПДн закрыты заглушками `components/DevStub.tsx`
+  (заявка OrderModal / RequestModal / MoveRequestModal, отзыв FeedbackModal,
+  регистрация мастера /master, чат /chat). Данные НЕ собираются до запуска.
+  Перед публичным запуском выставить false — формы откроются с обязательным чекбоксом.
+- Чекбокс согласия: `components/ConsentCheckbox.tsx` — обязателен в каждой форме, собирающей
+  ПДн (имя, телефон, адрес, сообщения, cookie); без галочки кнопка отправки заблокирована;
+  факт согласия пишется в metadata заявки (`consent: { personal_data, cookies, at }`).
+- Политика обработки ПДн: страница `/privacy` (app/privacy/page.tsx) — 152-ФЗ, cookie,
+  цели, сроки, права субъекта, контакты.
+- Внутренние кабинеты (/admin, /chief, /leader) — не публичный сбор ПДн, флаг на них не действует.
+
 ## Новая админка (ОСНОВНАЯ — дорабатываем)
 Код: projects/brorent-standalone/app/chief/page.tsx + app/admin/page.tsx (~3800 строк) + app/api/admin/*
 - https://broverse-client.vercel.app/chief — Кабинет руководителя (хаб): кабинеты администраторам,

@@ -3,6 +3,9 @@
 import { useCallback, useState } from 'react';
 import { X, Send, Loader2, CheckCircle2, Star, Search, MessageSquare } from 'lucide-react';
 import { findRequestsByPhone, submitFeedback, type ServiceRequest } from '@/lib/requests';
+import ConsentCheckbox from '@/components/ConsentCheckbox';
+import DevStub from '@/components/DevStub';
+import { DATA_COLLECTION_LOCKED } from '@/lib/site-config';
 
 interface FeedbackModalProps {
   onClose: () => void;
@@ -26,19 +29,20 @@ export default function FeedbackModal({ onClose }: FeedbackModalProps) {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
+  const [pdConsent, setPdConsent] = useState(false);
 
   const search = useCallback(async () => {
-    if (phone.replace(/\D/g, '').length < 6 || searching) return;
+    if (phone.replace(/\D/g, '').length < 6 || searching || !pdConsent) return; // 152-ФЗ
     setSearching(true);
     setSearchError('');
     const found = await findRequestsByPhone(phone);
     setOrders(found);
     setSearching(false);
     if (found.length === 0) setSearchError('Заявки по этому номеру не найдены.');
-  }, [phone, searching]);
+  }, [phone, searching, pdConsent]);
 
   const send = useCallback(async () => {
-    if (!selected || resolved === null || submitting) return;
+    if (!selected || resolved === null || submitting || !pdConsent) return; // 152-ФЗ
     setSubmitting(true);
     setError('');
     const ok = await submitFeedback(selected.id, {
@@ -49,9 +53,12 @@ export default function FeedbackModal({ onClose }: FeedbackModalProps) {
     setSubmitting(false);
     if (ok) setDone(true);
     else setError('Не удалось отправить отзыв. Попробуйте ещё раз.');
-  }, [selected, resolved, comment, rating, submitting]);
+  }, [selected, resolved, comment, rating, submitting, pdConsent]);
 
   const handleClose = useCallback(() => onClose(), [onClose]);
+
+  // 152-ФЗ: на время разработки вход закрыт заглушкой — данные не собираются
+  if (DATA_COLLECTION_LOCKED) return <DevStub variant="card" onClose={onClose} title="Отзывы временно закрыты" />;
 
   /* ── Успех ── */
   if (done) {
@@ -156,11 +163,12 @@ export default function FeedbackModal({ onClose }: FeedbackModalProps) {
             )}
           </div>
 
-          <div className="shrink-0 bg-white border-t border-zinc-100 p-4 sm:p-5">
+          <div className="shrink-0 bg-white border-t border-zinc-100 p-4 sm:p-5 space-y-3">
+            <ConsentCheckbox checked={pdConsent} onChange={setPdConsent} />
             <button
               type="button"
               onClick={send}
-              disabled={resolved === null || submitting}
+              disabled={resolved === null || submitting || !pdConsent}
               className={`w-full py-3.5 rounded-2xl bg-zinc-900 text-white text-sm font-bold disabled:opacity-30 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2 ${TAP}`}
             >
               {submitting ? (
@@ -201,10 +209,13 @@ export default function FeedbackModal({ onClose }: FeedbackModalProps) {
               onChange={(e) => setPhone(e.target.value)}
               className={INPUT}
             />
+            <div className="mt-2.5">
+              <ConsentCheckbox checked={pdConsent} onChange={setPdConsent} />
+            </div>
             <button
               type="button"
               onClick={search}
-              disabled={phone.replace(/\D/g, '').length < 6 || searching}
+              disabled={phone.replace(/\D/g, '').length < 6 || searching || !pdConsent}
               className={`w-full mt-2.5 py-3 rounded-xl bg-zinc-900 text-white text-[13px] font-bold flex items-center justify-center gap-2 disabled:opacity-30 active:scale-[0.98] transition-transform ${TAP}`}
             >
               {searching ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />} Найти заявки

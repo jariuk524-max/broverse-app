@@ -3,6 +3,9 @@
 import { useCallback, useRef, useState } from 'react';
 import { CheckCircle2, X, Camera, Send, Loader2 } from 'lucide-react';
 import { createServiceRequest } from '@/lib/requests';
+import ConsentCheckbox from '@/components/ConsentCheckbox';
+import DevStub from '@/components/DevStub';
+import { DATA_COLLECTION_LOCKED } from '@/lib/site-config';
 
 interface RequestModalProps {
   serviceName?: string;
@@ -33,10 +36,14 @@ export default function RequestModal({
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [pdConsent, setPdConsent] = useState(false);
 
   const handleClose = useCallback(() => {
     onClose();
   }, [onClose]);
+
+  // 152-ФЗ: на время разработки вход закрыт заглушкой — данные не собираются
+  if (DATA_COLLECTION_LOCKED) return <DevStub variant="card" onClose={onClose} title="Заявки временно закрыты" />;
 
   const handlePhotoClick = () => fileInputRef.current?.click();
 
@@ -48,7 +55,7 @@ export default function RequestModal({
     reader.readAsDataURL(file);
   };
 
-  const canSubmit = phone.trim().length >= 6 && !submitting;
+  const canSubmit = phone.trim().length >= 6 && pdConsent && !submitting;
 
   const handleSubmit = useCallback(async () => {
     if (!canSubmit) return;
@@ -196,7 +203,8 @@ export default function RequestModal({
         </div>
 
         {/* Sticky bottom bar */}
-        <div className="shrink-0 bg-white border-t border-zinc-100 p-4 sm:p-5">
+        <div className="shrink-0 bg-white border-t border-zinc-100 p-4 sm:p-5 space-y-3">
+          <ConsentCheckbox checked={pdConsent} onChange={setPdConsent} />
           <button
             type="button"
             onClick={handleSubmit}

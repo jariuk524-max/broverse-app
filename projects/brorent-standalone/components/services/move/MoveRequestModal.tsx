@@ -3,6 +3,9 @@
 import { useCallback, useMemo, useState } from 'react';
 import { X, Send, Loader2, CheckCircle2, ChevronLeft, MapPin, CalendarDays, Package, Phone } from 'lucide-react';
 import { createServiceRequest } from '@/lib/requests';
+import ConsentCheckbox from '@/components/ConsentCheckbox';
+import DevStub from '@/components/DevStub';
+import { DATA_COLLECTION_LOCKED } from '@/lib/site-config';
 
 interface MoveRequestModalProps {
   presetService?: string | null;
@@ -73,6 +76,7 @@ export default function MoveRequestModal({ presetService, onClose }: MoveRequest
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [pdConsent, setPdConsent] = useState(false);
 
   /* ── Живой расчёт ── */
   const estimate = useMemo(() => {
@@ -95,8 +99,8 @@ export default function MoveRequestModal({ presetService, onClose }: MoveRequest
     if (step === 0) return fromAddr.trim().length > 2 && toAddr.trim().length > 2;
     if (step === 1) return !!date;
     if (step === 2) return true;
-    return phone.replace(/\D/g, '').length >= 6;
-  }, [step, fromAddr, toAddr, date, phone]);
+    return phone.replace(/\D/g, '').length >= 6 && pdConsent; // 152-ФЗ: согласие обязательно
+  }, [step, fromAddr, toAddr, date, phone, pdConsent]);
 
   const breakdown = useMemo(() => {
     const lines = [
@@ -131,6 +135,9 @@ export default function MoveRequestModal({ presetService, onClose }: MoveRequest
 
   const next = () => { if (stepValid && step < 3) setStep(step + 1); };
   const back = () => { if (step > 0) setStep(step - 1); };
+
+  // 152-ФЗ: на время разработки вход закрыт заглушкой — данные не собираются
+  if (DATA_COLLECTION_LOCKED) return <DevStub variant="card" onClose={onClose} title="Расчёт переездов временно закрыт" />;
 
   /* ── Успех ── */
   if (submitted) {
@@ -359,15 +366,18 @@ export default function MoveRequestModal({ presetService, onClose }: MoveRequest
               Далее — {STEP_TITLES[step + 1]}
             </button>
           ) : (
-            <button type="button" onClick={submit} disabled={!stepValid || submitting}
-              className={`w-full py-3.5 rounded-2xl text-white text-sm font-bold disabled:opacity-30 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2 ${TAP}`}
-              style={{ background: BRAND }}>
-              {submitting ? (
-                <><Loader2 size={14} className="animate-spin" /> Отправляем...</>
-              ) : (
-                <><Send size={14} /> Отправить заявку — перезвоним за 15 мин</>
-              )}
-            </button>
+            <div className="space-y-3">
+              <ConsentCheckbox checked={pdConsent} onChange={setPdConsent} />
+              <button type="button" onClick={submit} disabled={!stepValid || submitting}
+                className={`w-full py-3.5 rounded-2xl text-white text-sm font-bold disabled:opacity-30 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2 ${TAP}`}
+                style={{ background: BRAND }}>
+                {submitting ? (
+                  <><Loader2 size={14} className="animate-spin" /> Отправляем...</>
+                ) : (
+                  <><Send size={14} /> Отправить заявку — перезвоним за 15 мин</>
+                )}
+              </button>
+            </div>
           )}
         </div>
       </div>

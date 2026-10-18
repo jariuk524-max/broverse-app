@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, MessageCircle, Send, Home } from 'lucide-react';
+import ConsentCheckbox from '@/components/ConsentCheckbox';
+import DevStub from '@/components/DevStub';
+import { DATA_COLLECTION_LOCKED } from '@/lib/site-config';
 
 type ChatMsg = {
   id: string;
@@ -47,6 +50,7 @@ export default function ChatPage() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
+  const [pdConsent, setPdConsent] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async (p: string) => {
@@ -89,7 +93,7 @@ export default function ChatPage() {
   const open = async (e: React.FormEvent) => {
     e.preventDefault();
     const digits = digitsOf(phone);
-    if (digits.length < 10 || busy) return;
+    if (digits.length < 10 || busy || !pdConsent) return; // 152-ФЗ
     setBusy(true);
     setErr('');
     setLoading(true);
@@ -101,7 +105,7 @@ export default function ChatPage() {
   const send = async (e: React.FormEvent) => {
     e.preventDefault();
     const t = text.trim();
-    if (!t || busy || !profile) return;
+    if (!t || busy || !profile || !pdConsent) return; // 152-ФЗ
     setBusy(true);
     const r = await fetch('/api/chat', {
       method: 'POST',
@@ -126,6 +130,9 @@ export default function ChatPage() {
     setText('');
     setErr('');
   };
+
+  // 152-ФЗ: на время разработки вход закрыт заглушкой — данные не собираются
+  if (DATA_COLLECTION_LOCKED) return <DevStub variant="page" title="Чат временно закрыт" />;
 
   /* ── Вход по номеру ── */
   if (!profile) {
@@ -160,9 +167,12 @@ export default function ChatPage() {
                 />
               </div>
               {err && <p className="text-[13px] text-red-500">{err}</p>}
+              <div className="pt-1">
+                <ConsentCheckbox checked={pdConsent} onChange={setPdConsent} />
+              </div>
               <button
                 type="submit"
-                disabled={busy || loading || digitsOf(phone).length < 10}
+                disabled={busy || loading || digitsOf(phone).length < 10 || !pdConsent}
                 className="w-full px-5 py-3.5 rounded-2xl bg-zinc-900 text-white text-[15px] font-bold active:scale-[0.99] transition-transform disabled:opacity-40 inline-flex items-center justify-center gap-2"
               >
                 {loading ? <Loader2 size={18} className="animate-spin" /> : <MessageCircle size={18} />}
