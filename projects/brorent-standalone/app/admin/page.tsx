@@ -25,7 +25,7 @@ type Session = {
 type TabId = 'overview' | 'orders' | 'chat' | 'tasks' | 'finance' | 'masters' | 'feedback' | 'catalog' | 'mirror' | 'audit' | 'team';
 
 const TABS: { id: TabId; label: string; role: string | null }[] = [
-  { id: 'overview', label: 'Обзор', role: 'overview' },
+  { id: 'overview', label: 'Обзор', role: null },
   { id: 'orders', label: 'Заявки', role: 'requests' },
   { id: 'chat', label: 'Чат', role: null },
   { id: 'tasks', label: 'Задачи', role: 'tasks' },
