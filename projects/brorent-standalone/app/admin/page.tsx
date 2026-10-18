@@ -39,6 +39,9 @@ const TABS: { id: TabId; label: string; role: string | null }[] = [
   { id: 'team', label: 'Команда', role: 'team' },
 ];
 
+/** Руководящие разделы — только в кабинете руководителя (/chief) */
+const CHIEF_ONLY: TabId[] = ['team', 'audit'];
+
 /** Название вкладки: для сотрудника первый раздел — «Мой кабинет» */
 const tabLabel = (id: TabId, roles: string[], chief = false): string => {
   if (id === 'overview') return chief && roles.includes('team') ? 'Хаб' : 'Мой кабинет';
@@ -327,7 +330,10 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
     );
   }
 
-  const canSee = (t: (typeof TABS)[number]) => !t.role || session.roles.includes(t.role);
+  const canSee = (t: (typeof TABS)[number]) => {
+    if (CHIEF_ONLY.includes(t.id) && !chief) return false;
+    return !t.role || session.roles.includes(t.role);
+  };
   const visibleTabs = TABS; // все разделы видимы; закрытые — с замком
 
   return (
@@ -407,6 +413,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
         {lockedTab ? (
           <LockedSection
             label={tabLabel(lockedTab, session.roles, chief)}
+            toChief={CHIEF_ONLY.includes(lockedTab) && session.roles.includes('team')}
             onBack={() => setLockedTab(null)}
             onAsk={async () => {
               const label = tabLabel(lockedTab, session.roles, chief);
@@ -419,7 +426,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
               setTab('chat');
             }}
           />
-        ) : tab === 'overview' ? (chief && session.roles.includes('team') ? <OverviewTab session={session} onOpenTab={setTab} /> : <MyCabinetTab session={session} onOpenTab={setTab} onAskLocked={setLockedTab} onEditProfile={() => setShowProfile(true)} />) : tab === 'orders' ? <OrdersTab /> : tab === 'chat' ? <ChatTab session={session} /> : tab === 'tasks' ? <TasksTab /> : tab === 'finance' ? <FinanceTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : tab === 'catalog' ? <CatalogTab /> : tab === 'mirror' ? <MirrorTab /> : tab === 'team' ? <TeamTab session={session} /> : <AuditTab />}
+        ) : tab === 'overview' ? (chief && session.roles.includes('team') ? <OverviewTab session={session} onOpenTab={setTab} /> : <MyCabinetTab session={session} onOpenTab={setTab} onAskLocked={setLockedTab} onEditProfile={() => setShowProfile(true)} chief={chief} />) : tab === 'orders' ? <OrdersTab /> : tab === 'chat' ? <ChatTab session={session} /> : tab === 'tasks' ? <TasksTab /> : tab === 'finance' ? <FinanceTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : tab === 'catalog' ? <CatalogTab /> : tab === 'mirror' ? <MirrorTab /> : tab === 'team' ? <TeamTab session={session} /> : <AuditTab />}
       </main>
 
       {showProfile && (
@@ -1310,13 +1317,14 @@ const TAB_ICONS: Record<TabId, React.ComponentType<{ size?: number; className?: 
   mirror: LayoutGrid, audit: History, team: Users,
 };
 
-function MyCabinetTab({ session, onOpenTab, onAskLocked, onEditProfile }: {
+function MyCabinetTab({ session, onOpenTab, onAskLocked, onEditProfile, chief = false }: {
   session: Session;
   onOpenTab: (id: TabId) => void;
   onAskLocked: (id: TabId) => void;
   onEditProfile: () => void;
+  chief?: boolean;
 }) {
-  const sections = TABS.filter((t) => t.id !== 'overview');
+  const sections = TABS.filter((t) => t.id !== 'overview' && (chief || !CHIEF_ONLY.includes(t.id)));
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-[24px] p-5 shadow-sm flex items-center gap-3.5">
@@ -1340,6 +1348,20 @@ function MyCabinetTab({ session, onOpenTab, onAskLocked, onEditProfile }: {
           Профиль
         </button>
       </div>
+
+      {session.roles.includes('team') && (
+        <a
+          href="/chief"
+          className="flex items-center justify-between gap-3 bg-zinc-900 rounded-[24px] p-5 shadow-sm active:scale-[0.98] transition-transform"
+        >
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Для руководителя</p>
+            <p className="text-[15px] font-black text-white mt-0.5">Кабинет руководителя проекта</p>
+            <p className="text-[11px] text-zinc-400 mt-0.5">Создание кабинетов, доступы к навыкам, история работы</p>
+          </div>
+          <ChevronRight size={18} className="text-white shrink-0" />
+        </a>
+      )}
 
       <div>
         <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2 px-1">Разделы</p>
@@ -2977,7 +2999,7 @@ function FinanceTab() {
 
 /* ────────────────────────── ЗАКРЫТЫЙ РАЗДЕЛ + ЧАТ ────────────────────────── */
 
-function LockedSection({ label, onAsk, onBack }: { label: string; onAsk: () => void; onBack: () => void }) {
+function LockedSection({ label, onAsk, onBack, toChief = false }: { label: string; onAsk: () => void; onBack: () => void; toChief?: boolean }) {
   const [sent, setSent] = useState(false);
   return (
     <div className="bg-white rounded-[24px] p-8 text-center shadow-sm">
@@ -2993,16 +3015,27 @@ function LockedSection({ label, onAsk, onBack }: { label: string; onAsk: () => v
       </div>
       <p className="text-[15px] font-bold text-zinc-900">Раздел «{label}» закрыт</p>
       <p className="text-[12px] text-zinc-400 mt-2 leading-relaxed max-w-[280px] mx-auto">
-        Руководитель открывает разделы по мере необходимости. Можно сразу попросить — сообщение уйдёт в чат.
+        {toChief
+          ? 'Это руководящий раздел: создание кабинетов, доступы и история работы сотрудников — в кабинете руководителя.'
+          : 'Руководитель открывает разделы по мере необходимости. Можно сразу попросить — сообщение уйдёт в чат.'}
       </p>
-      <button
-        type="button"
-        disabled={sent}
-        onClick={() => { onAsk(); setSent(true); }}
-        className="mt-5 px-5 py-3 rounded-2xl bg-zinc-900 text-white text-[13px] font-bold active:scale-95 transition-transform disabled:opacity-50 inline-flex items-center gap-1.5"
-      >
-        <Send size={14} /> {sent ? 'Отправлено руководителю' : 'Попросить открыть раздел'}
-      </button>
+      {toChief ? (
+        <a
+          href="/chief"
+          className="mt-5 px-5 py-3 rounded-2xl bg-zinc-900 text-white text-[13px] font-bold active:scale-95 transition-transform inline-flex items-center gap-1.5"
+        >
+          <Users size={14} /> Перейти в кабинет руководителя
+        </a>
+      ) : (
+        <button
+          type="button"
+          disabled={sent}
+          onClick={() => { onAsk(); setSent(true); }}
+          className="mt-5 px-5 py-3 rounded-2xl bg-zinc-900 text-white text-[13px] font-bold active:scale-95 transition-transform disabled:opacity-50 inline-flex items-center gap-1.5"
+        >
+          <Send size={14} /> {sent ? 'Отправлено руководителю' : 'Попросить открыть раздел'}
+        </button>
+      )}
     </div>
   );
 }
