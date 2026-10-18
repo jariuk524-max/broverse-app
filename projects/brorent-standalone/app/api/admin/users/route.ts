@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createAdmin, updateAdminRoles, deleteAdmin, listAdmins, writeAudit, setAdminPassword, clearAdminPassword, getAdminByLogin, ADMIN_ROLES } from '@/lib/admin/store';
+import { createAdmin, updateAdminRoles, updateAdminDisplayName, deleteAdmin, listAdmins, writeAudit, setAdminPassword, clearAdminPassword, getAdminByLogin, ADMIN_ROLES } from '@/lib/admin/store';
 import { requireRole, requireSession } from '@/lib/admin/guard';
 import { guardWrite } from '@/lib/admin/security';
 import { hashPassword } from '@/lib/admin/crypto';
@@ -69,6 +69,26 @@ export async function PATCH(req: Request) {
   const login = String(body.login || '').trim().toLowerCase();
   const action = String(body.action || '');
   if (!login) return NextResponse.json({ error: 'Укажите логин' }, { status: 400 });
+
+  if (action === 'set_profile') {
+    const name = String(body.display_name || '').trim().slice(0, 80);
+    if (!name) return NextResponse.json({ error: 'Имя не может быть пустым' }, { status: 400 });
+    if (login !== res.admin.login && !res.admin.roles.includes('team')) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    const ok = await updateAdminDisplayName(login, name);
+    if (!ok) return NextResponse.json({ error: 'Сотрудник не найден' }, { status: 404 });
+    await writeAudit({
+      actor_login: res.admin.login,
+      actor_name: res.admin.display_name,
+      action: 'profile_set',
+      entity_type: 'admin',
+      entity_id: login,
+      entity_label: name,
+      details: { display_name: name },
+    });
+    return NextResponse.json({ ok: true, display_name: name });
+  }
 
   if (action === 'set_avatar') {
     const url = String(body.avatar_url || '').trim().slice(0, 512);

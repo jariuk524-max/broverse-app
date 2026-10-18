@@ -40,8 +40,8 @@ const TABS: { id: TabId; label: string; role: string | null }[] = [
 ];
 
 /** Название вкладки: для сотрудника первый раздел — «Мой кабинет» */
-const tabLabel = (id: TabId, roles: string[]): string => {
-  if (id === 'overview') return roles.includes('team') ? 'Хаб' : 'Мой кабинет';
+const tabLabel = (id: TabId, roles: string[], chief = false): string => {
+  if (id === 'overview') return chief && roles.includes('team') ? 'Хаб' : 'Мой кабинет';
   const t = TABS.find((x) => x.id === id);
   return t ? t.label : '';
 };
@@ -154,7 +154,7 @@ const setAvatarFor = async (login: string, url: string): Promise<boolean> => {
   return r.ok;
 };
 
-export default function AdminPage({ cabinet }: { cabinet?: string } = {}) {
+export default function AdminPage({ cabinet, chief = false }: { cabinet?: string; chief?: boolean } = {}) {
   const [session, setSession] = useState<Session | null>(null);
   const [checking, setChecking] = useState(true);
   const [login, setLogin] = useState('');
@@ -353,8 +353,8 @@ export default function AdminPage({ cabinet }: { cabinet?: string } = {}) {
               )}
             </div>
             <div>
-              <h1 className="text-[14px] font-bold text-zinc-900 leading-tight">BroVerse Админ</h1>
-              <p className="text-[10px] text-zinc-400">Администратор: {session.display_name || session.login}</p>
+              <h1 className="text-[14px] font-bold text-zinc-900 leading-tight">{chief ? 'BroVerse Штаб' : 'BroVerse Админ'}</h1>
+              <p className="text-[10px] text-zinc-400">{chief ? 'Руководитель' : 'Администратор'}: {session.display_name || session.login}</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -395,7 +395,7 @@ export default function AdminPage({ cabinet }: { cabinet?: string } = {}) {
                   className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors whitespace-nowrap inline-flex items-center gap-1 ${!locked && tab === t.id && !lockedTab ? 'bg-white shadow-sm text-zinc-900' : locked ? 'text-zinc-300' : 'text-zinc-500'}`}
                 >
                   {locked && <Lock size={10} />}
-                  {tabLabel(t.id, session.roles)}
+                  {tabLabel(t.id, session.roles, chief)}
                 </button>
               );
             })}
@@ -406,10 +406,10 @@ export default function AdminPage({ cabinet }: { cabinet?: string } = {}) {
       <main className="max-w-2xl mx-auto px-4 py-5">
         {lockedTab ? (
           <LockedSection
-            label={tabLabel(lockedTab, session.roles)}
+            label={tabLabel(lockedTab, session.roles, chief)}
             onBack={() => setLockedTab(null)}
             onAsk={async () => {
-              const label = tabLabel(lockedTab, session.roles);
+              const label = tabLabel(lockedTab, session.roles, chief);
               await fetch('/api/admin/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -419,11 +419,11 @@ export default function AdminPage({ cabinet }: { cabinet?: string } = {}) {
               setTab('chat');
             }}
           />
-        ) : tab === 'overview' ? (session.roles.includes('team') ? <OverviewTab session={session} onOpenTab={setTab} /> : <MyCabinetTab session={session} onOpenTab={setTab} onAskLocked={setLockedTab} />) : tab === 'orders' ? <OrdersTab /> : tab === 'chat' ? <ChatTab session={session} /> : tab === 'tasks' ? <TasksTab /> : tab === 'finance' ? <FinanceTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : tab === 'catalog' ? <CatalogTab /> : tab === 'mirror' ? <MirrorTab /> : tab === 'team' ? <TeamTab session={session} /> : <AuditTab />}
+        ) : tab === 'overview' ? (chief && session.roles.includes('team') ? <OverviewTab session={session} onOpenTab={setTab} /> : <MyCabinetTab session={session} onOpenTab={setTab} onAskLocked={setLockedTab} onEditProfile={() => setShowProfile(true)} />) : tab === 'orders' ? <OrdersTab /> : tab === 'chat' ? <ChatTab session={session} /> : tab === 'tasks' ? <TasksTab /> : tab === 'finance' ? <FinanceTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : tab === 'catalog' ? <CatalogTab /> : tab === 'mirror' ? <MirrorTab /> : tab === 'team' ? <TeamTab session={session} /> : <AuditTab />}
       </main>
 
       {showProfile && (
-        <ProfilePanel session={session} onClose={() => setShowProfile(false)} onLogout={logout} onAvatar={(url) => setSession((s) => (s ? { ...s, avatar_url: url } : s))} />
+        <ProfilePanel session={session} onClose={() => setShowProfile(false)} onLogout={logout} onAvatar={(url) => setSession((s) => (s ? { ...s, avatar_url: url } : s))} onName={(n) => setSession((s) => (s ? { ...s, display_name: n } : s))} />
       )}
     </div>
   );
@@ -1310,10 +1310,11 @@ const TAB_ICONS: Record<TabId, React.ComponentType<{ size?: number; className?: 
   mirror: LayoutGrid, audit: History, team: Users,
 };
 
-function MyCabinetTab({ session, onOpenTab, onAskLocked }: {
+function MyCabinetTab({ session, onOpenTab, onAskLocked, onEditProfile }: {
   session: Session;
   onOpenTab: (id: TabId) => void;
   onAskLocked: (id: TabId) => void;
+  onEditProfile: () => void;
 }) {
   const sections = TABS.filter((t) => t.id !== 'overview');
   return (
@@ -1331,6 +1332,13 @@ function MyCabinetTab({ session, onOpenTab, onAskLocked }: {
           <p className="text-[16px] font-black text-zinc-900 truncate">{session.display_name || session.login}</p>
           <p className="text-[11px] text-zinc-400">@{session.login}</p>
         </div>
+        <button
+          type="button"
+          onClick={onEditProfile}
+          className="ml-auto shrink-0 px-3 py-2 rounded-full bg-zinc-100 hover:bg-zinc-200 text-[11px] font-bold text-zinc-700 transition-colors"
+        >
+          Профиль
+        </button>
       </div>
 
       <div>
@@ -3558,11 +3566,31 @@ function TeamTab({ session }: { session: Session }) {
 
 /* ────────────────────────── ПРОФИЛЬ (пароль) ────────────────────────── */
 
-function ProfilePanel({ session, onClose, onLogout, onAvatar }: { session: Session; onClose: () => void; onLogout: () => void; onAvatar: (url: string) => void }) {
+function ProfilePanel({ session, onClose, onLogout, onAvatar, onName }: { session: Session; onClose: () => void; onLogout: () => void; onAvatar: (url: string) => void; onName: (name: string) => void }) {
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [name, setName] = useState(session.display_name || '');
+  const [nameBusy, setNameBusy] = useState(false);
+
+  const saveName = async () => {
+    const n = name.trim();
+    if (!n || n === (session.display_name || '') || nameBusy) return;
+    setNameBusy(true);
+    try {
+      const r = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ login: session.login, action: 'set_profile', display_name: n }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) onName(d.display_name || n);
+      else window.alert(d.error || 'Не удалось сохранить имя');
+    } finally {
+      setNameBusy(false);
+    }
+  };
 
   const change = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -3639,6 +3667,28 @@ function ProfilePanel({ session, onClose, onLogout, onAvatar }: { session: Sessi
             Последний вход: {new Date(session.last_login_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}
           </p>
         )}
+
+        <div className="border-t border-zinc-100 pt-4 mb-4">
+          <p className="text-[12px] font-bold text-zinc-900 mb-2">Моё имя</p>
+          <div className="flex gap-1.5">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={80}
+              placeholder="Как вас называть"
+              className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl border border-zinc-200 text-[13px] outline-none focus:border-zinc-400"
+            />
+            <button
+              type="button"
+              onClick={saveName}
+              disabled={nameBusy || !name.trim() || name.trim() === (session.display_name || '')}
+              className="shrink-0 px-3.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold disabled:opacity-40"
+            >
+              {nameBusy ? '…' : 'Сохранить'}
+            </button>
+          </div>
+          <p className="text-[10px] text-zinc-400 mt-1.5">Фото профиля — нажмите на аватар выше.</p>
+        </div>
 
         <form onSubmit={change} className="space-y-2 border-t border-zinc-100 pt-4">
           <p className="text-[12px] font-bold text-zinc-900">Смена пароля</p>

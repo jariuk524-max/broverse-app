@@ -92,6 +92,14 @@ export async function updateAdminRoles(login: string, roles: string[]): Promise<
   return !error;
 }
 
+export async function updateAdminDisplayName(login: string, displayName: string): Promise<boolean> {
+  const { error } = await sb()
+    .from('admin_users')
+    .update({ display_name: displayName })
+    .eq('login', login);
+  return !error;
+}
+
 export async function deleteAdmin(login: string): Promise<boolean> {
   const { error } = await sb().from('admin_users').delete().eq('login', login);
   return !error;

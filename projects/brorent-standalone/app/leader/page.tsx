@@ -78,7 +78,7 @@ export default function LeaderPage() {
           <span className="text-[15px] font-black text-zinc-900">BroVerse</span>
         </Link>
         <Link
-          href="/admin"
+          href="/chief"
           className="px-4 py-2 rounded-full bg-zinc-900 text-white text-[12px] font-bold active:scale-95 transition-transform"
         >
           Открыть админку
@@ -98,7 +98,7 @@ export default function LeaderPage() {
             модерация, контент сайтов, задачи, финансы и аудит.
           </p>
           <Link
-            href="/admin"
+            href="/chief"
             className="inline-flex items-center gap-1.5 mt-5 px-5 py-3 rounded-2xl bg-zinc-900 text-white text-[13px] font-bold active:scale-95 transition-transform"
           >
             Перейти в штаб <ArrowRight size={15} />
@@ -157,7 +157,7 @@ export default function LeaderPage() {
 
         <div className="flex justify-center gap-4 mt-6 text-[11px] text-zinc-400">
           <Link href="/" className="hover:text-zinc-600 flex items-center gap-1"><Home size={12} /> Главная</Link>
-          <Link href="/admin" className="hover:text-zinc-600 flex items-center gap-1"><ShieldCheck size={12} /> Админка</Link>
+          <Link href="/chief" className="hover:text-zinc-600 flex items-center gap-1"><ShieldCheck size={12} /> Админка</Link>
           <span className="flex items-center gap-1"><History size={12} /> Аудит всех действий</span>
           <span className="flex items-center gap-1"><Wallet size={12} /> Финансы</span>
         </div>
