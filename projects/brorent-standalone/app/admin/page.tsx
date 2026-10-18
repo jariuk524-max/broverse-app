@@ -117,7 +117,7 @@ const ADMIN_STATUS_COLOR: Record<string, string> = {
   completed: 'bg-zinc-100 text-zinc-400',
 };
 
-export default function AdminPage() {
+export default function AdminPage({ cabinet }: { cabinet?: string } = {}) {
   const [session, setSession] = useState<Session | null>(null);
   const [checking, setChecking] = useState(true);
   const [login, setLogin] = useState('');
@@ -132,12 +132,13 @@ export default function AdminPage() {
   const [cabinetLink, setCabinetLink] = useState<string | null>(null);
 
   useEffect(() => {
-    const c = new URLSearchParams(window.location.search).get('c')?.trim().toLowerCase() || '';
-    if (/^[a-z0-9][a-z0-9-]{1,38}$/.test(c)) {
+    const fromUrl = new URLSearchParams(window.location.search).get('c')?.trim().toLowerCase() || '';
+    const c = cabinet || (/^[a-z0-9][a-z0-9-]{1,38}$/.test(fromUrl) ? fromUrl : '');
+    if (c) {
       setCabinetLink(c);
       setLogin(c);
     }
-  }, []);
+  }, [cabinet]);
 
   useEffect(() => {
     fetch('/api/admin/session')
