@@ -13,6 +13,9 @@ import {
   STATUS_LABEL, type ServiceRequest, type RequestStatus,
 } from '@/lib/requests';
 import { unlockDirectionForMaster } from '@/lib/admin/unlock';
+import { Onest } from 'next/font/google';
+
+const onest = Onest({ subsets: ['latin', 'cyrillic'], display: 'swap' });
 
 type Session = {
   login: string;
@@ -110,7 +113,7 @@ const MASTER_STATUS_LABEL: Record<string, string> = {
 const MASTER_STATUS_COLOR: Record<string, string> = {
   pending: 'bg-zinc-200 text-zinc-700',
   approved: 'bg-zinc-900 text-white',
-  rejected: 'bg-white text-zinc-400 border border-zinc-200',
+  rejected: 'bg-white text-zinc-600 border border-zinc-200',
   paused: 'bg-zinc-100 text-zinc-500',
 };
 
@@ -118,9 +121,9 @@ const ADMIN_STATUS_COLOR: Record<string, string> = {
   new: 'bg-zinc-900 text-white',
   review: 'bg-zinc-200 text-zinc-700',
   approved: 'bg-zinc-100 text-zinc-500',
-  rejected: 'bg-white text-zinc-400 border border-zinc-200',
+  rejected: 'bg-white text-zinc-600 border border-zinc-200',
   accepted: 'bg-zinc-700 text-white',
-  completed: 'bg-zinc-100 text-zinc-400',
+  completed: 'bg-zinc-100 text-zinc-600',
 };
 
 const fileToDataUrl = (f: File): Promise<string | null> =>
@@ -270,7 +273,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
   if (checking) {
     return (
       <div className="min-h-[100dvh] bg-[#F2F2F7] flex items-center justify-center">
-        <Loader2 size={26} className="animate-spin text-zinc-400" />
+        <Loader2 size={26} className="animate-spin text-zinc-600" />
       </div>
     );
   }
@@ -288,7 +291,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
                 {cabinetLink.slice(0, 1).toUpperCase()}
               </span>
               <div className="min-w-0">
-                <p className="text-[11px] text-zinc-400">Кабинет сотрудника</p>
+                <p className="text-[11px] text-zinc-600">Кабинет сотрудника</p>
                 <p className="text-[13px] font-bold text-zinc-900 truncate">@{cabinetLink}</p>
               </div>
             </div>
@@ -297,7 +300,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
             <Lock size={20} className="text-white" />
           </div>
           <h1 className="text-lg font-bold text-zinc-900 mb-1">BroVerse Админ</h1>
-          <p className="text-[12px] text-zinc-400 mb-4">
+          <p className="text-[12px] text-zinc-600 mb-4">
             {needSetup
               ? 'Пароль ещё не задан — придумайте свой (от 6 символов)'
               : 'Вход для сотрудников. Пароль создаётся при первом входе.'}
@@ -357,7 +360,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
   const visibleTabs = TABS; // все разделы видимы; закрытые — с замком
 
   return (
-    <div className="min-h-[100dvh] bg-[#F2F2F7]" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", system-ui, sans-serif' }}>
+    <div className="min-h-[100dvh] bg-[#F2F2F7]" style={{ fontFamily: onest.style.fontFamily }}>
       <header className="sticky top-0 z-10 bg-white/70 backdrop-blur-xl border-b border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -380,7 +383,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
             </div>
             <div>
               <h1 className="text-[14px] font-bold text-zinc-900 leading-tight">{chief ? 'Кабинет руководителя' : 'BroVerse Админ'}</h1>
-              <p className="text-[10px] text-zinc-400">{chief ? (session.display_name || session.login) : `Администратор: ${session.display_name || session.login}`}</p>
+              <p className="text-[10px] text-zinc-600">{chief ? (session.display_name || session.login) : `Администратор: ${session.display_name || session.login}`}</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -418,7 +421,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
                     if (locked) { setLockedTab(t.id); }
                     else { setLockedTab(null); setTab(t.id); }
                   }}
-                  className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors whitespace-nowrap inline-flex items-center gap-1 ${!locked && tab === t.id && !lockedTab ? 'bg-white shadow-sm text-zinc-900' : locked ? 'text-zinc-300' : 'text-zinc-500'}`}
+                  className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors whitespace-nowrap inline-flex items-center gap-1 ${!locked && tab === t.id && !lockedTab ? 'bg-white shadow-sm text-zinc-900' : locked ? 'text-zinc-500' : 'text-zinc-500'}`}
                 >
                   {locked && <Lock size={10} />}
                   {tabLabel(t.id, session.roles, chief)}
@@ -594,7 +597,7 @@ function OrdersTab() {
   ];
 
   return (
-    <div>
+    <div className="font-sans">
       <div className="flex gap-1.5 overflow-x-auto pb-3 -mx-1 px-1">
         {filters.map((f) => (
           <button
@@ -790,7 +793,7 @@ function OrdersTab() {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <p className="text-[12px] text-zinc-600">
-      <span className="text-zinc-400">{label}: </span>
+      <span className="text-zinc-600">{label}: </span>
       <span className="font-semibold text-zinc-800">{value}</span>
     </p>
   );
@@ -859,14 +862,14 @@ function MastersTab() {
 
       {loading && (
         <div className="bg-white rounded-[20px] p-8 text-center shadow-sm">
-          <Loader2 size={22} className="text-zinc-300 mx-auto animate-spin" />
+          <Loader2 size={22} className="text-zinc-500 mx-auto animate-spin" />
         </div>
       )}
 
       {!loading && visible.length === 0 && (
         <div className="bg-white rounded-[20px] p-8 text-center shadow-sm">
           <WrenchIcon />
-          <p className="text-[13px] text-zinc-400 mt-2">Услуг мастеров на модерации нет</p>
+          <p className="text-[13px] text-zinc-600 mt-2">Услуг мастеров на модерации нет</p>
         </div>
       )}
 
@@ -876,7 +879,7 @@ function MastersTab() {
             <div className="flex items-start justify-between gap-2 mb-2">
               <div className="min-w-0">
                 <p className="text-[13px] font-bold text-zinc-900 leading-tight">{s.title}</p>
-                <p className="text-[11px] text-zinc-400 mt-0.5">
+                <p className="text-[11px] text-zinc-600 mt-0.5">
                   {s.master_name || s.master_id}
                   {s.created_at ? ` · ${new Date(s.created_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}` : ''}
                 </p>
@@ -928,7 +931,7 @@ function MastersTab() {
 }
 
 function WrenchIcon() {
-  return <Package size={28} className="text-zinc-300 mx-auto" />;
+  return <Package size={28} className="text-zinc-500 mx-auto" />;
 }
 
 /* ────────────────────────── ОТЗЫВЫ ────────────────────────── */
@@ -949,15 +952,15 @@ function FeedbackTab() {
   );
 
   if (!orders) {
-    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
+    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-600" /></div>;
   }
 
   if (withFeedback.length === 0) {
     return (
       <div className="bg-white rounded-[20px] p-8 text-center shadow-sm">
-        <MessageSquare size={28} className="text-zinc-300 mx-auto mb-2" />
-        <p className="text-[13px] text-zinc-400">Отзывов пока нет</p>
-        <p className="text-[11px] text-zinc-300 mt-1">Клиенты оставляют их после связи со специалистом</p>
+        <MessageSquare size={28} className="text-zinc-500 mx-auto mb-2" />
+        <p className="text-[13px] text-zinc-600">Отзывов пока нет</p>
+        <p className="text-[11px] text-zinc-500 mt-1">Клиенты оставляют их после связи со специалистом</p>
       </div>
     );
   }
@@ -971,7 +974,7 @@ function FeedbackTab() {
             <div className="flex items-start justify-between gap-2 mb-2">
               <div className="min-w-0">
                 <p className="text-[13px] font-bold text-zinc-900 leading-tight">{o.service_name}</p>
-                <p className="text-[11px] text-zinc-400 mt-0.5">
+                <p className="text-[11px] text-zinc-600 mt-0.5">
                   {new Date(fb.created_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}
                   {o.metadata?.domain ? ` · ${o.metadata.domain}` : ''}
                 </p>
@@ -996,7 +999,7 @@ function FeedbackTab() {
               <p className="text-[12px] text-zinc-600 bg-zinc-50 rounded-xl p-3 leading-relaxed">{fb.comment}</p>
             )}
 
-            <p className="text-[11px] text-zinc-400 mt-2">
+            <p className="text-[11px] text-zinc-600 mt-2">
               📞 {o.client_phone || '—'}{o.client_name ? ` · ${o.client_name}` : ''}
             </p>
           </div>
@@ -1080,7 +1083,7 @@ function CatalogTab() {
   };
 
   if (!data) {
-    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
+    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-600" /></div>;
   }
 
   let lastCategory = '';
@@ -1100,7 +1103,7 @@ function CatalogTab() {
         ))}
       </div>
 
-      <p className="text-[11px] text-zinc-400 mb-3 px-1">
+      <p className="text-[11px] text-zinc-600 mb-3 px-1">
         Правки сохраняются и сразу отображаются на страницах сервисов. Кнопка ↻ возвращает оригинал из кода.
       </p>
 
@@ -1111,7 +1114,7 @@ function CatalogTab() {
           const current = { ...s, ...(edits[s.name] || {}) };
 
           const header = s.category !== lastCategory ? (
-            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 px-1 pt-2">{s.category}</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 px-1 pt-2">{s.category}</p>
           ) : null;
           lastCategory = s.category;
 
@@ -1126,10 +1129,10 @@ function CatalogTab() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <p className="text-[13px] font-bold text-zinc-900 truncate">{s.name}</p>
+                      <p className="text-[13px] font-bold text-zinc-900 truncate font-sans">{s.name}</p>
                       {isEdited && <span className="shrink-0 px-1.5 py-0.5 rounded bg-zinc-900 text-white text-[9px] font-bold">изменено</span>}
                     </div>
-                    <p className="text-[11px] text-zinc-400 truncate">{current.desc}</p>
+                    <p className="text-[11px] text-zinc-600 truncate">{current.desc}</p>
                     <p className="text-[11px] font-bold text-zinc-700 mt-0.5">{current.price} ₽ · {current.time}</p>
                   </div>
                   <div className="flex flex-col gap-1.5 shrink-0">
@@ -1156,21 +1159,21 @@ function CatalogTab() {
                 {isEditing && (
                   <div className="border-t border-zinc-100 p-3 space-y-2.5 bg-zinc-50/50">
                     <div>
-                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Описание</label>
+                      <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider block mb-1">Описание</label>
                       <textarea value={form.desc ?? s.desc} onChange={(e) => setForm((f) => ({ ...f, desc: e.target.value }))} rows={2} className={`${INPUT} resize-none`} />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Цена, ₽</label>
+                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider block mb-1">Цена, ₽</label>
                         <input value={form.price ?? s.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} className={INPUT} inputMode="numeric" />
                       </div>
                       <div>
-                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Время</label>
+                        <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider block mb-1">Время</label>
                         <input value={form.time ?? s.time} onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))} className={INPUT} />
                       </div>
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Фото (путь/URL)</label>
+                      <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider block mb-1">Фото (путь/URL)</label>
                       <input value={form.image ?? s.image} onChange={(e) => setForm((f) => ({ ...f, image: e.target.value }))} className={INPUT} />
                       <div className="flex gap-2 mt-1.5">
                         <button
@@ -1210,7 +1213,7 @@ function CatalogTab() {
         })}
       </div>
 
-<div className="mt-4 flex items-center gap-2 px-1 text-[10px] text-zinc-300">
+<div className="mt-4 flex items-center gap-2 px-1 text-[10px] text-zinc-500">
         <ImageIcon size={11} /> Фото загружаются в /hero и попадают на страницы сервисов
       </div>
     </div>
@@ -1282,21 +1285,21 @@ function AuditTab() {
   }, []);
 
   if (!entries) {
-    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
+    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-600" /></div>;
   }
 
   if (entries.length === 0) {
     return (
       <div className="bg-white rounded-[20px] p-8 text-center shadow-sm">
-        <History size={28} className="text-zinc-300 mx-auto mb-2" />
-        <p className="text-[13px] text-zinc-400">Пока нет записей</p>
+        <History size={28} className="text-zinc-500 mx-auto mb-2" />
+        <p className="text-[13px] text-zinc-600">Пока нет записей</p>
       </div>
     );
   }
 
   return (
     <div>
-      <p className="text-[11px] text-zinc-400 mb-3 px-1">
+      <p className="text-[11px] text-zinc-600 mb-3 px-1">
         Журнал действий — кто и когда принял решение. Записи хранятся без возможности удаления.
       </p>
       <div className="space-y-2">
@@ -1310,7 +1313,7 @@ function AuditTab() {
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline gap-1.5 flex-wrap">
                 <span className="text-[12px] font-bold text-zinc-900">{e.actor_name || e.actor_login}</span>
-                <span className="text-[10px] text-zinc-400">
+                <span className="text-[10px] text-zinc-600">
                   {new Date(e.created_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}
                 </span>
               </div>
@@ -1356,9 +1359,9 @@ function MyCabinetTab({ session, onOpenTab, onAskLocked, onEditProfile, chief = 
           </span>
         )}
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Мой кабинет</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">Мой кабинет</p>
           <p className="text-[16px] font-black text-zinc-900 truncate">{session.display_name || session.login}</p>
-          <p className="text-[11px] text-zinc-400">@{session.login}</p>
+          <p className="text-[11px] text-zinc-600">@{session.login}</p>
         </div>
         <button
           type="button"
@@ -1375,16 +1378,16 @@ function MyCabinetTab({ session, onOpenTab, onAskLocked, onEditProfile, chief = 
           className="flex items-center justify-between gap-3 bg-zinc-900 rounded-[24px] p-5 shadow-sm active:scale-[0.98] transition-transform"
         >
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Для руководителя</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">Для руководителя</p>
             <p className="text-[15px] font-black text-white mt-0.5">Кабинет руководителя проекта</p>
-            <p className="text-[11px] text-zinc-400 mt-0.5">Создание кабинетов, доступы к навыкам, история работы</p>
+            <p className="text-[11px] text-zinc-600 mt-0.5">Создание кабинетов, доступы к навыкам, история работы</p>
           </div>
           <ChevronRight size={18} className="text-white shrink-0" />
         </a>
       )}
 
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2 px-1">Разделы</p>
+        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-2 px-1">Разделы</p>
         <div className="grid grid-cols-2 gap-2.5">
           {sections.map((t) => {
             const locked = !!t.role && !session.roles.includes(t.role);
@@ -1397,17 +1400,17 @@ function MyCabinetTab({ session, onOpenTab, onAskLocked, onEditProfile, chief = 
                 className={`rounded-[18px] p-4 text-left shadow-sm active:scale-[0.97] transition-transform ${locked ? 'bg-zinc-100' : 'bg-white'}`}
               >
                 <span className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2 ${locked ? 'bg-zinc-200' : 'bg-zinc-900'}`}>
-                  {locked ? <Lock size={15} className="text-zinc-400" /> : <Icon size={15} className="text-white" />}
+                  {locked ? <Lock size={15} className="text-zinc-600" /> : <Icon size={15} className="text-white" />}
                 </span>
-                <p className={`text-[13px] font-bold ${locked ? 'text-zinc-400' : 'text-zinc-900'}`}>{t.label}</p>
-                <p className="text-[10px] text-zinc-400 mt-0.5">{locked ? 'закрыт — попросить' : 'открыт'}</p>
+                <p className={`text-[13px] font-bold ${locked ? 'text-zinc-600' : 'text-zinc-900'}`}>{t.label}</p>
+                <p className="text-[10px] text-zinc-600 mt-0.5">{locked ? 'закрыт — попросить' : 'открыт'}</p>
               </button>
             );
           })}
         </div>
       </div>
 
-      <p className="text-[10px] text-zinc-300 px-1">
+      <p className="text-[10px] text-zinc-500 px-1">
         Видны только разделы, которые выдал руководитель. Ссылка на кабинет постоянная.
       </p>
     </div>
@@ -1419,9 +1422,9 @@ function MyCabinetTab({ session, onOpenTab, onAskLocked, onEditProfile, chief = 
 function Stat({ label, value, sub, onClick }: { label: string; value: string | number; sub?: string; onClick?: () => void }) {
   const inner = (
     <>
-      <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{label}</p>
+      <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">{label}</p>
       <p className="text-[22px] font-black text-zinc-900 leading-tight mt-1">{value}</p>
-      {sub && <p className="text-[10px] text-zinc-400 mt-0.5">{sub}</p>}
+      {sub && <p className="text-[10px] text-zinc-600 mt-0.5">{sub}</p>}
       {onClick && <p className="text-[9.5px] text-zinc-900 font-bold mt-1.5">Показать →</p>}
     </>
   );
@@ -1438,7 +1441,7 @@ function Stat({ label, value, sub, onClick }: { label: string; value: string | n
 function OrderRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex gap-2 text-[12px]">
-      <span className="text-zinc-400 w-[104px] shrink-0">{label}</span>
+      <span className="text-zinc-600 w-[104px] shrink-0">{label}</span>
       <span className="text-zinc-800 font-semibold break-words flex-1">{value}</span>
     </div>
   );
@@ -1463,6 +1466,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
   const [createErr, setCreateErr] = useState('');
   const [createAvatar, setCreateAvatar] = useState<string | null>(null);
   const [createBusy, setCreateBusy] = useState(false);
+  const [createdCabinet, setCreatedCabinet] = useState<{ login: string; name: string; title: string; roles: string[] } | null>(null);
   const [chatWith, setChatWith] = useState<string | null>(null);
   const [copiedFor, setCopiedFor] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -1519,7 +1523,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
   }, [openCabinet]);
 
   if (!orders || !admins || !entries || !ads) {
-    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
+    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-600" /></div>;
   }
 
   const todayKey = new Date().toDateString();
@@ -1677,6 +1681,12 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
         const d = await r.json().catch(() => ({}));
         setCreateErr(d.error || 'Не удалось создать кабинет');
       } else {
+        setCreatedCabinet({
+          login: effLogin,
+          name: createName.trim(),
+          title: createTitle.trim(),
+          roles: createRoles,
+        });
         setCreateDone(effLogin);
         setCreateName('');
         setCreateLogin('');
@@ -1691,9 +1701,9 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
     }
   };
 
-  const copyAccess = async (a: { login: string; display_name: string; roles: string[] }) => {
+  const copyAccess = async (a: { login: string; display_name: string; roles: string[]; title?: string | null }) => {
     try {
-      await navigator.clipboard.writeText(accessMessage(a.login, a.display_name, a.roles));
+      await navigator.clipboard.writeText(accessMessage(a.login, a.display_name, a.roles, a.title || ''));
       setCopiedFor(a.login);
       setTimeout(() => setCopiedFor(null), 1500);
     } catch { /* clipboard недоступен */ }
@@ -1762,7 +1772,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
             <p className="text-[13px] font-bold text-zinc-600 truncate">{session.display_name || session.login}</p>
           </div>
         </div>
-        <p className="text-[11px] text-zinc-400 mt-2 leading-relaxed">
+        <p className="text-[11px] text-zinc-600 mt-2 leading-relaxed">
           Все процессы и кабинеты сотрудников — здесь.
         </p>
         <button
@@ -1783,13 +1793,13 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
 
       <div>
         <div className="flex items-center justify-between mb-1 px-1">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Кабинеты сотрудников · {orderedAdmins.length}</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-600">Кабинеты сотрудников · {orderedAdmins.length}</p>
         </div>
-        <p className="text-[10px] text-zinc-300 mb-2.5 px-1">Потяните блок за ⠿ — порядок сохранится</p>
+        <p className="text-[10px] text-zinc-500 mb-2.5 px-1">Потяните блок за ⠿ — порядок сохранится</p>
         {orderedAdmins.length === 0 ? (
           <div className="bg-white rounded-[18px] py-8 text-center shadow-sm">
-            <Users size={24} className="text-zinc-300 mx-auto mb-2" />
-            <p className="text-[12px] text-zinc-400">Кабинетов пока нет</p>
+            <Users size={24} className="text-zinc-500 mx-auto mb-2" />
+            <p className="text-[12px] text-zinc-600">Кабинетов пока нет</p>
             <button
               type="button"
               onClick={() => { setCreateOpen(true); setCreateDone(''); setCreateErr(''); }}
@@ -1820,7 +1830,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                     onPointerMove={moveDrag}
                     onPointerUp={endDrag}
                     onPointerCancel={endDrag}
-                    className="w-7 h-9 -ml-1 flex items-center justify-center text-zinc-300 touch-none select-none cursor-grab active:cursor-grabbing shrink-0"
+                    className="w-7 h-9 -ml-1 flex items-center justify-center text-zinc-500 touch-none select-none cursor-grab active:cursor-grabbing shrink-0"
                     title="Перетащить блок"
                   >
                     <GripVertical size={16} />
@@ -1834,14 +1844,14 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-bold text-zinc-900 truncate">{a.display_name || a.login}</p>
-                    <p className="text-[10px] text-zinc-400 truncate">
+                    <p className="text-[10px] text-zinc-600 truncate">
                       {a.title ? `${a.title} · ` : ''}@{a.login} · {a.password_set_at ? 'пароль задан' : 'ждёт первый вход'}
                       {a.last_login_at ? ` · вход ${new Date(a.last_login_at).toLocaleDateString('ru-RU')}` : ''}
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {a.roles.length === 0 && <span className="text-[10px] text-zinc-400">без разделов</span>}
+                  {a.roles.length === 0 && <span className="text-[10px] text-zinc-600">без разделов</span>}
                   {a.roles.map((r) => (
                     <span key={r} className="px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 text-[9.5px] font-bold">
                       {ROLE_LABEL[r] || r}
@@ -1849,7 +1859,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                   ))}
                 </div>
                 {activityMap[a.login]?.length ? (
-                  <p className="text-[10px] text-zinc-400 mt-1.5 truncate">
+                  <p className="text-[10px] text-zinc-600 mt-1.5 truncate">
                     {activityMap[a.login].map((x) => x.action).join(' · ')}
                   </p>
                 ) : null}
@@ -1878,7 +1888,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                   <button
                     type="button"
                     onClick={() => removeCabinet(a.login)}
-                    className="py-1.5 px-2.5 rounded-lg bg-white border border-zinc-200 text-zinc-400 text-[10.5px] font-bold active:scale-95 transition-transform"
+                    className="py-1.5 px-2.5 rounded-lg bg-white border border-zinc-200 text-zinc-600 text-[10.5px] font-bold active:scale-95 transition-transform"
                   >
                     Удалить
                   </button>
@@ -1891,7 +1901,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
 
       <div className="bg-white rounded-[18px] p-4 shadow-sm">
         <div className="flex items-center justify-between mb-1.5">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Заявки проекта</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-600">Заявки проекта</p>
           <button
             type="button"
             onClick={() => setStatusList('all')}
@@ -1904,7 +1914,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
           const queue = orders.filter((o) => o.status === 'new' || o.status === 'review');
           const rest = orders.filter((o) => o.status !== 'new' && o.status !== 'review');
           const rows = [...queue, ...rest].slice(0, 12);
-          if (rows.length === 0) return <p className="text-[12px] text-zinc-400 py-1">Заявок пока нет.</p>;
+          if (rows.length === 0) return <p className="text-[12px] text-zinc-600 py-1">Заявок пока нет.</p>;
           return (
             <div>
               {rows.map((o) => {
@@ -1922,7 +1932,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                           {STATUS_LABEL[o.status]}
                         </span>
                       </div>
-                      <p className="text-[10.5px] text-zinc-400 truncate">{o.client_name} · {o.address}</p>
+                      <p className="text-[10.5px] text-zinc-600 truncate">{o.client_name} · {o.address}</p>
                     </button>
                     {inQueue ? (
                       <div className="flex gap-1 shrink-0">
@@ -1946,7 +1956,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                         </button>
                       </div>
                     ) : (
-                      <span className="shrink-0 text-[10.5px] font-bold text-zinc-300 px-2">
+                      <span className="shrink-0 text-[10.5px] font-bold text-zinc-500 px-2">
                         {new Date(o.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}
                       </span>
                     )}
@@ -1960,11 +1970,11 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
 
       <div className="bg-white rounded-[18px] p-4 shadow-sm">
         <div className="flex items-center justify-between mb-1.5">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Последние решения</p>
-          <span className="text-[10px] text-zinc-400">всего: {decisions.length}</span>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-600">Последние решения</p>
+          <span className="text-[10px] text-zinc-600">всего: {decisions.length}</span>
         </div>
         {feed.length === 0 ? (
-          <p className="text-[12px] text-zinc-400 py-1">
+          <p className="text-[12px] text-zinc-600 py-1">
             Решений пока нет — сотрудники разберут очередь во вкладке «Заявки».
           </p>
         ) : (
@@ -1984,7 +1994,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-[12px] font-bold text-zinc-900 truncate">{e.entity_label}</p>
-                    <p className="text-[10.5px] text-zinc-400">
+                    <p className="text-[10.5px] text-zinc-600">
                       {ok ? 'Одобрена' : 'Отклонена'} · {e.actor_name || e.actor_login} ·{' '}
                       {new Date(e.created_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                     </p>
@@ -1998,7 +2008,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
       </div>
 
       <div className="bg-white rounded-[18px] p-4 shadow-sm">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Заявки по статусам</p>
+        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-2">Заявки по статусам</p>
         <div className="flex flex-wrap gap-1.5">
           {Object.keys(STATUS_LABEL).map((s) => (
             <button
@@ -2034,14 +2044,14 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
               <div className="flex items-center justify-between p-4 border-b border-zinc-100 sticky top-0 bg-white">
                 <p className="text-[13px] font-bold text-zinc-900">
                   {statusList === 'all' ? 'Все заявки' : statusList === 'queue' ? 'В очереди' : STATUS_LABEL[statusList]}
-                  <span className="text-zinc-400 font-normal"> · {rows.length}</span>
+                  <span className="text-zinc-600 font-normal"> · {rows.length}</span>
                 </p>
                 <button type="button" onClick={() => setStatusList(null)} className="p-1.5 rounded-full bg-zinc-100 active:scale-90 transition-transform">
                   <X size={13} />
                 </button>
               </div>
               <div className="p-4 space-y-1.5">
-                {rows.length === 0 && <p className="text-[12px] text-zinc-400 py-6 text-center">Заявок нет</p>}
+                {rows.length === 0 && <p className="text-[12px] text-zinc-600 py-6 text-center">Заявок нет</p>}
                 {rows.map((o) => (
                   <button
                     key={o.id}
@@ -2056,7 +2066,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                       </span>
                     </div>
                     <p className="text-[11px] text-zinc-500 mt-1 truncate">{o.client_name} · {o.address}</p>
-                    <p className="text-[10.5px] text-zinc-400 mt-0.5">
+                    <p className="text-[10.5px] text-zinc-600 mt-0.5">
                       {new Date(o.created_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </button>
@@ -2084,7 +2094,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
               <div className="flex items-center justify-between p-4 border-b border-zinc-100 sticky top-0 bg-white">
                 <div className="min-w-0">
                   <p className="text-[13px] font-bold text-zinc-900 truncate">{o.service_name}</p>
-                  <p className="text-[10px] text-zinc-400">{STATUS_LABEL[o.status]}</p>
+                  <p className="text-[10px] text-zinc-600">{STATUS_LABEL[o.status]}</p>
                 </div>
                 <button type="button" onClick={() => setOpenOrder(null)} className="p-1.5 rounded-full bg-zinc-100 active:scale-90 transition-transform shrink-0">
                   <X size={13} />
@@ -2155,7 +2165,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] font-bold text-zinc-900 truncate">{a.display_name || a.login}</p>
-                  <p className="text-[10px] text-zinc-400 truncate">
+                  <p className="text-[10px] text-zinc-600 truncate">
                     {a.title ? `${a.title} · ` : ''}@{a.login}
                     {a.password_set_at ? ' · пароль задан' : ' · ждёт первый вход'}
                     {a.last_login_at ? ` · вход ${new Date(a.last_login_at).toLocaleDateString('ru-RU')}` : ''}
@@ -2186,7 +2196,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
               </div>
               <div className="p-4 space-y-3">
                 <div className="flex flex-wrap gap-1">
-                  {a.roles.length === 0 && <span className="text-[10px] text-zinc-400">без разделов</span>}
+                  {a.roles.length === 0 && <span className="text-[10px] text-zinc-600">без разделов</span>}
                   {a.roles.map((r) => (
                     <span key={r} className="px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 text-[9.5px] font-bold">
                       {ROLE_LABEL[r] || r}
@@ -2197,12 +2207,12 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                   {[['Заявок обработано', cabStat.total], ['Одобрено', cabStat.ok], ['Отклонено', cabStat.no]].map(([l, v]) => (
                     <div key={String(l)} className="bg-zinc-50 rounded-xl p-2.5 text-center">
                       <p className="text-[16px] font-black text-zinc-900">{Number(v)}</p>
-                      <p className="text-[9px] text-zinc-400 font-bold mt-0.5">{String(l)}</p>
+                      <p className="text-[9px] text-zinc-600 font-bold mt-0.5">{String(l)}</p>
                     </div>
                   ))}
                 </div>
                 <div>
-                  <p className="text-[10.5px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">Должность</p>
+                  <p className="text-[10.5px] font-bold uppercase tracking-wider text-zinc-600 mb-1.5">Должность</p>
                   <div className="flex gap-1.5">
                     <input
                       value={titleDraft}
@@ -2222,7 +2232,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                   </div>
                 </div>
                 {activityMap[a.login]?.length ? (
-                  <p className="text-[10px] text-zinc-400">{activityMap[a.login].map((x) => `${x.action} · ${new Date(x.created_at).toLocaleDateString('ru-RU')}`).join(' · ')}</p>
+                  <p className="text-[10px] text-zinc-600">{activityMap[a.login].map((x) => `${x.action} · ${new Date(x.created_at).toLocaleDateString('ru-RU')}`).join(' · ')}</p>
                 ) : null}
                 <div className="grid grid-cols-3 gap-1.5">
                   <button
@@ -2249,7 +2259,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                 </div>
 
                 <div className="bg-zinc-50 rounded-[14px] p-3">
-                  <p className="text-[10.5px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Пароль</p>
+                  <p className="text-[10.5px] font-bold uppercase tracking-wider text-zinc-600 mb-2">Пароль</p>
                   <input
                     type="text"
                     value={pwValue}
@@ -2278,7 +2288,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                   {pwMsg && (
                     <p className={`text-[10.5px] mt-2 ${pwMsg.type === 'ok' ? 'text-emerald-600' : 'text-red-500'}`}>{pwMsg.text}</p>
                   )}
-                  <p className="text-[9.5px] text-zinc-400 mt-2 leading-relaxed">
+                  <p className="text-[9.5px] text-zinc-600 mt-2 leading-relaxed">
                     Смена пароля отключает все текущие входы сотрудника.
                   </p>
                 </div>
@@ -2302,7 +2312,12 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
             {createDone ? (
               <div>
                 <p className="text-[14px] font-bold text-zinc-900">Кабинет @{createDone} создан</p>
-                <p className="text-[11px] text-zinc-400 mt-1.5 leading-relaxed">
+                {createdCabinet && createdCabinet.login === createDone && (createdCabinet.name || createdCabinet.title) && (
+                  <p className="text-[12px] font-semibold text-zinc-600 mt-1">
+                    {createdCabinet.name}{createdCabinet.title ? ` · ${createdCabinet.title}` : ''}
+                  </p>
+                )}
+                <p className="text-[11px] text-zinc-600 mt-1.5 leading-relaxed">
                   Персональная ссылка кабинета — отправьте её сотруднику, он задаст пароль при первом входе.
                 </p>
                 <div className="mt-2 px-3 py-2 rounded-xl bg-zinc-50 text-[11.5px] font-semibold text-zinc-700 break-all">
@@ -2311,8 +2326,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                 <button
                   type="button"
                   onClick={() => {
-                    const a = admins.find((x) => x.login === createDone);
-                    shareTg(accessMessage(createDone, a?.display_name || createDone, a?.roles || []), createDone);
+                    shareTg(accessMessage(createDone, createdCabinet?.name || createDone, createdCabinet?.roles || [], createdCabinet?.title || ''), createDone);
                   }}
                   className="w-full mt-4 py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
                 >
@@ -2322,8 +2336,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                   <button
                     type="button"
                     onClick={() => {
-                      const a = admins.find((x) => x.login === createDone);
-                      const msg = accessMessage(createDone, a?.display_name || createDone, a?.roles || []);
+                      const msg = accessMessage(createDone, createdCabinet?.name || createDone, createdCabinet?.roles || [], createdCabinet?.title || '');
                       window.location.href = `mailto:?subject=${encodeURIComponent('Доступ в кабинет BroVerse')}&body=${encodeURIComponent(msg)}`;
                     }}
                     className="flex-1 py-2.5 rounded-xl bg-zinc-100 text-zinc-700 text-[12px] font-bold active:scale-95 transition-transform"
@@ -2334,11 +2347,10 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                     <button
                       type="button"
                       onClick={async () => {
-                        const a = admins.find((x) => x.login === createDone);
                         try {
                           await navigator.share({
                             title: 'Доступ в кабинет BroVerse',
-                            text: accessMessage(createDone, a?.display_name || createDone, a?.roles || []),
+                            text: accessMessage(createDone, createdCabinet?.name || createDone, createdCabinet?.roles || [], createdCabinet?.title || ''),
                             url: `https://broverse-client.vercel.app/admin/${createDone}`,
                           });
                         } catch { /* отменено */ }
@@ -2353,9 +2365,8 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                   <button
                     type="button"
                     onClick={async () => {
-                      const a = admins.find((x) => x.login === createDone);
                       try {
-                        await navigator.clipboard.writeText(accessMessage(createDone, a?.display_name || createDone, a?.roles || []));
+                        await navigator.clipboard.writeText(accessMessage(createDone, createdCabinet?.name || createDone, createdCabinet?.roles || [], createdCabinet?.title || ''));
                         setCopiedFor('created');
                         setTimeout(() => setCopiedFor(null), 1500);
                       } catch { /* ignore */ }
@@ -2414,7 +2425,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                   {createAvatar && <img src={createAvatar} alt="" className="w-8 h-8 rounded-full object-cover ml-auto" />}
                 </label>
                 <div>
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Кому создаём кабинет</p>
+                  <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider mb-1.5">Кому создаём кабинет</p>
                   <div className="flex flex-wrap gap-1.5">
                     {ROLE_TEMPLATES.map((tp) => (
                       <button
@@ -2429,7 +2440,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                   </div>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Должность</p>
+                  <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider mb-1.5">Должность</p>
                   <input
                     value={createTitle}
                     onChange={(e) => setCreateTitle(e.target.value)}
@@ -2439,7 +2450,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                   />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Навыки (разделы)</p>
+                  <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider mb-1.5">Навыки (разделы)</p>
                   <div className="flex flex-wrap gap-1.5">
                     {Object.keys(ROLE_LABEL).map((r) => {
                       const on = createRoles.includes(r);
@@ -2448,7 +2459,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                           key={r}
                           type="button"
                           onClick={() => setCreateRoles((p) => (p.includes(r) ? p.filter((x) => x !== r) : [...p, r]))}
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors ${on ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-400'}`}
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors ${on ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600'}`}
                         >
                           {ROLE_LABEL[r]}
                         </button>
@@ -2568,7 +2579,7 @@ function TasksTab() {
   };
 
   if (!tasks) {
-    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
+    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-600" /></div>;
   }
 
   const open = tasks.filter((t) => t.status === 'open');
@@ -2580,7 +2591,7 @@ function TasksTab() {
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-bold text-zinc-900">{t.title}</p>
           <p className="text-[11px] text-zinc-500 mt-0.5 break-words">{t.body}</p>
-          <p className="text-[10px] text-zinc-400 mt-1">
+          <p className="text-[10px] text-zinc-600 mt-1">
             {t.master_name || t.master_id} · {new Date(t.created_at).toLocaleDateString('ru-RU')} · @{t.author}
             {t.done_at ? ` · выполнено ${new Date(t.done_at).toLocaleDateString('ru-RU')}` : ''}
           </p>
@@ -2588,7 +2599,7 @@ function TasksTab() {
         <button
           type="button"
           onClick={() => setStatus(t.id, t.status === 'open' ? 'done' : 'open')}
-          className={`shrink-0 w-8 h-8 rounded-xl flex items-center justify-center active:scale-95 transition-transform ${t.status === 'open' ? 'bg-zinc-100 text-zinc-400' : 'bg-zinc-900 text-white'}`}
+          className={`shrink-0 w-8 h-8 rounded-xl flex items-center justify-center active:scale-95 transition-transform ${t.status === 'open' ? 'bg-zinc-100 text-zinc-600' : 'bg-zinc-900 text-white'}`}
           title={t.status === 'open' ? 'Отметить выполненной' : 'Вернуть в работу'}
         >
           <CheckCircle2 size={16} />
@@ -2621,18 +2632,18 @@ function TasksTab() {
       </form>
 
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 px-1 mb-2">В работе ({open.length})</p>
-        {open.length === 0 ? <p className="text-[12px] text-zinc-400 px-1">Нет открытых задач.</p> : <div className="space-y-2">{open.map(renderTask)}</div>}
+        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 px-1 mb-2">В работе ({open.length})</p>
+        {open.length === 0 ? <p className="text-[12px] text-zinc-600 px-1">Нет открытых задач.</p> : <div className="space-y-2">{open.map(renderTask)}</div>}
       </div>
 
       {done.length > 0 && (
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 px-1 mb-2">Выполнены ({done.length})</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 px-1 mb-2">Выполнены ({done.length})</p>
           <div className="space-y-2 opacity-70">{done.map(renderTask)}</div>
         </div>
       )}
 
-      <p className="text-[10px] text-zinc-300 px-1">
+      <p className="text-[10px] text-zinc-500 px-1">
         Задачи появляются мастеру в кабинете (Заказы) и исчезают после отметки «выполнено».
       </p>
     </div>
@@ -2681,6 +2692,10 @@ function MirrorTab() {
   const [homeItems, setHomeItems] = useState<HomeItem[] | null>(null);
   const [homeFilter, setHomeFilter] = useState<string>('all');
   const [homeSaving, setHomeSaving] = useState(false);
+  const [cardDomain, setCardDomain] = useState<string | null>(null);
+  const lpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lpFired = useRef(false);
+  const [lpItem, setLpItem] = useState<HomeItem | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/catalog');
@@ -2817,7 +2832,8 @@ function MirrorTab() {
     }
   };
 
-  const openEdit = (sv: CatalogService) => {
+  const openEdit = (sv: CatalogService, dom?: string) => {
+    setCardDomain(dom || domain);
     setCardEdit(sv);
     setAddOpen(false);
     setMfErr('');
@@ -2826,12 +2842,26 @@ function MirrorTab() {
   };
 
   const openAdd = () => {
+    setCardDomain(domain);
     setCardEdit(null);
     setAddOpen(true);
     setMfErr('');
     setMf({ desc: '', price: '', time: '', image: '' });
     setMfName('');
   };
+
+  const startLongPress = (s: HomeItem) => {
+    if (lpTimer.current) clearTimeout(lpTimer.current);
+    lpFired.current = false;
+    lpTimer.current = setTimeout(() => {
+      lpFired.current = true;
+      setLpItem(s);
+    }, 480);
+  };
+  const cancelLongPress = () => {
+    if (lpTimer.current) clearTimeout(lpTimer.current);
+  };
+  useEffect(() => () => { if (lpTimer.current) clearTimeout(lpTimer.current); }, []);
 
   const closeCard = () => {
     setCardEdit(null);
@@ -2855,7 +2885,7 @@ function MirrorTab() {
       const r = await fetch('/api/admin/catalog', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain, service: name, fields }),
+        body: JSON.stringify({ domain: cardDomain ?? domain, service: name, fields }),
       });
       if (!r.ok) {
         const d = await r.json().catch(() => ({}));
@@ -2877,7 +2907,7 @@ function MirrorTab() {
     await fetch('/api/admin/catalog', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ domain, service: sv.name, fields }),
+      body: JSON.stringify({ domain: cardDomain ?? domain, service: sv.name, fields }),
     }).catch(() => {});
     await load();
     closeCard();
@@ -2889,7 +2919,7 @@ function MirrorTab() {
     await fetch('/api/admin/catalog', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ domain, service: sv.name }),
+      body: JSON.stringify({ domain: cardDomain ?? domain, service: sv.name }),
     }).catch(() => {});
     await load();
     closeCard();
@@ -2909,7 +2939,7 @@ function MirrorTab() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          domainId: domain,
+          domainId: cardDomain ?? domain,
           type: 'service-photo',
           serviceName: addOpen ? mfName.trim() || 'new' : cardEdit?.name || '',
           data: dataUrl,
@@ -3039,7 +3069,7 @@ function MirrorTab() {
   };
 
   if (!data) {
-    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
+    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-600" /></div>;
   }
 
   return (
@@ -3121,10 +3151,10 @@ function MirrorTab() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <p className="text-[13px] font-bold text-zinc-900 truncate">{s.name}</p>
+                    <p className="text-[13px] font-bold text-zinc-900 truncate font-sans">{s.name}</p>
                     {isEdited && <span className="shrink-0 px-1.5 py-0.5 rounded bg-zinc-900 text-white text-[9px] font-bold">изменено</span>}
                   </div>
-                  <p className="text-[11px] text-zinc-400 truncate">{current.desc}</p>
+                  <p className="text-[11px] text-zinc-600 truncate">{current.desc}</p>
                   <p className="text-[11px] font-bold text-zinc-700 mt-0.5">{current.price} ₽ · {current.time}</p>
                 </div>
                 <div className="flex flex-col gap-1.5 shrink-0">
@@ -3151,21 +3181,21 @@ function MirrorTab() {
               {isEditing && (
                 <div className="border-t border-zinc-100 p-3 space-y-2.5 bg-zinc-50/50">
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Описание</label>
+                    <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider block mb-1">Описание</label>
                     <textarea value={form.desc ?? s.desc} onChange={(e) => setForm((f) => ({ ...f, desc: e.target.value }))} rows={2} className={`${INPUT} resize-none`} />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Цена, ₽</label>
+                      <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider block mb-1">Цена, ₽</label>
                       <input value={form.price ?? s.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} className={INPUT} inputMode="numeric" />
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Время</label>
+                      <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider block mb-1">Время</label>
                       <input value={form.time ?? s.time} onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))} className={INPUT} />
                     </div>
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Фото</label>
+                    <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider block mb-1">Фото</label>
                     <div className="flex gap-2 items-center">
                       <button
                         type="button"
@@ -3205,7 +3235,7 @@ function MirrorTab() {
       )}
 
       {view === 'client' && (
-      <div>
+      <div className="font-sans">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-9 h-9 rounded-2xl bg-zinc-900 flex items-center justify-center shrink-0">
             <span className="text-white font-black text-sm">B</span>
@@ -3249,8 +3279,16 @@ function MirrorTab() {
               <div key={`${s.domain}-${s.name}`} data-service={s.name} className="rounded-2xl border border-zinc-100 overflow-hidden bg-white">
                 <button
                   type="button"
-                  onClick={() => void openClientCard(s, s.domain)}
-                  className="block w-full text-left"
+                  onClick={() => {
+                    if (lpFired.current) { lpFired.current = false; return; }
+                    void openClientCard(s, s.domain);
+                  }}
+                  onPointerDown={() => startLongPress(s)}
+                  onPointerUp={cancelLongPress}
+                  onPointerLeave={cancelLongPress}
+                  onPointerCancel={cancelLongPress}
+                  onContextMenu={(e) => e.preventDefault()}
+                  className="block w-full text-left select-none touch-manipulation"
                 >
                   <div className="relative aspect-[16/10] overflow-hidden bg-zinc-100">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -3286,27 +3324,72 @@ function MirrorTab() {
                   >
                     <ChevronDown size={15} />
                   </button>
-                  <span className="ml-auto text-[9.5px] text-zinc-300">клик — карточка клиента</span>
+                  <span className="ml-auto text-[9.5px] text-zinc-500">клик — карточка · долгое нажатие — правка</span>
                 </div>
               </div>
             ))}
           </div>
 
           {shownHome.length === 0 && (
-            <div className="rounded-[20px] border border-dashed border-zinc-200 p-8 text-center text-[12px] text-zinc-400">
+            <div className="rounded-[20px] border border-dashed border-zinc-200 p-8 text-center text-[12px] text-zinc-600">
               На главной пока нет услуг
             </div>
           )}
 
-          <div className="mt-3 flex items-center gap-2 px-1 text-[10px] text-zinc-300">
-            <GripVertical size={11} /> Порядок ↑↓ применяется к актуальной главной клиента
+          <div className="mt-3 flex items-center gap-2 px-1 text-[10px] text-zinc-500">
+            <GripVertical size={11} /> Порядок ↑↓ применяется к актуальной главной клиента · долгое нажатие — правка
           </div>
         </>
+        )}
+
+        {lpItem && (
+          <div className="fixed inset-0 z-50 flex items-end" onClick={() => setLpItem(null)}>
+            <div className="absolute inset-0 bg-black/45 backdrop-blur-sm" />
+            <div className="relative w-full bg-white rounded-t-3xl p-4 pb-7 space-y-2 anim-sheet" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-2.5 px-1 pb-1">
+                <div className="w-10 h-10 rounded-xl bg-zinc-100 overflow-hidden shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={lpItem.image} alt="" className="w-full h-full object-cover" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-bold text-zinc-900 truncate">{lpItem.name}</p>
+                  <p className="text-[11px] text-zinc-600 truncate">{DOMAIN_LABEL[lpItem.domain] || lpItem.domain}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  openEdit({ category: lpItem.domain, name: lpItem.name, desc: lpItem.desc, price: lpItem.price, time: lpItem.time, image: lpItem.image }, lpItem.domain);
+                  setLpItem(null);
+                }}
+                className="w-full py-3 rounded-2xl bg-zinc-100 text-[13px] font-bold text-zinc-900 flex items-center gap-2 active:scale-[0.98] transition-transform"
+              >
+                <Pencil size={15} /> Редактировать услугу
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void deleteCard({ category: lpItem.domain, name: lpItem.name, desc: lpItem.desc, price: lpItem.price, time: lpItem.time, image: lpItem.image });
+                  setLpItem(null);
+                }}
+                className="w-full py-3 rounded-2xl bg-red-50 text-red-600 text-[13px] font-bold flex items-center gap-2 active:scale-[0.98] transition-transform"
+              >
+                <Trash2 size={15} /> Удалить услугу
+              </button>
+              <button
+                type="button"
+                onClick={() => setLpItem(null)}
+                className="w-full py-3 rounded-2xl bg-white border border-zinc-200 text-zinc-700 text-[13px] font-bold active:scale-[0.98] transition-transform"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
         )}
       </div>
       )}
 
-      <div className="mt-4 flex items-center gap-2 px-1 text-[10px] text-zinc-300">
+      <div className="mt-4 flex items-center gap-2 px-1 text-[10px] text-zinc-500">
         <LayoutGrid size={11} /> Порядок и правки применяются сразу ко всем страницам сайта
       </div>
 
@@ -3339,7 +3422,7 @@ function MirrorTab() {
               ) : (
                 <>
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Фото</label>
+                    <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider block mb-1">Фото</label>
                     <div className="flex gap-2 items-center">
                       <button
                         type="button"
@@ -3363,7 +3446,7 @@ function MirrorTab() {
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Название</label>
+                    <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider block mb-1">Название</label>
                     <input
                       value={mfName}
                       onChange={(e) => setMfName(e.target.value)}
@@ -3372,20 +3455,20 @@ function MirrorTab() {
                       placeholder="Название услуги"
                     />
                     {!!cardEdit && !cardEdit.isNew && (
-                      <p className="text-[9.5px] text-zinc-300 mt-1">Название нельзя менять — оно «привязано» к сайту</p>
+                      <p className="text-[9.5px] text-zinc-500 mt-1">Название нельзя менять — оно «привязано» к сайту</p>
                     )}
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Описание</label>
+                    <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider block mb-1">Описание</label>
                     <textarea value={mf.desc || ''} onChange={(e) => setMf((f) => ({ ...f, desc: e.target.value }))} rows={2} className={`${INPUT} resize-none`} />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Цена, ₽</label>
+                      <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider block mb-1">Цена, ₽</label>
                       <input value={mf.price || ''} onChange={(e) => setMf((f) => ({ ...f, price: e.target.value }))} className={INPUT} inputMode="numeric" />
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Время</label>
+                      <label className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider block mb-1">Время</label>
                       <input value={mf.time || ''} onChange={(e) => setMf((f) => ({ ...f, time: e.target.value }))} className={INPUT} />
                     </div>
                   </div>
@@ -3419,7 +3502,7 @@ function MirrorTab() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={() => setClientCard(null)}>
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
           <div
-            className="relative w-full sm:max-w-md mx-0 sm:mx-4 bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden transition-all duration-300 max-h-[90vh] overflow-y-auto"
+            className="relative w-full sm:max-w-md mx-0 sm:mx-4 bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden transition-all duration-300 max-h-[90vh] overflow-y-auto font-sans"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative">
@@ -3594,7 +3677,7 @@ function FinanceTab() {
   };
 
   if (!orders) {
-    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
+    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-600" /></div>;
   }
 
   const withPrice = orders.filter((o) => orderPrice(o) > 0);
@@ -3622,7 +3705,7 @@ function FinanceTab() {
       </div>
 
       <div className="bg-white rounded-[18px] p-4 shadow-sm">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2">По сайтам</p>
+        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-2">По сайтам</p>
         <div className="space-y-1.5">
           {[...byDomain.entries()].sort((a, b) => b[1].sum - a[1].sum).map(([d, v]) => (
             <div key={d} className="flex items-center justify-between text-[12px]">
@@ -3631,7 +3714,7 @@ function FinanceTab() {
               <span className="font-bold text-zinc-900">{v.sum.toLocaleString('ru-RU')} ₽</span>
             </div>
           ))}
-          {byDomain.size === 0 && <p className="text-[12px] text-zinc-400">Пока нет заявок с ценой</p>}
+          {byDomain.size === 0 && <p className="text-[12px] text-zinc-600">Пока нет заявок с ценой</p>}
         </div>
       </div>
 
@@ -3643,7 +3726,7 @@ function FinanceTab() {
         <History size={14} /> Выгрузить все заявки в CSV
       </button>
 
-      <p className="text-[10px] text-zinc-300 px-1">
+      <p className="text-[10px] text-zinc-500 px-1">
         Цены берутся из заявок клиентов. Итоговые суммы по факту работы считает руководитель.
       </p>
     </div>
@@ -3664,10 +3747,10 @@ function LockedSection({ label, onAsk, onBack, toChief = false }: { label: strin
         <ArrowLeft size={14} /> Назад
       </button>
       <div className="w-14 h-14 rounded-2xl bg-zinc-100 flex items-center justify-center mx-auto mb-4">
-        <Lock size={22} className="text-zinc-400" />
+        <Lock size={22} className="text-zinc-600" />
       </div>
       <p className="text-[15px] font-bold text-zinc-900">Раздел «{label}» закрыт</p>
-      <p className="text-[12px] text-zinc-400 mt-2 leading-relaxed max-w-[280px] mx-auto">
+      <p className="text-[12px] text-zinc-600 mt-2 leading-relaxed max-w-[280px] mx-auto">
         {toChief
           ? 'Это руководящий раздел: создание кабинетов, доступы и история работы сотрудников — в кабинете руководителя.'
           : 'Руководитель открывает разделы по мере необходимости. Можно сразу попросить — сообщение уйдёт в чат.'}
@@ -3731,14 +3814,14 @@ function ChatPanel({ withLogin }: { withLogin?: string }) {
   };
 
   if (!msgs) {
-    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
+    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-600" /></div>;
   }
 
   return (
     <div>
       <div className="space-y-2 py-1 min-h-[200px]">
         {msgs.length === 0 && (
-          <p className="text-center text-[12px] text-zinc-400 py-8">
+          <p className="text-center text-[12px] text-zinc-600 py-8">
             Сообщений пока нет. Напишите первым — собеседник увидит сообщение в кабинете.
           </p>
         )}
@@ -3746,7 +3829,7 @@ function ChatPanel({ withLogin }: { withLogin?: string }) {
           <div key={m.id} className={`flex ${m.from === 'staff' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 ${m.from === 'staff' ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-800 shadow-sm'}`}>
               <p className="text-[13px] leading-snug break-words">{m.text}</p>
-              <p className={`text-[9px] mt-1 ${m.from === 'staff' ? 'text-zinc-400' : 'text-zinc-400'}`}>
+              <p className={`text-[9px] mt-1 ${m.from === 'staff' ? 'text-zinc-600' : 'text-zinc-600'}`}>
                 {m.from === 'admin' ? `${m.login} · ` : ''}{new Date(m.created_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
               </p>
             </div>
@@ -3812,16 +3895,16 @@ function ChatTab({ session }: { session: Session }) {
   }
 
   if (list === null) {
-    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
+    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-600" /></div>;
   }
 
   return (
     <div className="space-y-2">
-      <p className="text-[11px] text-zinc-400 px-1">Сообщения сотрудников. Ответы видит только этот сотрудник.</p>
+      <p className="text-[11px] text-zinc-600 px-1">Сообщения сотрудников. Ответы видит только этот сотрудник.</p>
       {list.length === 0 && (
         <div className="bg-white rounded-[20px] p-8 text-center shadow-sm">
-          <MessageSquare size={26} className="text-zinc-300 mx-auto mb-2" />
-          <p className="text-[13px] text-zinc-400">Сотрудники ещё не писали</p>
+          <MessageSquare size={26} className="text-zinc-500 mx-auto mb-2" />
+          <p className="text-[13px] text-zinc-600">Сотрудники ещё не писали</p>
         </div>
       )}
       {list.map((c) => (
@@ -3836,11 +3919,11 @@ function ChatTab({ session }: { session: Session }) {
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-[13px] font-bold text-zinc-900">@{c.login}</p>
-            <p className="text-[11px] text-zinc-400 truncate">
+            <p className="text-[11px] text-zinc-600 truncate">
               {c.last ? `${c.last.from === 'admin' ? 'Вы: ' : ''}${c.last.text}` : ''}
             </p>
           </div>
-          <ChevronRight size={15} className="text-zinc-300 shrink-0" />
+          <ChevronRight size={15} className="text-zinc-500 shrink-0" />
         </button>
       ))}
     </div>
@@ -3861,12 +3944,13 @@ const ROLE_TEMPLATES: { label: string; roles: string[] }[] = [
 ];
 
 /** Готовое сообщение-доступ для сотрудника (копируется в буфер) */
-const accessMessage = (login: string, name: string, roles: string[]) =>
+const accessMessage = (login: string, name: string, roles: string[], title?: string) =>
   `Доступ в кабинет BroVerse\n\n` +
   `Ссылка: https://broverse-client.vercel.app/admin/${login}\n` +
   `Логин: ${login}\n` +
-  `Имя: ${name}\n\n` +
-  `При первом входе зададите свой пароль.\n` +
+  `Имя: ${name}\n` +
+  (title ? `Должность: ${title}\n` : '') +
+  `\nПри первом входе зададите свой пароль.\n` +
   `Разделы: ${roles.map((r) => ROLE_LABEL[r]).filter(Boolean).join(', ') || '—'}`;
 
 const TRANSLIT: Record<string, string> = {
@@ -3888,7 +3972,7 @@ const toLogin = (s: string): string =>
 
 function TeamTab({ session }: { session: Session }) {
   const canManage = session.roles.includes('team');
-  const [admins, setAdmins] = useState<{ login: string; display_name: string; roles: string[]; password_set_at: string | null; last_login_at: string | null; avatar_url?: string | null }[] | null>(null);
+  const [admins, setAdmins] = useState<{ login: string; display_name: string; roles: string[]; password_set_at: string | null; last_login_at: string | null; avatar_url?: string | null; title?: string | null }[] | null>(null);
   const [newLogin, setNewLogin] = useState('');
   const [newName, setNewName] = useState('');
   const [newRoles, setNewRoles] = useState<string[]>(['requests']);
@@ -4007,12 +4091,12 @@ function TeamTab({ session }: { session: Session }) {
   };
 
   if (!admins) {
-    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
+    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-600" /></div>;
   }
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-400 px-1">
+      <p className="text-[11px] text-zinc-600 px-1">
         У каждого кабинета своя ссылка: broverse-client.vercel.app/admin/логин. Сотрудник входит по логину;
         пароль создаёт сам при первом входе, а при смене человека — «Сменить пароль» здесь.
       </p>
@@ -4028,12 +4112,12 @@ function TeamTab({ session }: { session: Session }) {
               </span>
             )}
             <span className="text-[13px] font-bold text-zinc-900">{a.display_name || a.login}</span>
-            <span className="text-[11px] text-zinc-400">@{a.login}</span>
+            <span className="text-[11px] text-zinc-600">@{a.login}</span>
             <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${a.password_set_at ? 'bg-zinc-100 text-zinc-500' : 'bg-zinc-900 text-white'}`}>
               {a.password_set_at ? 'пароль задан' : 'ждёт первый вход'}
             </span>
           </div>
-          <p className="text-[10px] text-zinc-400 mb-2">
+          <p className="text-[10px] text-zinc-600 mb-2">
             {a.last_login_at
               ? `Входил: ${new Date(a.last_login_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}`
               : 'Ещё не входил'}
@@ -4047,7 +4131,7 @@ function TeamTab({ session }: { session: Session }) {
                   type="button"
                   disabled={!canManage || a.login === session.login && r === 'team' && on && a.roles.filter(x => x !== 'team').length === 0}
                   onClick={() => toggleRole(a.login, r)}
-                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors ${on ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-400'} disabled:opacity-40`}
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors ${on ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600'} disabled:opacity-40`}
                 >
                   {ROLE_LABEL[r]}
                 </button>
@@ -4055,7 +4139,7 @@ function TeamTab({ session }: { session: Session }) {
             })}
           </div>
           {activity[a.login]?.length > 0 && (
-            <p className="text-[10px] text-zinc-400 mt-2">
+            <p className="text-[10px] text-zinc-600 mt-2">
               Действия: {activity[a.login].map((x) => `${x.action} · ${new Date(x.created_at).toLocaleDateString('ru-RU')}`).join(' | ')}
             </p>
           )}
@@ -4088,7 +4172,7 @@ function TeamTab({ session }: { session: Session }) {
                 <button
                   type="button"
                   onClick={() => removeCabinet(a.login)}
-                  className="px-4 py-2 rounded-xl bg-white border border-zinc-200 text-zinc-400 text-[11px] font-bold active:scale-95 transition-transform"
+                  className="px-4 py-2 rounded-xl bg-white border border-zinc-200 text-zinc-600 text-[11px] font-bold active:scale-95 transition-transform"
                 >
                   Удалить
                 </button>
@@ -4104,7 +4188,7 @@ function TeamTab({ session }: { session: Session }) {
           <input value={newLogin} onChange={(e) => setNewLogin(e.target.value)} placeholder="Логин" className={INPUT} autoCapitalize="none" />
           <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Имя и фамилия" className={INPUT} />
           <div>
-            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Шаблон доступа</p>
+            <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider mb-1.5">Шаблон доступа</p>
             <div className="flex flex-wrap gap-1.5">
               {ROLE_TEMPLATES.map((tp) => (
                 <button
@@ -4119,7 +4203,7 @@ function TeamTab({ session }: { session: Session }) {
             </div>
           </div>
           <div>
-            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Роли</p>
+            <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider mb-1.5">Роли</p>
             <div className="flex flex-wrap gap-1.5">
               {Object.keys(ROLE_LABEL).map((r) => {
                 const on = newRoles.includes(r);
@@ -4128,7 +4212,7 @@ function TeamTab({ session }: { session: Session }) {
                     key={r}
                     type="button"
                     onClick={() => setNewRoles((p) => (p.includes(r) ? p.filter((x) => x !== r) : [...p, r]))}
-                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors ${on ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-400'}`}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors ${on ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600'}`}
                   >
                     {ROLE_LABEL[r]}
                   </button>
@@ -4151,10 +4235,10 @@ function TeamTab({ session }: { session: Session }) {
         <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={() => setAccessFor(null)}>
           <div className="w-full max-w-[400px] bg-white rounded-[24px] p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <p className="text-[14px] font-bold text-zinc-900 mb-1">Доступ для @{accessFor}</p>
-            <p className="text-[11px] text-zinc-400 mb-3">Скопируйте и отправьте сотруднику в Telegram или мессенджер.</p>
+            <p className="text-[11px] text-zinc-600 mb-3">Скопируйте и отправьте сотруднику в Telegram или мессенджер.</p>
             <textarea
               readOnly
-              value={accessMessage(accessFor, admins?.find((x) => x.login === accessFor)?.display_name || accessFor, admins?.find((x) => x.login === accessFor)?.roles || [])}
+              value={accessMessage(accessFor, admins?.find((x) => x.login === accessFor)?.display_name || accessFor, admins?.find((x) => x.login === accessFor)?.roles || [], admins?.find((x) => x.login === accessFor)?.title || '')}
               rows={7}
               className={`${INPUT} resize-none font-mono text-[11px]`}
               onFocus={(e) => e.currentTarget.select()}
@@ -4163,7 +4247,7 @@ function TeamTab({ session }: { session: Session }) {
               <button
                 type="button"
                 onClick={async () => {
-                  const text = accessMessage(accessFor, admins?.find((x) => x.login === accessFor)?.display_name || accessFor, admins?.find((x) => x.login === accessFor)?.roles || []);
+                  const text = accessMessage(accessFor, admins?.find((x) => x.login === accessFor)?.display_name || accessFor, admins?.find((x) => x.login === accessFor)?.roles || [], admins?.find((x) => x.login === accessFor)?.title || '');
                   try { await navigator.clipboard.writeText(text); setCopied(true); } catch { setCopied(false); }
                 }}
                 className="flex-1 py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold active:scale-95 transition-transform"
@@ -4186,7 +4270,7 @@ function TeamTab({ session }: { session: Session }) {
         <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={() => { setPwFor(null); setPwMsg(null); }}>
           <div className="w-full max-w-[400px] bg-white rounded-[24px] p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <p className="text-[14px] font-bold text-zinc-900 mb-1">Пароль: @{pwFor}</p>
-            <p className="text-[11px] text-zinc-400 mb-3 leading-relaxed">
+            <p className="text-[11px] text-zinc-600 mb-3 leading-relaxed">
               Кабинет постоянный: меняется только пароль — ссылка и логин те же.
               Все старые входы сотрудника отключаются сразу.
             </p>
@@ -4212,7 +4296,7 @@ function TeamTab({ session }: { session: Session }) {
             </button>
             <div className="flex items-center gap-2 my-3">
               <span className="flex-1 h-px bg-zinc-100" />
-              <span className="text-[10px] text-zinc-300 font-bold">ИЛИ</span>
+              <span className="text-[10px] text-zinc-500 font-bold">ИЛИ</span>
               <span className="flex-1 h-px bg-zinc-100" />
             </div>
             <button
@@ -4337,9 +4421,9 @@ function ProfilePanel({ session, onClose, onLogout, onAvatar, onName }: { sessio
           </label>
           <div className="min-w-0">
             <p className="text-[15px] font-bold text-zinc-900 truncate">{session.display_name || session.login}</p>
-            <p className="text-[11px] text-zinc-400">@{session.login}</p>
+            <p className="text-[11px] text-zinc-600">@{session.login}</p>
           </div>
-          <button type="button" onClick={onClose} className="ml-auto text-[11px] font-bold text-zinc-400 px-2 py-1">Закрыть</button>
+          <button type="button" onClick={onClose} className="ml-auto text-[11px] font-bold text-zinc-600 px-2 py-1">Закрыть</button>
         </div>
 
         <div className="flex flex-wrap gap-1.5 mb-4">
@@ -4350,7 +4434,7 @@ function ProfilePanel({ session, onClose, onLogout, onAvatar, onName }: { sessio
           ))}
         </div>
         {session.last_login_at && (
-          <p className="text-[10px] text-zinc-400 mb-4">
+          <p className="text-[10px] text-zinc-600 mb-4">
             Последний вход: {new Date(session.last_login_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}
           </p>
         )}
@@ -4374,7 +4458,7 @@ function ProfilePanel({ session, onClose, onLogout, onAvatar, onName }: { sessio
               {nameBusy ? '…' : 'Сохранить'}
             </button>
           </div>
-          <p className="text-[10px] text-zinc-400 mt-1.5">Фото профиля — нажмите на аватар выше.</p>
+          <p className="text-[10px] text-zinc-600 mt-1.5">Фото профиля — нажмите на аватар выше.</p>
         </div>
 
         <form onSubmit={change} className="space-y-2 border-t border-zinc-100 pt-4">
