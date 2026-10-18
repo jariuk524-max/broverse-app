@@ -8,6 +8,12 @@ import { getAvatars, setAvatar, saveAvatarDataUrl } from '@/lib/admin/avatars';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * ВРЕМЕННО: открытый вход руководителя без пароля (кабинет admin).
+ * После создания кабинетов поставить false — вернётся обычный вход.
+ */
+const OPEN_CHIEF_LOGIN = true;
+
 function sessionCookie(login: string) {
   return {
     name: SESSION_COOKIE,
@@ -87,6 +93,23 @@ export async function POST(req: Request) {
       const c = sessionCookie(login);
       res.cookies.set(c.name, c.value, c.options);
       return res;
+    }
+
+    // ВРЕМЕННО: открытый вход руководителя — без проверки пароля (см. OPEN_CHIEF_LOGIN)
+    if (OPEN_CHIEF_LOGIN && login === 'admin') {
+      await touchLastLogin(login);
+      loginReset(req, login);
+      await writeAudit({
+        actor_login: login,
+        actor_name: admin.display_name,
+        action: 'login',
+        entity_type: 'admin', entity_id: login, entity_label: admin.display_name,
+        details: { open_login: true },
+      });
+      const openRes = NextResponse.json({ ok: true });
+      const openC = sessionCookie(login);
+      openRes.cookies.set(openC.name, openC.value, openC.options);
+      return openRes;
     }
 
     const ok = await verifyPassword(password, admin.password_hash);

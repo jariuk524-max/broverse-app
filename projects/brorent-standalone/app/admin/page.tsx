@@ -191,6 +191,24 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
             const first = TABS.find((t) => !t.role || d.admin.roles.includes(t.role));
             if (first) setTab(first.id);
           }
+          return;
+        }
+        // ВРЕМЕННО: открытый вход руководителя — войти сразу без пароля.
+        // Личные кабинеты (/admin/xxx и ?c=) не трогаем — там вход своим паролем.
+        const c = new URLSearchParams(window.location.search).get('c')?.trim() || '';
+        if (cabinet || c) return;
+        const rr = await fetch('/api/admin/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ login: 'admin', password: '' }),
+        }).catch(() => null);
+        if (!rr?.ok) return;
+        const g = await fetch('/api/admin/session').catch(() => null);
+        const gg = g && g.ok ? await g.json().catch(() => null) : null;
+        if (gg?.admin) {
+          setSession(gg.admin);
+          const first = TABS.find((t) => !t.role || gg.admin.roles.includes(t.role));
+          if (first) setTab(first.id);
         }
       })
       .catch(() => {})
