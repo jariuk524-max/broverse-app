@@ -169,6 +169,15 @@ export default function DomainGrid() {
   const [services, setServices] = useState<OrderServiceItem[]>([]);
   const [garden, setGarden] = useState<OrderServiceItem[]>([]);
   const [masters, setMasters] = useState<MasterAd[]>([]);
+  const [homeOrder, setHomeOrder] = useState<string[]>([]);
+
+  // Порядок услуг на главной (выставляется в админке → «Зеркало» → «Как видит клиент»)
+  useEffect(() => {
+    fetch('/api/home-order')
+      .then((r) => r.json())
+      .then((d) => { if (Array.isArray(d?.order) && d.order.length) setHomeOrder(d.order); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch('/api/services')
@@ -230,8 +239,19 @@ export default function DomainGrid() {
   const catalogServices = useMemo(() => {
     // garden — из каталога бренда; убираем дубли по имени, если уже есть в /api/services
     const seen = new Set(services.map((s) => `${s.domain}:${s.name.toLowerCase()}`));
-    return [...services, ...garden.filter((g) => !seen.has(`garden:${g.name.toLowerCase()}`))];
-  }, [services, garden]);
+    const list = [...services, ...garden.filter((g) => !seen.has(`garden:${g.name.toLowerCase()}`))];
+    if (!homeOrder.length) return list;
+    // Применяем порядок главной, выставленный в админке («Зеркало» → «Как видит клиент»)
+    const pos = new Map(homeOrder.map((n, i) => [n, i]));
+    return list
+      .map((s, i) => ({ s, i }))
+      .sort((a, b) => {
+        const pa = pos.has(a.s.name) ? pos.get(a.s.name)! : homeOrder.length + a.i;
+        const pb = pos.has(b.s.name) ? pos.get(b.s.name)! : homeOrder.length + b.i;
+        return pa - pb;
+      })
+      .map((x) => x.s);
+  }, [services, garden, homeOrder]);
   const masterItems = useMemo(() => masters.map(adToOrderItem), [masters]);
   const allItems = useMemo(() => [...catalogServices, ...masterItems], [catalogServices, masterItems]);
 

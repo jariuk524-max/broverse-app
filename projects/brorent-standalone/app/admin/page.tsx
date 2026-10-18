@@ -62,6 +62,8 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 type CatalogService = { category: string; name: string; desc: string; price: string; time: string; image: string; deleted?: boolean; isNew?: boolean };
+type ClientCardData = { name: string; desc: string; price: string; time: string; image: string; category?: string };
+type HomeItem = { name: string; desc: string; price: string; domain: string; brand: string; time: string; image: string };
 type ServiceEdit = { desc?: string; price?: string; time?: string; image?: string; order?: string[]; new?: boolean; deleted?: boolean };
 type CatalogData = {
   domains: Record<string, CatalogService[]>;
@@ -2670,11 +2672,15 @@ function MirrorTab() {
   const [cardUploading, setCardUploading] = useState(false);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
-  const [clientCard, setClientCard] = useState<CatalogService | null>(null);
+  const [clientCard, setClientCard] = useState<ClientCardData | null>(null);
+  const [clientDomain, setClientDomain] = useState<string>('');
   const [clientPhotos, setClientPhotos] = useState<string[]>([]);
   const [photoBusy, setPhotoBusy] = useState(false);
   const photoFileRef = useRef<HTMLInputElement>(null);
   const photoCamRef = useRef<HTMLInputElement>(null);
+  const [homeItems, setHomeItems] = useState<HomeItem[] | null>(null);
+  const [homeFilter, setHomeFilter] = useState<string>('all');
+  const [homeSaving, setHomeSaving] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/catalog');
@@ -2682,6 +2688,59 @@ function MirrorTab() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Услуги главной клиентской страницы — как их видит клиент (/api/services + BroGarden)
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/services').then((r) => r.json()).catch(() => null),
+      fetch('/api/catalog/garden').then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch('/api/home-order').then((r) => r.json()).catch(() => null),
+    ]).then(([svcRaw, gardenRaw, orderRaw]) => {
+      const list: HomeItem[] = [];
+      if (Array.isArray(svcRaw)) {
+        for (const s of svcRaw) {
+          const nm = String(s?.name || s?.label || '');
+          if (!nm) continue;
+          const dom = String(s.domain || 'wash');
+          list.push({
+            name: nm,
+            desc: String(s.desc || s.description || ''),
+            price: String(s.price || '0'),
+            domain: dom,
+            brand: String(s.brand || DOMAIN_LABEL[dom] || ''),
+            time: String(s.time || '1 ч'),
+            image: String(s.image || ''),
+          });
+        }
+      }
+      const gardenList: Record<string, unknown>[] = Array.isArray(gardenRaw?.services)
+        ? gardenRaw.services
+        : Array.isArray(gardenRaw) ? gardenRaw : [];
+      const seen = new Set(list.map((x) => `${x.domain}:${x.name.toLowerCase()}`));
+      for (const g of gardenList) {
+        const nm = String(g?.name || '');
+        if (!nm || seen.has(`garden:${nm.toLowerCase()}`)) continue;
+        list.push({
+          name: nm,
+          desc: String(g?.desc || ''),
+          price: String(g?.price || '0'),
+          domain: 'garden',
+          brand: 'BroGarden',
+          time: String(g?.time || '1 ч'),
+          image: String(g?.image || ''),
+        });
+      }
+      const order: string[] = Array.isArray(orderRaw?.order) ? orderRaw.order : [];
+      if (order.length) {
+        const pos = new Map(order.map((n, i) => [n, i]));
+        const dec = list.map((s, i) => ({ s, i }));
+        dec.sort((a, b) => (pos.get(a.s.name) ?? order.length + a.i) - (pos.get(b.s.name) ?? order.length + b.i));
+        setHomeItems(dec.map((x) => x.s));
+      } else {
+        setHomeItems(list);
+      }
+    });
+  }, []);
 
   const services = data?.domains?.[domain] || [];
   const edits = data?.edits?.[domain] || {};
@@ -2871,27 +2930,29 @@ function MirrorTab() {
     void saveOrder(names);
   };
 
-  const openClientCard = async (s: CatalogService) => {
+  const openClientCard = async (s: ClientCardData, dom?: string) => {
+    const d = dom || domain;
     setClientCard(s);
+    setClientDomain(d);
     setClientPhotos([]);
     try {
-      const res = await fetch(`/api/images?domainId=${domain}`);
+      const res = await fetch(`/api/images?domainId=${d}`);
       if (res.ok) {
-        const d = await res.json();
-        setClientPhotos(Array.isArray(d.services?.[s.name]) ? d.services[s.name] : []);
+        const j = await res.json();
+        setClientPhotos(Array.isArray(j.services?.[s.name]) ? j.services[s.name] : []);
       }
     } catch {}
   };
 
   const saveClientPhotos = async (next: string[]): Promise<boolean> => {
-    if (!clientCard) return false;
+    if (!clientCard || !clientDomain) return false;
     setPhotoBusy(true);
     let ok = false;
     try {
       const res = await fetch('/api/images', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domainId: domain, serviceName: clientCard.name, photos: next }),
+        body: JSON.stringify({ domainId: clientDomain, serviceName: clientCard.name, photos: next }),
       });
       ok = res.ok;
     } catch {}
@@ -2901,7 +2962,7 @@ function MirrorTab() {
   };
 
   const uploadClientPhoto = async (file: File) => {
-    if (!clientCard || photoBusy) return;
+    if (!clientCard || !clientDomain || photoBusy) return;
     setPhotoBusy(true);
     try {
       const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -2913,7 +2974,7 @@ function MirrorTab() {
       const res = await fetch('/api/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domainId: domain, type: 'service-photo', serviceName: clientCard.name, data: dataUrl }),
+        body: JSON.stringify({ domainId: clientDomain, type: 'service-photo', serviceName: clientCard.name, data: dataUrl }),
       });
       const json = await res.json();
       if (json.path) {
@@ -2923,7 +2984,7 @@ function MirrorTab() {
           const r2 = await fetch('/api/images', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ domainId: domain, serviceName: clientCard.name, photos: next }),
+            body: JSON.stringify({ domainId: clientDomain, serviceName: clientCard.name, photos: next }),
           });
           ok = r2.ok;
         } catch {}
@@ -2947,7 +3008,35 @@ function MirrorTab() {
     await saveClientPhotos(next);
   };
 
-  const cCard = clientCard ? { ...clientCard, ...(edits[clientCard.name] || {}) } : null;
+  const cCard = clientCard
+    ? { ...clientCard, ...(clientDomain === domain ? (edits[clientCard.name] || {}) : {}) }
+    : null;
+
+  const shownHome = homeItems
+    ? (homeFilter === 'all' ? homeItems : homeItems.filter((x) => x.domain === homeFilter))
+    : [];
+
+  const moveHome = async (filteredIdx: number, dir: -1 | 1) => {
+    if (!homeItems || homeSaving) return;
+    const shown = homeFilter === 'all' ? homeItems : homeItems.filter((x) => x.domain === homeFilter);
+    const j = filteredIdx + dir;
+    if (j < 0 || j >= shown.length) return;
+    const ia = homeItems.indexOf(shown[filteredIdx]);
+    const ib = homeItems.indexOf(shown[j]);
+    if (ia < 0 || ib < 0) return;
+    const next = [...homeItems];
+    [next[ia], next[ib]] = [next[ib], next[ia]];
+    setHomeItems(next);
+    setHomeSaving(true);
+    try {
+      await fetch('/api/home-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: next.map((x) => x.name) }),
+      });
+    } catch {}
+    setHomeSaving(false);
+  };
 
   if (!data) {
     return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
@@ -2955,6 +3044,7 @@ function MirrorTab() {
 
   return (
     <div>
+      {view === 'list' && (
       <div className="flex gap-1.5 mb-3 overflow-x-auto -mx-1 px-1">
         {DOMAIN_ORDER.filter((d) => data?.domains?.[d]).map((d) => (
           <button
@@ -2967,6 +3057,7 @@ function MirrorTab() {
           </button>
         ))}
       </div>
+      )}
 
       <div className="flex items-center gap-2 mb-3">
         <div className="flex gap-1 bg-zinc-100 rounded-full p-1">
@@ -2985,6 +3076,7 @@ function MirrorTab() {
             Как видит клиент
           </button>
         </div>
+        {view === 'list' && (
         <button
           type="button"
           onClick={openAdd}
@@ -2992,6 +3084,7 @@ function MirrorTab() {
         >
           <Plus size={12} /> Добавить
         </button>
+        )}
       </div>
 
       {view === 'list' && (
@@ -3112,34 +3205,104 @@ function MirrorTab() {
       )}
 
       {view === 'client' && (
-      <div className="grid grid-cols-2 gap-2.5">
-        {ordered.map((s) => {
-          const current = { ...s, ...(edits[s.name] || {}) };
-          if (current.deleted) return null;
-          return (
+      <div>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 rounded-2xl bg-zinc-900 flex items-center justify-center shrink-0">
+            <span className="text-white font-black text-sm">B</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-[15px] font-bold text-zinc-900">Все услуги BroVerse</h2>
+            <p className="text-[11px] text-zinc-400">
+              {homeItems === null ? 'Загрузка главной…' : `${shownHome.length} услуг · главная клиента`}
+              {homeSaving ? ' · сохраняем…' : ''}
+            </p>
+          </div>
+        </div>
+
+        {homeItems !== null && (
+        <>
+          <div className="flex gap-1.5 overflow-x-auto pb-3 mb-4 -mx-1 px-1">
             <button
-              key={s.name}
               type="button"
-              onClick={() => void openClientCard(s)}
-              className="text-left rounded-2xl border border-zinc-100 overflow-hidden bg-white active:scale-[0.98] transition-transform"
+              onClick={() => setHomeFilter('all')}
+              className={`shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-bold transition-colors ${homeFilter === 'all' ? 'bg-zinc-900 text-white shadow-sm' : 'bg-white text-zinc-500 border border-zinc-100'}`}
             >
-              <div className="relative aspect-[16/10] overflow-hidden bg-zinc-100">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={current.image} alt={s.name} loading="lazy" className="w-full h-full object-cover" />
-                <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/50 text-[9px] font-bold text-white">{DOMAIN_LABEL[domain] || domain}</span>
-                <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full bg-black/50 text-[9px] font-bold text-white">{current.time}</span>
-              </div>
-              <div className="p-3">
-                <p className="text-[13px] font-semibold text-zinc-800 leading-tight line-clamp-1">{s.name}</p>
-                <p className="text-[11px] text-zinc-400 mt-0.5 line-clamp-1">{current.desc}</p>
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-sm font-bold text-zinc-900">от {current.price} ₽</span>
-                  <span className="text-[10px] font-semibold text-zinc-400">Открыть →</span>
+              Все ({homeItems.length})
+            </button>
+            {DOMAIN_ORDER.filter((d) => homeItems.some((x) => x.domain === d)).map((d) => {
+              const count = homeItems.filter((x) => x.domain === d).length;
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setHomeFilter(homeFilter === d ? 'all' : d)}
+                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-bold transition-colors ${homeFilter === d ? 'bg-zinc-900 text-white shadow-sm' : 'bg-white text-zinc-500 border border-zinc-100'}`}
+                >
+                  {DOMAIN_LABEL[d] || d} ({count})
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2.5">
+            {shownHome.map((s, idx) => (
+              <div key={`${s.domain}-${s.name}`} data-service={s.name} className="rounded-2xl border border-zinc-100 overflow-hidden bg-white">
+                <button
+                  type="button"
+                  onClick={() => void openClientCard(s, s.domain)}
+                  className="block w-full text-left"
+                >
+                  <div className="relative aspect-[16/10] overflow-hidden bg-zinc-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={s.image} alt={s.name} loading="lazy" className="w-full h-full object-cover" />
+                    <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/50 text-[9px] font-bold text-white">{s.brand || DOMAIN_LABEL[s.domain] || s.domain}</span>
+                    <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full bg-black/50 text-[9px] font-bold text-white">{s.time}</span>
+                  </div>
+                  <div className="p-3">
+                    <p className="text-[13px] font-semibold text-zinc-800 leading-tight line-clamp-1">{s.name}</p>
+                    <p className="text-[11px] text-zinc-400 mt-1 line-clamp-1">{s.desc}</p>
+                    <div className="flex items-center justify-between mt-2.5">
+                      <span className="text-sm font-bold text-zinc-900">от {s.price} ₽</span>
+                      <span className="text-[11px] font-semibold text-zinc-400">Заказать →</span>
+                    </div>
+                  </div>
+                </button>
+                <div className="flex items-center gap-1.5 px-2.5 pb-2.5">
+                  <button
+                    type="button"
+                    disabled={homeSaving || idx === 0}
+                    onClick={() => void moveHome(idx, -1)}
+                    aria-label="Передвинуть выше"
+                    className="w-8 h-8 rounded-lg bg-zinc-50 flex items-center justify-center text-zinc-500 active:scale-95 transition-transform disabled:opacity-30"
+                  >
+                    <ChevronUp size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={homeSaving || idx === shownHome.length - 1}
+                    onClick={() => void moveHome(idx, 1)}
+                    aria-label="Передвинуть ниже"
+                    className="w-8 h-8 rounded-lg bg-zinc-50 flex items-center justify-center text-zinc-500 active:scale-95 transition-transform disabled:opacity-30"
+                  >
+                    <ChevronDown size={15} />
+                  </button>
+                  <span className="ml-auto text-[9.5px] text-zinc-300">клик — карточка клиента</span>
                 </div>
               </div>
-            </button>
-          );
-        })}
+            ))}
+          </div>
+
+          {shownHome.length === 0 && (
+            <div className="rounded-[20px] border border-dashed border-zinc-200 p-8 text-center text-[12px] text-zinc-400">
+              На главной пока нет услуг
+            </div>
+          )}
+
+          <div className="mt-3 flex items-center gap-2 px-1 text-[10px] text-zinc-300">
+            <GripVertical size={11} /> Порядок ↑↓ применяется к актуальной главной клиента
+          </div>
+        </>
+        )}
       </div>
       )}
 
@@ -3272,7 +3435,7 @@ function MirrorTab() {
               </button>
               <div className="absolute bottom-3 left-4 right-4">
                 <span className="inline-block px-2.5 py-1 rounded-full bg-black/40 text-[10px] font-bold text-white mb-1.5">
-                  {DOMAIN_LABEL[domain] || domain} • {cCard.time}
+                  {DOMAIN_LABEL[clientDomain] || clientDomain} • {cCard.time}
                 </span>
                 <h2 className="text-xl font-black text-white">{clientCard.name}</h2>
               </div>
