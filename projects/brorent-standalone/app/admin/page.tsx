@@ -359,8 +359,8 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
               )}
             </div>
             <div>
-              <h1 className="text-[14px] font-bold text-zinc-900 leading-tight">{chief ? 'BroVerse Штаб' : 'BroVerse Админ'}</h1>
-              <p className="text-[10px] text-zinc-400">{chief ? 'Руководитель' : 'Администратор'}: {session.display_name || session.login}</p>
+              <h1 className="text-[14px] font-bold text-zinc-900 leading-tight">{chief ? 'Кабинет руководителя' : 'BroVerse Админ'}</h1>
+              <p className="text-[10px] text-zinc-400">{chief ? (session.display_name || session.login) : `Администратор: ${session.display_name || session.login}`}</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -1426,13 +1426,17 @@ function OrderRow({ label, value }: { label: string; value: string }) {
 
 function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id: TabId) => void }) {
   const [orders, setOrders] = useState<ServiceRequest[] | null>(null);
-  const [admins, setAdmins] = useState<{ login: string; display_name: string; roles: string[]; password_set_at: string | null; last_login_at: string | null; avatar_url?: string | null }[] | null>(null);
+  const [admins, setAdmins] = useState<{ login: string; display_name: string; roles: string[]; password_set_at: string | null; last_login_at: string | null; avatar_url?: string | null; title?: string | null }[] | null>(null);
   const [entries, setEntries] = useState<AuditEntry[] | null>(null);
   const [ads, setAds] = useState<unknown[] | null>(null);
   const [cabOrder, setCabOrder] = useState<string[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [createDone, setCreateDone] = useState('');
   const [createName, setCreateName] = useState('');
+  const [createTitle, setCreateTitle] = useState('');
+  const [titleDraft, setTitleDraft] = useState('');
+  const [titleBusy, setTitleBusy] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [createLogin, setCreateLogin] = useState('');
   const [loginTouched, setLoginTouched] = useState(false);
   const [createRoles, setCreateRoles] = useState<string[]>(['requests']);
@@ -1585,6 +1589,48 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
 
   const effLogin = loginTouched ? createLogin.trim() : toLogin(createName);
 
+  useEffect(() => {
+    if (!openCabinet) return;
+    setTitleDraft(admins?.find((x) => x.login === openCabinet)?.title || '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openCabinet]);
+
+  const decide = async (o: ServiceRequest, action: 'approved' | 'rejected') => {
+    let comment = '';
+    if (action === 'rejected') {
+      const reason = window.prompt('Причина отклонения (видна мастеру):');
+      if (reason === null) return;
+      comment = reason.trim();
+      if (!comment) return;
+    }
+    setBusyId(o.id);
+    await fetch('/api/admin/requests', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: o.id, status: action, section: 'orders', ...(comment ? { comment } : {}) }),
+    }).catch(() => {});
+    const meta = o.metadata;
+    if (action === 'approved' && meta?.unlock_direction && meta.master_id) {
+      await unlockDirectionForMaster(meta.master_id, meta.unlock_direction, meta.master_name);
+    }
+    await load();
+    setBusyId(null);
+  };
+
+  const saveTitle = async (login: string) => {
+    setTitleBusy(true);
+    try {
+      await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ login, action: 'set_title', title: titleDraft.trim() }),
+      }).catch(() => {});
+      await load();
+    } finally {
+      setTitleBusy(false);
+    }
+  };
+
   const submitCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (createBusy) return;
@@ -1604,6 +1650,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
           display_name: createName.trim(),
           roles: createRoles,
           ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
+          ...(createTitle.trim() ? { title: createTitle.trim() } : {}),
         }),
       });
       if (!r.ok) {
@@ -1615,6 +1662,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
         setCreateLogin('');
         setLoginTouched(false);
         setCreateRoles(['requests']);
+        setCreateTitle('');
         setCreateAvatar(null);
         await load();
       }
@@ -1681,10 +1729,21 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-[24px] p-5 shadow-sm">
-        <p className="text-[17px] font-black text-zinc-900">Кабинет руководителя проекта</p>
-        <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
+        <div className="flex items-center gap-3">
+          {session.avatar_url ? (
+            <img src={session.avatar_url} alt="" className="w-12 h-12 rounded-2xl object-cover shrink-0" />
+          ) : (
+            <span className="w-12 h-12 rounded-2xl bg-zinc-900 text-white text-[20px] font-black flex items-center justify-center shrink-0">
+              {(session.display_name || session.login).slice(0, 1).toUpperCase()}
+            </span>
+          )}
+          <div className="min-w-0">
+            <p className="text-[16px] font-black text-zinc-900 leading-tight">Кабинет руководителя Broverse</p>
+            <p className="text-[13px] font-bold text-zinc-600 truncate">{session.display_name || session.login}</p>
+          </div>
+        </div>
+        <p className="text-[11px] text-zinc-400 mt-2 leading-relaxed">
           Все процессы и кабинеты сотрудников — здесь.
-          {session.display_name ? ` Руководитель: ${session.display_name}.` : ''}
         </p>
         <button
           type="button"
@@ -1756,7 +1815,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-bold text-zinc-900 truncate">{a.display_name || a.login}</p>
                     <p className="text-[10px] text-zinc-400 truncate">
-                      @{a.login} · {a.password_set_at ? 'пароль задан' : 'ждёт первый вход'}
+                      {a.title ? `${a.title} · ` : ''}@{a.login} · {a.password_set_at ? 'пароль задан' : 'ждёт первый вход'}
                       {a.last_login_at ? ` · вход ${new Date(a.last_login_at).toLocaleDateString('ru-RU')}` : ''}
                     </p>
                   </div>
@@ -1808,6 +1867,75 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
             ))}
           </div>
         )}
+      </div>
+
+      <div className="bg-white rounded-[18px] p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-1.5">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Заявки проекта</p>
+          <button
+            type="button"
+            onClick={() => setStatusList('all')}
+            className="text-[10.5px] font-bold text-zinc-700 active:scale-95 transition-transform"
+          >
+            Все {orders.length} →
+          </button>
+        </div>
+        {(() => {
+          const queue = orders.filter((o) => o.status === 'new' || o.status === 'review');
+          const rest = orders.filter((o) => o.status !== 'new' && o.status !== 'review');
+          const rows = [...queue, ...rest].slice(0, 12);
+          if (rows.length === 0) return <p className="text-[12px] text-zinc-400 py-1">Заявок пока нет.</p>;
+          return (
+            <div>
+              {rows.map((o) => {
+                const inQueue = o.status === 'new' || o.status === 'review';
+                return (
+                  <div key={o.id} className="flex items-center gap-2 py-2 border-b border-zinc-50 last:border-0">
+                    <button
+                      type="button"
+                      onClick={() => setOpenOrder(o.id)}
+                      className="flex-1 min-w-0 text-left rounded-lg px-1 py-0.5 active:bg-zinc-50 transition-colors"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[12.5px] font-bold text-zinc-900 truncate">{o.service_name}</span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${inQueue ? 'bg-amber-100 text-amber-700' : 'bg-zinc-100 text-zinc-500'}`}>
+                          {STATUS_LABEL[o.status]}
+                        </span>
+                      </div>
+                      <p className="text-[10.5px] text-zinc-400 truncate">{o.client_name} · {o.address}</p>
+                    </button>
+                    {inQueue ? (
+                      <div className="flex gap-1 shrink-0">
+                        <button
+                          type="button"
+                          disabled={busyId === o.id}
+                          onClick={() => decide(o, 'approved')}
+                          className="w-8 h-8 rounded-xl bg-zinc-900 text-white flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40"
+                          title="Одобрить"
+                        >
+                          <CheckCircle2 size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busyId === o.id}
+                          onClick={() => decide(o, 'rejected')}
+                          className="w-8 h-8 rounded-xl bg-white border border-zinc-200 text-red-500 flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40"
+                          title="Отклонить"
+                        >
+                          <XCircle size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="shrink-0 text-[10.5px] font-bold text-zinc-300 px-2">
+                        {new Date(o.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       <div className="bg-white rounded-[18px] p-4 shadow-sm">
@@ -1960,6 +2088,26 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                     value={`${String(decision.details?.to) === 'approved' ? '✓ Одобрена' : '✕ Отклонена'} · ${decision.actor_name || decision.actor_login}`}
                   />
                 )}
+                {['new', 'review'].includes(o.status) && (
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="button"
+                      disabled={busyId === o.id}
+                      onClick={() => decide(o, 'approved')}
+                      className="flex-1 py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform disabled:opacity-40"
+                    >
+                      <CheckCircle2 size={14} /> Одобрить
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busyId === o.id}
+                      onClick={() => decide(o, 'rejected')}
+                      className="flex-1 py-2.5 rounded-xl bg-white border border-zinc-200 text-red-500 text-[12px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform disabled:opacity-40"
+                    >
+                      <XCircle size={14} /> Отклонить
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1969,6 +2117,11 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
       {openCabinet && (() => {
         const a = admins.find((x) => x.login === openCabinet);
         if (!a) return null;
+        const mine = entries.filter(
+          (e) => e.actor_login === a.login && e.action === 'order_status' && e.entity_type === 'orders' && ['approved', 'rejected'].includes(String(e.details?.to))
+        );
+        const okN = mine.filter((e) => String(e.details?.to) === 'approved').length;
+        const cabStat = { total: mine.length, ok: okN, no: mine.length - okN };
         return (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={() => setOpenCabinet(null)}>
             <div className="w-full max-w-[400px] bg-white rounded-[24px] shadow-2xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -1981,9 +2134,9 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                   </span>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-bold text-zinc-900 truncate">Кабинет @{a.login}</p>
+                  <p className="text-[13px] font-bold text-zinc-900 truncate">{a.display_name || a.login}</p>
                   <p className="text-[10px] text-zinc-400 truncate">
-                    {a.display_name}
+                    {a.title ? `${a.title} · ` : ''}@{a.login}
                     {a.password_set_at ? ' · пароль задан' : ' · ждёт первый вход'}
                     {a.last_login_at ? ` · вход ${new Date(a.last_login_at).toLocaleDateString('ru-RU')}` : ''}
                   </p>
@@ -2019,6 +2172,34 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                       {ROLE_LABEL[r] || r}
                     </span>
                   ))}
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[['Заявок обработано', cabStat.total], ['Одобрено', cabStat.ok], ['Отклонено', cabStat.no]].map(([l, v]) => (
+                    <div key={String(l)} className="bg-zinc-50 rounded-xl p-2.5 text-center">
+                      <p className="text-[16px] font-black text-zinc-900">{Number(v)}</p>
+                      <p className="text-[9px] text-zinc-400 font-bold mt-0.5">{String(l)}</p>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <p className="text-[10.5px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">Должность</p>
+                  <div className="flex gap-1.5">
+                    <input
+                      value={titleDraft}
+                      onChange={(e) => setTitleDraft(e.target.value)}
+                      maxLength={60}
+                      placeholder="Например: Администратор"
+                      className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-zinc-200 bg-white text-[12.5px] outline-none focus:border-zinc-400"
+                    />
+                    <button
+                      type="button"
+                      disabled={titleBusy || titleDraft.trim() === (a.title || '')}
+                      onClick={() => saveTitle(a.login)}
+                      className="shrink-0 px-3 py-2 rounded-xl bg-zinc-900 text-white text-[11px] font-bold active:scale-95 transition-transform disabled:opacity-40"
+                    >
+                      {titleBusy ? '…' : 'Сохранить'}
+                    </button>
+                  </div>
                 </div>
                 {activityMap[a.login]?.length ? (
                   <p className="text-[10px] text-zinc-400">{activityMap[a.login].map((x) => `${x.action} · ${new Date(x.created_at).toLocaleDateString('ru-RU')}`).join(' · ')}</p>
@@ -2120,6 +2301,37 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                 <div className="flex gap-2 mt-2">
                   <button
                     type="button"
+                    onClick={() => {
+                      const a = admins.find((x) => x.login === createDone);
+                      const msg = accessMessage(createDone, a?.display_name || createDone, a?.roles || []);
+                      window.location.href = `mailto:?subject=${encodeURIComponent('Доступ в кабинет BroVerse')}&body=${encodeURIComponent(msg)}`;
+                    }}
+                    className="flex-1 py-2.5 rounded-xl bg-zinc-100 text-zinc-700 text-[12px] font-bold active:scale-95 transition-transform"
+                  >
+                    ✉ Почта
+                  </button>
+                  {typeof navigator !== 'undefined' && 'share' in navigator && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const a = admins.find((x) => x.login === createDone);
+                        try {
+                          await navigator.share({
+                            title: 'Доступ в кабинет BroVerse',
+                            text: accessMessage(createDone, a?.display_name || createDone, a?.roles || []),
+                            url: `https://broverse-client.vercel.app/admin/${createDone}`,
+                          });
+                        } catch { /* отменено */ }
+                      }}
+                      className="flex-1 py-2.5 rounded-xl bg-zinc-100 text-zinc-700 text-[12px] font-bold active:scale-95 transition-transform"
+                    >
+                      Поделиться
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    type="button"
                     onClick={async () => {
                       const a = admins.find((x) => x.login === createDone);
                       try {
@@ -2182,13 +2394,13 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                   {createAvatar && <img src={createAvatar} alt="" className="w-8 h-8 rounded-full object-cover ml-auto" />}
                 </label>
                 <div>
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Шаблон доступа</p>
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Кому создаём кабинет</p>
                   <div className="flex flex-wrap gap-1.5">
                     {ROLE_TEMPLATES.map((tp) => (
                       <button
                         key={tp.label}
                         type="button"
-                        onClick={() => setCreateRoles(tp.roles)}
+                        onClick={() => { setCreateRoles(tp.roles); setCreateTitle(tp.label); }}
                         className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors ${JSON.stringify(createRoles) === JSON.stringify(tp.roles) ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600'}`}
                       >
                         {tp.label}
@@ -2197,7 +2409,17 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                   </div>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Разделы</p>
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Должность</p>
+                  <input
+                    value={createTitle}
+                    onChange={(e) => setCreateTitle(e.target.value)}
+                    maxLength={60}
+                    placeholder="Администратор, Наблюдатель, Служба поддержки…"
+                    className={INPUT}
+                  />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Навыки (разделы)</p>
                   <div className="flex flex-wrap gap-1.5">
                     {Object.keys(ROLE_LABEL).map((r) => {
                       const on = createRoles.includes(r);
@@ -3204,6 +3426,7 @@ const ROLE_TEMPLATES: { label: string; roles: string[] }[] = [
   { label: 'Менеджер мастеров', roles: ['overview', 'masters', 'tasks'] },
   { label: 'Модератор заявок', roles: ['overview', 'requests', 'feedback'] },
   { label: 'Наблюдатель', roles: ['overview'] },
+  { label: 'Служба поддержки', roles: ['overview', 'feedback', 'requests'] },
 ];
 
 /** Готовое сообщение-доступ для сотрудника (копируется в буфер) */

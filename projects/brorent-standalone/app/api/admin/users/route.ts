@@ -5,6 +5,7 @@ import { guardWrite } from '@/lib/admin/security';
 import { hashPassword } from '@/lib/admin/crypto';
 import { revokeSessions } from '@/lib/admin/revocations';
 import { getAvatars, setAvatar } from '@/lib/admin/avatars';
+import { getProfiles, setTitle } from '@/lib/admin/profiles';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,10 +15,12 @@ export async function GET() {
   if ('error' in res) return res.error;
   const admins = await listAdmins();
   const avatars = await getAvatars();
+  const profiles = await getProfiles();
   return NextResponse.json({
     admins: admins.map(({ password_hash: _, ...rest }) => ({
       ...rest,
       avatar_url: avatars[rest.login] || null,
+      title: profiles[rest.login]?.title || null,
     })),
   });
 }
@@ -34,6 +37,7 @@ export async function POST(req: Request) {
   const displayName = String(body.display_name || '').trim();
   const roles: string[] = Array.isArray(body.roles) ? body.roles.map(String) : [];
   const avatarUrl = typeof body.avatar_url === 'string' ? body.avatar_url.trim().slice(0, 512) : '';
+  const title = String(body.title || '').trim().slice(0, 60);
 
   if (!login || !displayName) {
     return NextResponse.json({ error: 'Укажите логин и имя' }, { status: 400 });
@@ -45,6 +49,7 @@ export async function POST(req: Request) {
   const ok = await createAdmin({ login, display_name: displayName, roles });
   if (!ok) return NextResponse.json({ error: 'Такой логин уже есть' }, { status: 409 });
   if (avatarUrl) await setAvatar(login, avatarUrl);
+  if (title) await setTitle(login, title);
 
   await writeAudit({
     actor_login: res.admin.login,
@@ -153,6 +158,21 @@ export async function PATCH(req: Request) {
       details: null,
     });
     return NextResponse.json({ ok: true, mode: 'reset' });
+  }
+
+  if (action === 'set_title') {
+    const title = String(body.title || '').trim().slice(0, 60);
+    await setTitle(login, title);
+    await writeAudit({
+      actor_login: res.admin.login,
+      actor_name: res.admin.display_name,
+      action: 'title_set',
+      entity_type: 'admin',
+      entity_id: login,
+      entity_label: title || login,
+      details: { title: title || null },
+    });
+    return NextResponse.json({ ok: true, title });
   }
 
   const roles: string[] = Array.isArray(body.roles) ? body.roles.map(String) : [];
