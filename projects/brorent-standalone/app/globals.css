@@ -87,3 +87,52 @@ body {
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
 }
+
+/* ─────────────────────────────────────────────────────────────
+   КРУПНЫЙ ШРИФТ — как в мобильных приложениях (Яндекс, Альфа).
+   Перебираем размеры Tailwind в utility-слое: весь интерфейс
+   проекта (клиентские сайты + админка) становится на шаг крупнее.
+   ───────────────────────────────────────────────────────────── */
+@layer utilities {
+  .text-\[7px\] { font-size: 9px; }
+  .text-\[8px\] { font-size: 10px; }
+  .text-\[9px\] { font-size: 10.5px; }
+  .text-\[9\.5px\] { font-size: 11px; }
+  .text-\[10px\] { font-size: 11.5px; }
+  .text-\[10\.5px\] { font-size: 12px; }
+  .text-\[11px\] { font-size: 12.5px; }
+  .text-\[11\.5px\] { font-size: 13px; }
+  .text-\[12px\] { font-size: 13.5px; }
+  .text-\[12\.5px\] { font-size: 13.5px; }
+  .text-\[13px\] { font-size: 15px; }
+  .text-\[13\.5px\] { font-size: 15px; }
+  .text-\[14px\] { font-size: 15.5px; }
+  .text-\[15px\] { font-size: 16.5px; }
+  .text-\[16px\] { font-size: 17.5px; }
+  .text-\[17px\] { font-size: 18.5px; }
+  .text-\[18px\] { font-size: 19.5px; }
+  .text-\[19px\] { font-size: 20px; }
+  .text-\[20px\] { font-size: 21.5px; }
+  .text-\[22px\] { font-size: 23.5px; }
+  .text-\[27px\] { font-size: 29px; }
+  .text-\[28px\] { font-size: 30px; }
+  .text-\[30px\] { font-size: 32px; }
+
+  .text-xs { font-size: 13px; }
+  .text-sm { font-size: 15px; }
+  .text-lg { font-size: 19px; }
+  .text-xl { font-size: 21px; }
+  .text-2xl { font-size: 25px; }
+  .text-3xl { font-size: 31px; }
+  .text-4xl { font-size: 37px; }
+}
+
+/* Десктопные варианты (sm:) — тоже на шаг крупнее, иначе базовый оверрайд их перекроет */
+@media (min-width: 640px) {
+  @layer utilities {
+    .sm\:text-\[10px\] { font-size: 11.5px; }
+    .sm\:text-\[11px\] { font-size: 12.5px; }
+    .sm\:text-\[14px\] { font-size: 15.5px; }
+    .sm\:text-\[15px\] { font-size: 16.5px; }
+  }
+}
