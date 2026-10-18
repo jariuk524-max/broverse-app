@@ -1510,6 +1510,12 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
     return () => { clearInterval(id); document.removeEventListener('visibilitychange', onVis); };
   }, []);
 
+  useEffect(() => {
+    if (!openCabinet) return;
+    setTitleDraft(admins?.find((x) => x.login === openCabinet)?.title || '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openCabinet]);
+
   if (!orders || !admins || !entries || !ads) {
     return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-400" /></div>;
   }
@@ -1606,12 +1612,6 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
   };
 
   const effLogin = loginTouched ? createLogin.trim() : toLogin(createName);
-
-  useEffect(() => {
-    if (!openCabinet) return;
-    setTitleDraft(admins?.find((x) => x.login === openCabinet)?.title || '');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openCabinet]);
 
   const decide = async (o: ServiceRequest, action: 'approved' | 'rejected') => {
     let comment = '';
