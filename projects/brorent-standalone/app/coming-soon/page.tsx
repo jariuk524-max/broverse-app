@@ -1,9 +1,8 @@
-import Link from 'next/link';
 import { Construction } from 'lucide-react';
 
 export const metadata = {
-  title: 'BroVerse — скоро откроемся',
-  description: 'Сайт обновляется. Скоро откроемся.',
+  title: 'BroVerse — проект в разработке',
+  description: 'Проект BroVerse в стадии разработки.',
   robots: { index: false },
 };
 
@@ -14,17 +13,13 @@ export default function ComingSoonPage() {
         <Construction size={28} className="text-zinc-400" />
       </div>
       <h1 className="text-2xl font-black text-white mb-2" style={{ fontFamily: 'Onest, -apple-system, system-ui, sans-serif' }}>
-        BroVerse обновляется
+        Мы в разработке
       </h1>
-      <p className="text-sm text-zinc-500 max-w-xs leading-relaxed mb-8">
-        Мы дорабатываем кабинеты и каталог. Скоро откроемся — следите за обновлениями.
+      <p className="text-sm text-zinc-500 max-w-xs leading-relaxed">
+        Проект BroVerse сейчас в стадии разработки и пока не работает.
+        Мы дорабатываем кабинеты, каталог и оформление заявок —
+        запустимся, когда всё будет готово.
       </p>
-      <Link
-        href="/privacy"
-        className="text-xs text-zinc-600 underline underline-offset-4 hover:text-zinc-400 transition-colors"
-      >
-        Политика обработки персональных данных
-      </Link>
     </div>
   );
 }
