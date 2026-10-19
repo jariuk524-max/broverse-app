@@ -23,19 +23,10 @@ export default function DevStub({
     <>
       <p className="text-[15px] sm:text-[17px] font-black text-zinc-900 leading-tight">{title}</p>
       <p className="text-[13px] text-zinc-500 leading-relaxed mt-2">
-        Приём заявок, отзывов и чат временно отключены: до официального запуска сервиса
-        мы не собираем и не храним персональные данные посетителей.
+        Проект BroVerse сейчас в стадии разработки и пока не работает —
+        запустимся, когда всё будет готово.
       </p>
-      <p className="text-[13px] text-zinc-500 leading-relaxed mt-2">
-        Скоро откроемся — спасибо за терпение.
-      </p>
-      <p className="text-[11px] text-zinc-400 leading-relaxed mt-3">
-        Обработка персональных данных ведётся по{' '}
-        <Link href="/privacy" className="underline text-zinc-500 hover:text-zinc-700">
-          Политике обработки персональных данных
-        </Link>{' '}
-        (152-ФЗ).
-      </p>
+      <p className="text-[13px] text-zinc-500 leading-relaxed mt-2">Спасибо за терпение.</p>
     </>
   );
 
