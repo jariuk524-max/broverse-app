@@ -16,8 +16,7 @@ export default function ComingSoonPage() {
         Мы в разработке
       </h1>
       <p className="text-sm text-zinc-500 max-w-xs leading-relaxed">
-        Проект BroVerse сейчас в стадии разработки и пока не работает.
-        Мы дорабатываем кабинеты, каталог и оформление заявок —
+        Проект BroVerse сейчас в стадии разработки и пока не работает —
         запустимся, когда всё будет готово.
       </p>
     </div>
