@@ -73,6 +73,13 @@
 - Данные: Supabase (users/requests/audit/...) + Storage JSON (admin/*.json: chats, layout, avatars, profiles)
 - Деплой: npx -y vercel --prod --yes ИЗ папки проекта; git-коммиты из корня репо с путями projects/brorent-standalone/...
 
+## Закрытый публичный сайт (на время разработки)
+- proxy.ts (Next 16, замена middleware): весь публичный сайт (главная, /masters, /services/*,
+  /chat, публичные API) → редирект на /coming-soon. Вход владельца: личная ссылка
+  ?access=bv-9f4c2x7q → cookie bv_access (httpOnly, 1 год; переопределение — env SITE_ACCESS_CODE).
+- Всегда открыты: /privacy (152-ФЗ), /coming-soon, /admin и /chief (свои аутентификации), /api/admin/*.
+- Перед публичным запуском: удалить/нейтрализовать proxy.ts (вернуть доступ).
+
 ## Старая админка (источник функционала — ТОЛЬКО ЧТЕНИЕ)
 Путь: /Applications/broverse/apps/admin · Домен: admin-psi-two-25.vercel.app · Вход: ?secret=broverse_admin_2024
 Бот: Broverse_Admin_bot (webhook: /Applications/broverse/apps/monolith/app/api/admin-webhook/route.ts):

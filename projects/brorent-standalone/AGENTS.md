@@ -64,6 +64,12 @@ BroCare убран из клиентского хаба: обучение мас
 - @Broverse_Admin_bot — admin-mobile + /admin-команда; webhook: broverse-masters /api/admin-webhook.
 - @BroVerse_Masters_Bot — кабинет мастеров.
 
+## Закрытый сайт (на время разработки)
+- proxy.ts: весь публичный сайт (главная, /masters, /services/*, /chat, публичные API)
+  → /coming-soon. Вход владельца: личная ссылка ?access=bv-9f4c2x7q → cookie bv_access (1 год;
+  переопределение — env SITE_ACCESS_CODE). Всегда открыты: /privacy, /coming-soon, /admin, /chief,
+  /api/admin/*. Перед публичным запуском — удалить proxy.ts.
+
 ## Стек
 Next.js 14 App Router, React 18, TS 5.4, Tailwind 4, Supabase.
 
