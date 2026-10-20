@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Loader2, CheckCircle2, Star, Clock, Users } from 'lucide-react';
+import { Loader2, CheckCircle2, Star, Clock, Users, CreditCard, Building2, Smartphone, Wallet } from 'lucide-react';
 import { getRequestSnapshot, forwardRequestToMaster } from '@/lib/requests';
 import type { MasterAd } from '@/lib/master-ads';
 
 /** Прямая заявка ждёт ответа мастера, затем клиенту предлагают альтернативы */
 const DIRECT_TIMEOUT_MS = 3 * 60 * 1000;
 
-type Phase = 'waiting' | 'accepted' | 'prompt' | 'picking' | 'no';
+type Phase = 'waiting' | 'accepted' | 'to_pay' | 'paid' | 'prompt' | 'picking' | 'no';
 type Reason = 'timeout' | 'declined' | 'admin';
 
 const REASON_TEXT: Record<Reason, string> = {
@@ -38,18 +38,30 @@ export default function MasterOrderStatus({
   const [alts, setAlts] = useState<MasterAd[] | null>(null);
   const [tried, setTried] = useState<string[]>([masterId]);
   const [forwarding, setForwarding] = useState(false);
+  // Счёт к оплате (из снимка заявки): сумма + реквизиты мастера
+  const [payPrice, setPayPrice] = useState<number | null>(null);
+  const [requisites, setRequisites] = useState<{ card?: string; account?: string; sbp?: string } | null>(null);
 
-  // Живой статус заявки: принят / отказался / отклонён / истёкло 3 минуты
+  // Живой статус: принят → работа завершена (к оплате) → оплачено; иначе отказ/истекло
   useEffect(() => {
-    if (phase !== 'waiting') return;
+    if (phase !== 'waiting' && phase !== 'accepted' && phase !== 'to_pay') return;
     let alive = true;
     const tick = async () => {
       const snap = await getRequestSnapshot(orderId);
       if (!alive || !snap) return;
-      if (snap.status === 'accepted') { setPhase('accepted'); return; }
-      if (snap.status === 'rejected') { setReason('admin'); setPhase('prompt'); return; }
-      if (snap.declinedBy) { setReason('declined'); setPhase('prompt'); return; }
-      if (Date.now() >= deadline) { setReason('timeout'); setPhase('prompt'); }
+      if (snap.status === 'awaiting_payment') {
+        setPayPrice(snap.finalPrice);
+        setRequisites(snap.masterRequisites);
+        setPhase('to_pay');
+        return;
+      }
+      if (snap.status === 'completed') { setPhase('paid'); return; }
+      if (phase === 'waiting') {
+        if (snap.status === 'accepted') { setPhase('accepted'); return; }
+        if (snap.status === 'rejected') { setReason('admin'); setPhase('prompt'); return; }
+        if (snap.declinedBy) { setReason('declined'); setPhase('prompt'); return; }
+        if (Date.now() >= deadline) { setReason('timeout'); setPhase('prompt'); }
+      }
     };
     tick();
     const t = setInterval(tick, 5000);
@@ -97,6 +109,70 @@ export default function MasterOrderStatus({
     setDeadline(Date.now() + DIRECT_TIMEOUT_MS);
     setPhase('waiting');
   };
+
+  /* ── Работа завершена — клиенту счёт ── */
+  if (phase === 'to_pay') {
+    const hasReq = !!(requisites?.card || requisites?.account || requisites?.sbp);
+    return (
+      <div className="py-4">
+        <div className="mx-auto w-16 h-16 rounded-full bg-orange-50 flex items-center justify-center mb-4">
+          <Wallet size={32} className="text-orange-500" />
+        </div>
+        <h3 className="text-lg font-bold text-zinc-900 mb-2">Работа завершена — к оплате</h3>
+        <p className="text-sm text-zinc-500 mb-1">{currentName ? `Мастер ${currentName} · ` : ''}{serviceName}</p>
+        <div className="mx-auto max-w-[300px] mb-4 p-3.5 bg-zinc-50 rounded-2xl">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-wide">Сумма к оплате</span>
+          </div>
+          <p className="text-center text-2xl font-black text-zinc-900">{payPrice !== null ? `${payPrice.toLocaleString('ru-RU')} ₽` : '—'}</p>
+          {hasReq && (
+            <div className="mt-3 pt-3 border-t border-zinc-200 space-y-1.5 text-left">
+              {requisites?.card && (
+                <div className="flex items-center gap-2 text-[12px]">
+                  <CreditCard size={12} className="text-zinc-400 shrink-0" />
+                  <span className="text-zinc-700 font-semibold">{requisites.card}</span>
+                </div>
+              )}
+              {requisites?.account && (
+                <div className="flex items-center gap-2 text-[12px]">
+                  <Building2 size={12} className="text-zinc-400 shrink-0" />
+                  <span className="text-zinc-700 font-semibold">{requisites.account}</span>
+                </div>
+              )}
+              {requisites?.sbp && (
+                <div className="flex items-center gap-2 text-[12px]">
+                  <Smartphone size={12} className="text-zinc-400 shrink-0" />
+                  <span className="text-zinc-700 font-semibold">СБП: {requisites.sbp}</span>
+                </div>
+              )}
+            </div>
+          )}
+          {!hasReq && <p className="text-[11px] text-zinc-500 text-center mt-2">Реквизиты уточните у мастера</p>}
+        </div>
+        <p className="text-xs text-zinc-400 mb-4">Счёт также виден в разделе «История».<br />Мастер подтвердит получение оплаты.</p>
+        <button type="button" onClick={onClose} className="w-full py-3 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold hover:bg-[#0097A7] transition-colors">
+          Понятно
+        </button>
+      </div>
+    );
+  }
+
+  /* ── Оплата получена ── */
+  if (phase === 'paid') {
+    return (
+      <div className="py-4">
+        <div className="mx-auto w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mb-4">
+          <CheckCircle2 size={32} className="text-emerald-500" />
+        </div>
+        <h3 className="text-lg font-bold text-zinc-900 mb-2">Оплата получена</h3>
+        <p className="text-sm text-zinc-500 mb-1">{currentName ? `Мастер ${currentName} · ` : ''}{serviceName}</p>
+        <p className="text-xs text-zinc-400 mb-6">Спасибо! Через 30 минут в разделе «Отзыв» вы сможете оценить работу.</p>
+        <button type="button" onClick={onClose} className="w-full py-3 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold hover:bg-[#0097A7] transition-colors">
+          Отлично
+        </button>
+      </div>
+    );
+  }
 
   if (phase === 'accepted') {
     return (

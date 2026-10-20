@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import {
   listServiceRequests,
-  STATUS_LABEL, type ServiceRequest, type RequestStatus,
+  STATUS_LABEL, orderPayPrice, type ServiceRequest, type RequestStatus,
 } from '@/lib/requests';
 import { unlockDirectionForMaster } from '@/lib/admin/unlock';
 import { Onest } from 'next/font/google';
@@ -123,6 +123,7 @@ const ADMIN_STATUS_COLOR: Record<string, string> = {
   approved: 'bg-zinc-100 text-zinc-500',
   rejected: 'bg-white text-zinc-600 border border-zinc-200',
   accepted: 'bg-zinc-700 text-white',
+  awaiting_payment: 'bg-amber-500 text-white',
   completed: 'bg-zinc-100 text-zinc-600',
 };
 
@@ -593,6 +594,7 @@ function OrdersTab() {
     { id: 'new', label: 'Новые' },
     { id: 'review', label: 'На рассмотрении' },
     { id: 'approved', label: 'Одобрены' },
+    { id: 'awaiting_payment', label: 'К оплате' },
     { id: 'rejected', label: 'Отклонены' },
   ];
 
@@ -675,7 +677,8 @@ function OrdersTab() {
       <div className="space-y-3">
         {visible.map((o) => {
           const meta = o.metadata || {};
-          const price = meta.proposed_price || (meta.price ? String(meta.price) : '');
+          const priceNum = orderPayPrice(o);
+          const price = priceNum !== null ? String(priceNum) : '';
           return (
             <div
               key={o.id}
@@ -715,7 +718,18 @@ function OrdersTab() {
                 )}
                 {o.client_name && <Row label="👤 Имя" value={o.client_name} />}
                 {o.address && <Row label="📍 Адрес" value={o.address} />}
-                {price && <Row label="💰 Цена" value={`${price} ₽`} />}
+                {price && (
+                  <Row
+                    label={o.status === 'awaiting_payment' ? '💳 К оплате' : '💰 Цена'}
+                    value={`${price} ₽${meta.price_adjusted && o.status === 'awaiting_payment' ? ' (скорректирована мастером)' : ''}`}
+                  />
+                )}
+                {o.status === 'awaiting_payment' && meta.master_requisites && (
+                  <Row
+                    label="🏦 Реквизиты мастера"
+                    value={[meta.master_requisites.card && `карта ${meta.master_requisites.card}`, meta.master_requisites.sbp && `СБП ${meta.master_requisites.sbp}`].filter(Boolean).join(' · ') || '—'}
+                  />
+                )}
                 {meta.master_rating !== undefined && meta.master_rating !== null && (
                   <Row label="⭐ Рейтинг мастера" value={`${meta.master_rating} / 5`} />
                 )}

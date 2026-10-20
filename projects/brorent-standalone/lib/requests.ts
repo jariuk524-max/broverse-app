@@ -1,6 +1,14 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-export type RequestStatus = 'new' | 'review' | 'approved' | 'rejected' | 'accepted' | 'completed';
+export type RequestStatus =
+  | 'new'
+  | 'review'
+  | 'approved'
+  | 'rejected'
+  | 'accepted'
+  /** работа завершена мастером (фото до/после загружены) — клиенту к оплате */
+  | 'awaiting_payment'
+  | 'completed';
 
 export type OrderFeedback = {
   resolved: boolean;
@@ -41,6 +49,21 @@ export type ServiceRequest = {
     decline_reason?: string;
     /** 152-ФЗ: факт и время согласия на обработку ПДн при отправке формы */
     consent?: { personal_data?: boolean; cookies?: boolean; at?: string };
+    /** финансы: итоговая сумма к оплате (мастер может увеличить после работы) */
+    final_price?: number;
+    /** финансы: фото до/после (dataURL), загруженные мастером при завершении */
+    photo_before?: string;
+    photo_after?: string;
+    /** финансы: сумма изменялась мастером после согласования (выполнено больше работ) */
+    price_adjusted?: boolean;
+    /** финансы: способ оплаты из чека (cash/card) */
+    payment_method?: string;
+    /** финансы: снимок реквизитов мастера из его профиля на момент завершения */
+    master_requisites?: { card?: string; account?: string; sbp?: string };
+    /** финансы: работа завершена мастером — заявка ждёт оплаты от клиента */
+    waiting_payment_at?: string;
+    /** финансы: время нажатия мастером «Оплату получил» — от него идут 30 минут до отзыва */
+    payment_confirmed_at?: string;
   } | null;
 };
 
@@ -195,26 +218,50 @@ export async function submitFeedback(
   return true;
 }
 
-/** Живой снимок заявки — для ожидания ответа мастера */
+/** Живой снимок заявки — для ожидания ответа мастера и истории клиента.
+ *  Ходит через свой API (same-origin, service role) — не зависит от RLS anon в браузере. */
 export async function getRequestSnapshot(id: string): Promise<{
   status: string;
   masterId: string | null;
   masterName: string | null;
   declinedBy: string | null;
+  finalPrice: number | null;
+  masterRequisites: { card?: string; account?: string; sbp?: string } | null;
+  paymentConfirmedAt: string | null;
 } | null> {
-  const { data, error } = await getSupabase()
-    .from('orders')
-    .select('status, metadata')
-    .eq('id', id)
-    .single();
-  if (error || !data) return null;
-  const meta = data.metadata || {};
-  return {
-    status: data.status,
-    masterId: meta.master_id ?? null,
-    masterName: meta.master_name ?? null,
-    declinedBy: meta.declined_by ?? null,
-  };
+  try {
+    const res = await fetch(`/api/order-status?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const body = await res.json();
+    return body?.order ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Отзыв открывается через 30 минут после «Оплату получил» (по payment_confirmed_at) */
+export const FEEDBACK_DELAY_MS = 30 * 60 * 1000;
+
+export type FeedbackAccess =
+  | { ready: true }
+  | { ready: false; reason: string };
+
+export function feedbackAccess(meta: ServiceRequest['metadata']): FeedbackAccess {
+  if (meta?.feedback) return { ready: true }; // можно обновить ранее оставленный отзыв
+  // Заявка прошла финансовую цепочку — отзыв только после оплаты + 30 мин
+  if (meta?.waiting_payment_at) {
+    if (!meta.payment_confirmed_at) {
+      return { ready: false, reason: 'Отзыв откроется после подтверждения оплаты мастером' };
+    }
+    const unlockAt = new Date(meta.payment_confirmed_at).getTime() + FEEDBACK_DELAY_MS;
+    const wait = unlockAt - Date.now();
+    if (wait > 0) {
+      const mins = Math.max(1, Math.ceil(wait / 60000));
+      return { ready: false, reason: `Отзыв откроется через ${mins} мин после оплаты` };
+    }
+    return { ready: true };
+  }
+  return { ready: true }; // не проходила цепочку — прежнее поведение
 }
 
 /** Перенаправляет прямую заявку другому мастеру (сбрасывает отметку об отказе) */
@@ -250,6 +297,7 @@ export const STATUS_LABEL: Record<RequestStatus, string> = {
   approved: 'Одобрена',
   rejected: 'Отклонена',
   accepted: 'В работе',
+  awaiting_payment: 'К оплате',
   completed: 'Выполнен',
 };
 
@@ -259,5 +307,15 @@ export const STATUS_COLOR: Record<RequestStatus, string> = {
   approved: 'bg-emerald-100 text-emerald-700',
   rejected: 'bg-rose-100 text-rose-700',
   accepted: 'bg-violet-100 text-violet-700',
+  awaiting_payment: 'bg-orange-100 text-orange-700',
   completed: 'bg-emerald-100 text-emerald-700',
 };
+
+/** Итоговая сумма к оплате (финальная после работы, иначе согласованная/предложенная) */
+export function orderPayPrice(o: ServiceRequest): number | null {
+  const m = o.metadata;
+  const raw = m?.final_price ?? m?.price ?? m?.proposed_price;
+  if (raw === null || raw === undefined || raw === '') return null;
+  const n = Number(String(raw).replace(/[^\d.]/g, ''));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}

@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import { X, Send, Loader2, CheckCircle2, Star, Search, MessageSquare } from 'lucide-react';
-import { findRequestsByPhone, submitFeedback, type ServiceRequest } from '@/lib/requests';
+import { findRequestsByPhone, submitFeedback, feedbackAccess, type ServiceRequest } from '@/lib/requests';
 import ConsentCheckbox from '@/components/ConsentCheckbox';
 import DevStub from '@/components/DevStub';
 import { DATA_COLLECTION_LOCKED } from '@/lib/site-config';
@@ -43,6 +43,8 @@ export default function FeedbackModal({ onClose }: FeedbackModalProps) {
 
   const send = useCallback(async () => {
     if (!selected || resolved === null || submitting || !pdConsent) return; // 152-ФЗ
+    const access = feedbackAccess(selected.metadata);
+    if (!access.ready) { setError(access.reason); return; }
     setSubmitting(true);
     setError('');
     const ok = await submitFeedback(selected.id, {
@@ -86,6 +88,7 @@ export default function FeedbackModal({ onClose }: FeedbackModalProps) {
   /* ── Форма отзыва по конкретной заявке ── */
   if (selected) {
     const already = !!selected.metadata?.feedback;
+    const access = feedbackAccess(selected.metadata);
     return (
       <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center js-modal">
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm anim-fade" onClick={handleClose} />
@@ -106,6 +109,12 @@ export default function FeedbackModal({ onClose }: FeedbackModalProps) {
                 <p className="text-[12px] font-semibold text-amber-700">
                   По этой заявке отзыв уже оставлен. Отправка обновит его.
                 </p>
+              </div>
+            )}
+
+            {!access.ready && (
+              <div className="p-3 rounded-xl bg-orange-50 border border-orange-100">
+                <p className="text-[12px] font-semibold text-orange-700">{access.reason}</p>
               </div>
             )}
 
@@ -168,7 +177,7 @@ export default function FeedbackModal({ onClose }: FeedbackModalProps) {
             <button
               type="button"
               onClick={send}
-              disabled={resolved === null || submitting || !pdConsent}
+              disabled={resolved === null || submitting || !pdConsent || !access.ready}
               className={`w-full py-3.5 rounded-2xl bg-zinc-900 text-white text-sm font-bold disabled:opacity-30 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2 ${TAP}`}
             >
               {submitting ? (
@@ -225,24 +234,30 @@ export default function FeedbackModal({ onClose }: FeedbackModalProps) {
 
           {orders && orders.length > 0 && (
             <div className="space-y-2">
-              {orders.map((o) => (
-                <button
-                  key={o.id}
-                  type="button"
-                  onClick={() => { setSelected(o); setResolved(o.metadata?.feedback?.resolved ?? null); setComment(o.metadata?.feedback?.comment || ''); setRating(o.metadata?.feedback?.rating || 0); }}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-zinc-50 hover:bg-zinc-100 transition-colors text-left"
-                >
-                  <MessageSquare size={16} className="text-zinc-400 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-bold text-zinc-900 truncate">{o.service_name}</p>
-                    <p className="text-[10px] text-zinc-400">
-                      {new Date(o.created_at).toLocaleDateString('ru-RU')}
-                      {o.metadata?.feedback ? ' · отзыв оставлен' : ''}
-                    </p>
-                  </div>
-                  <span className="text-[10px] font-bold text-zinc-400 shrink-0">→</span>
-                </button>
-              ))}
+              {orders.map((o) => {
+                const access = feedbackAccess(o.metadata);
+                return (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => { setSelected(o); setResolved(o.metadata?.feedback?.resolved ?? null); setComment(o.metadata?.feedback?.comment || ''); setRating(o.metadata?.feedback?.rating || 0); }}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl bg-zinc-50 hover:bg-zinc-100 transition-colors text-left"
+                  >
+                    <MessageSquare size={16} className="text-zinc-400 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-bold text-zinc-900 truncate">{o.service_name}</p>
+                      <p className="text-[10px] text-zinc-400">
+                        {new Date(o.created_at).toLocaleDateString('ru-RU')}
+                        {o.metadata?.feedback ? ' · отзыв оставлен' : ''}
+                      </p>
+                      {!access.ready && (
+                        <p className="text-[10px] text-orange-500 font-semibold mt-0.5">{access.reason}</p>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-bold text-zinc-400 shrink-0">→</span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

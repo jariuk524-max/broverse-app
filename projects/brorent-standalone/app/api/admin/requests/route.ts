@@ -6,7 +6,7 @@ import { guardWrite } from '@/lib/admin/security';
 
 export const dynamic = 'force-dynamic';
 
-const ALLOWED = ['new', 'review', 'approved', 'rejected', 'accepted', 'completed'];
+const ALLOWED = ['new', 'review', 'approved', 'rejected', 'accepted', 'awaiting_payment', 'completed'];
 
 function supabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

@@ -150,7 +150,7 @@ export default function MoveRequestModal({ presetService, onClose }: MoveRequest
           </div>
           <h3 className="text-lg font-bold text-zinc-900 mb-2">Ваша заявка на рассмотрении</h3>
           <p className="text-sm text-zinc-500 mb-1">Расчёт переезда отправлен</p>
-          <p className="text-xs text-zinc-400 mb-6">Перезвоним в течение 15 минут и зафиксируем цену до выезда.</p>
+          <p className="text-xs text-zinc-400 mb-6">Перезвоним в течение 15 минут и зафиксируем цену после согласования заявки.</p>
           <button
             type="button"
             onClick={onClose}
@@ -299,7 +299,7 @@ export default function MoveRequestModal({ presetService, onClose }: MoveRequest
                 </div>
               )}
               <div className="p-3.5 rounded-xl bg-zinc-50 border border-zinc-100">
-                <p className="text-[12px] font-semibold text-zinc-700">Поможем оценить объём на месте — финальная цена фиксируется до выезда машины.</p>
+                <p className="text-[12px] font-semibold text-zinc-700">Поможем оценить объём на месте — финальная цена фиксируется после согласования заявки.</p>
               </div>
             </>
           )}
@@ -356,7 +356,7 @@ export default function MoveRequestModal({ presetService, onClose }: MoveRequest
                 {estimate.low.toLocaleString('ru')} – {estimate.high.toLocaleString('ru')} ₽
               </p>
             </div>
-            <p className="text-[10px] text-zinc-400 text-right leading-tight max-w-[150px]">Цена фиксируется<br />до выезда · без доплат</p>
+            <p className="text-[10px] text-zinc-400 text-right leading-tight max-w-[150px]">Цена фиксируется<br />после согласования · без доплат</p>
           </div>
 
           {step < 3 ? (

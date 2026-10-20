@@ -183,7 +183,9 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
       }).catch(() => {});
     }
     saveOrder({
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      // Supabase id — чтобы история могла подтягивать живой статус (к оплате, оплачено)
+      id: created?.id || (Date.now().toString(36) + Math.random().toString(36).slice(2, 6)),
+      requestId: created?.id,
       name,
       phone,
       service: items.length > 1 ? `${items.length} инструментов` : items[0].name,
