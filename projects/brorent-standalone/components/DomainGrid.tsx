@@ -267,16 +267,16 @@ export default function DomainGrid() {
       <Header />
       <SmartSearch onMasterAdClick={(ad) => setSelectedService(adToOrderItem(ad))} />
 
-      <main className="max-w-7xl mx-auto px-4 md:px-6">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 pb-28">
 
-        {/* Category Grid — карточки 6 брендов */}
+        {/* Category Grid — карточки 6 брендов (8pt-сетка: gap 12/16, паддинг 16/20) */}
         <section className="mb-8">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
             {CATEGORIES.map((card) => (
               <Link
                 key={card.id}
                 href={`/services/${card.id}`}
-                className="group relative flex flex-col p-5 md:p-6 rounded-[24px] border border-white/50 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.03] active:scale-[0.97] cursor-pointer"
+                className="group relative flex flex-col p-4 md:p-5 rounded-[20px] md:rounded-[24px] border border-white/50 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.02] active:scale-[0.97] cursor-pointer"
                 style={{ background: `linear-gradient(160deg, #fff 45%, ${card.bg})` }}
               >
                 {/* Цветовое пятно бренда в углу */}
@@ -287,20 +287,20 @@ export default function DomainGrid() {
 
                 {/* Логотип в цветном кружке */}
                 <div
-                  className="relative mb-3.5 w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3"
+                  className="relative mb-3 w-11 h-11 rounded-2xl flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3"
                   style={{ background: card.bg }}
                 >
-                  <BrandLogo brand={card.id} size={30} />
+                  <BrandLogo brand={card.id} size={26} />
                 </div>
 
-                <span className="relative text-[15px] font-black tracking-tight" style={{ color: card.color }}>
+                <span className="relative text-sm font-black tracking-tight" style={{ color: card.color }}>
                   {card.label}
                 </span>
                 <span className="relative text-[13px] font-bold text-zinc-800 mt-0.5 leading-snug">{card.tagline}</span>
-                <span className="relative text-[11px] text-zinc-500 mt-1.5 leading-relaxed line-clamp-2">{card.desc}</span>
+                <span className="relative text-[11px] text-zinc-500 mt-1.5 leading-snug line-clamp-2">{card.desc}</span>
 
                 {/* Чипсы */}
-                <div className="relative flex flex-wrap gap-1.5 mt-3">
+                <div className="relative flex flex-wrap gap-1.5 mt-2.5">
                   {card.chips.map((chip) => (
                     <span
                       key={chip}
@@ -313,7 +313,7 @@ export default function DomainGrid() {
                 </div>
 
                 {/* Переход */}
-                <span className="relative mt-auto pt-3.5 inline-flex items-center gap-1 text-[12px] font-bold text-zinc-900">
+                <span className="relative mt-auto pt-3 inline-flex items-center gap-1 text-[12px] font-bold text-zinc-900">
                   Смотреть
                   <ChevronRight
                     size={13}
@@ -328,17 +328,17 @@ export default function DomainGrid() {
 
         {/* Trust Info Cards */}
         <section className="mb-8">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             {TRUST_ITEMS.map((item) => {
               const Icon = item.icon;
               return (
-                <div key={item.label} className="flex items-center gap-3 p-4 bg-white/80 backdrop-blur-md rounded-[24px] shadow-sm border border-white/20">
-                  <div className="w-11 h-11 rounded-2xl bg-[#F2F2F7] flex items-center justify-center shrink-0">
-                    <Icon size={18} className="text-zinc-600" strokeWidth={2} />
+                <div key={item.label} className="flex items-center gap-3 p-3.5 bg-white/80 backdrop-blur-md rounded-[20px] shadow-sm border border-white/20">
+                  <div className="w-10 h-10 rounded-xl bg-[#F2F2F7] flex items-center justify-center shrink-0">
+                    <Icon size={17} className="text-zinc-600" strokeWidth={2} />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-xs font-bold text-zinc-800">{item.label}</p>
-                    <p className="text-[10px] text-zinc-400">{item.desc}</p>
+                    <p className="text-[10px] text-zinc-400 leading-snug line-clamp-1">{item.desc}</p>
                   </div>
                 </div>
               );
@@ -347,17 +347,17 @@ export default function DomainGrid() {
         </section>
 
         {/* All Services */}
-        <section id="catalog" className="mb-10 scroll-mt-24">
-          <div className="flex items-center gap-3 mb-5">
+        <section id="catalog" className="mb-8 scroll-mt-24">
+          <div className="flex items-center gap-3 mb-4">
             <BroVerseLogo className="w-10 h-10" />
             <div className="flex-1">
-              <h2 className="text-lg font-bold text-zinc-900">Все услуги BroVerse</h2>
-              <p className="text-xs text-zinc-400">{filteredServices.length} услуг{masterItems.length > 0 ? ` · из них ${masterItems.length} от мастеров` : ''}</p>
+              <h2 className="text-lg font-extrabold text-zinc-900">Все услуги BroVerse</h2>
+              <p className="text-xs text-zinc-400 mt-0.5">{filteredServices.length} услуг{masterItems.length > 0 ? ` · из них ${masterItems.length} от мастеров` : ''}</p>
             </div>
           </div>
 
           {/* Filter pills */}
-          <div className="flex gap-2 overflow-x-auto pb-3 mb-5 scrollbar-hide">
+          <div className="flex gap-2 overflow-x-auto pb-1 mb-4 scrollbar-hide">
             <button type="button" onClick={() => setFilter('all')} className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 ${filter === 'all' ? 'bg-zinc-900 text-white shadow-md' : 'bg-white/80 text-zinc-500 hover:bg-white'}`}>Все ({allItems.length})</button>
             <button
               type="button"
@@ -384,7 +384,7 @@ export default function DomainGrid() {
 
           {/* Service cards grid */}
           {filteredServices.length === 0 ? (
-            <div className="rounded-[24px] border border-dashed border-zinc-300 bg-white/60 p-10 text-center">
+            <div className="rounded-[20px] border border-dashed border-zinc-300 bg-white/60 p-8 text-center">
               <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-100">
                 <Wrench size={20} className="text-zinc-400" />
               </div>
@@ -396,13 +396,13 @@ export default function DomainGrid() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
             {filteredServices.map((service) => (
               <button
                 key={`${service.isMaster ? 'm' : 'c'}-${service.adId || service.name}`}
                 type="button"
                 onClick={() => setDetailService(service)}
-                className="group relative text-left rounded-[24px] border border-white/20 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-white/80 backdrop-blur-md"
+                className="group relative text-left rounded-[20px] md:rounded-[24px] border border-white/20 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-white/80 backdrop-blur-md"
               >
                 <div className="relative aspect-[16/10] overflow-hidden bg-zinc-100">
                   <img src={service.image} alt={service.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
@@ -416,7 +416,7 @@ export default function DomainGrid() {
                     <span className="absolute bottom-2.5 left-2.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm text-[10px] font-bold text-white">{service.time}</span>
                   )}
                 </div>
-                <div className="p-4">
+                <div className="p-3.5 md:p-4">
                   <p className="text-[13px] font-semibold text-zinc-800 group-hover:text-zinc-950 transition-colors leading-tight line-clamp-1">{service.name}</p>
                   <p className="text-[11px] text-zinc-400 mt-1 line-clamp-1">{service.desc}</p>
                   {service.isMaster && service.masterName && (
@@ -446,22 +446,22 @@ export default function DomainGrid() {
         </section>
 
         {/* How it works */}
-        <section className="mb-10">
-          <h2 className="text-xl font-bold text-zinc-900 mb-8 text-center">Как это работает</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <section className="mb-8">
+          <h2 className="text-lg font-extrabold text-zinc-900 mb-5 text-center">Как это работает</h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {HOW_IT_WORKS.map((step) => (
-              <div key={step.num} className="relative">
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="text-4xl">{step.emoji}</span>
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-300">Шаг {step.num}</span>
+              <div key={step.num} className="relative rounded-[20px] bg-white/80 backdrop-blur-md border border-white/20 shadow-sm p-4">
+                <div className="flex items-center gap-2.5 mb-3">
+                  <span className="text-3xl">{step.emoji}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-300">Шаг {step.num}</span>
                 </div>
-                <h3 className="text-[15px] font-bold text-zinc-800 mb-2">{step.title}</h3>
-                <p className="text-xs text-zinc-500 leading-relaxed mb-3">{step.desc}</p>
-                <ul className="space-y-1.5">
+                <h3 className="text-sm font-bold text-zinc-800 mb-1.5">{step.title}</h3>
+                <p className="text-[11px] text-zinc-500 leading-snug mb-2.5">{step.desc}</p>
+                <ul className="space-y-1">
                   {step.chips.map((chip) => (
-                    <li key={chip} className="flex items-start gap-2">
-                      <CheckCircle2 size={12} className="text-emerald-400 mt-0.5 shrink-0" />
-                      <span className="text-[11px] text-zinc-400">{chip}</span>
+                    <li key={chip} className="flex items-start gap-1.5">
+                      <CheckCircle2 size={11} className="text-emerald-400 mt-0.5 shrink-0" />
+                      <span className="text-[10px] text-zinc-400 leading-snug">{chip}</span>
                     </li>
                   ))}
                 </ul>
@@ -471,13 +471,13 @@ export default function DomainGrid() {
         </section>
 
         {/* CTA */}
-        <section className="mb-10">
-          <div className="relative overflow-hidden rounded-[24px] bg-white/80 backdrop-blur-md border border-white/20 shadow-sm p-10 text-center">
+        <section className="mb-8">
+          <div className="relative overflow-hidden rounded-[24px] bg-white/80 backdrop-blur-md border border-white/20 shadow-sm p-8 md:p-10 text-center">
             <div className="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-[#4285F4]/20 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-[#34A853]/20 blur-3xl" />
             <div className="relative">
-              <BroVerseLogo className="w-14 h-14 mx-auto mb-4" />
-              <h2 className="text-xl font-bold text-zinc-900 mb-2">Нужна помощь с выбором?</h2>
+              <BroVerseLogo className="w-12 h-12 mx-auto mb-4" />
+              <h2 className="text-lg font-extrabold text-zinc-900 mb-2">Нужна помощь с выбором?</h2>
               <p className="text-sm text-zinc-500 mb-6 max-w-md mx-auto">Опишите задачу — подберём мастера</p>
               <button type="button" onClick={() => setShowRequest(true)} className="inline-flex items-center gap-2 bg-zinc-900 text-white text-sm font-bold px-8 py-3.5 rounded-full hover:bg-zinc-800 transition-colors shadow-xl shadow-black/20">
                 Оставить заявку <ChevronRight size={16} />
@@ -487,11 +487,11 @@ export default function DomainGrid() {
         </section>
 
         {/* Стать мастером */}
-        <section className="mb-10">
+        <section className="mb-8">
           <Link href="/master" className="block group">
-            <div className="rounded-[24px] bg-gradient-to-br from-[#18181b] to-[#2a2a2e] p-8 text-center shadow-sm transition-transform active:scale-[0.99]">
+            <div className="rounded-[24px] bg-gradient-to-br from-[#18181b] to-[#2a2a2e] p-6 md:p-8 text-center shadow-sm transition-transform active:scale-[0.99]">
               <p className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 mb-2">Мастерам</p>
-              <h2 className="text-xl font-bold text-white mb-2">Стать мастером BroVerse</h2>
+              <h2 className="text-lg font-extrabold text-white mb-2">Стать мастером BroVerse</h2>
               <p className="text-sm text-zinc-400 mb-5 max-w-md mx-auto">
                 Заявка на доступ к заказам, свои услуги и цены, профиль для клиентов
               </p>
