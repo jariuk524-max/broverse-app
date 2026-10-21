@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2, MessageCircle, Send, Home } from 'lucide-react';
 import ConsentCheckbox from '@/components/ConsentCheckbox';
 import DevStub from '@/components/DevStub';
 import { DATA_COLLECTION_LOCKED } from '@/lib/site-config';
+import { useClientAuth } from '@/lib/use-client-auth';
 
 type ChatMsg = {
   id: string;
@@ -42,6 +43,13 @@ function digitsOf(s: string): string {
   return s.replace(/\D/g, '');
 }
 
+/** «8999…» / «999…» → канон «7999…» для сравнения с сессией */
+function canon(d: string): string {
+  if (d.length === 11 && d[0] === '8') return '7' + d.slice(1);
+  if (d.length === 10 && d[0] === '9') return '7' + d;
+  return d;
+}
+
 export default function ChatPage() {
   const [phone, setPhone] = useState('');
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -52,6 +60,9 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false);
   const [pdConsent, setPdConsent] = useState(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  // Вход клиента: телефон + код из бота (cookie bv_client)
+  const auth = useClientAuth();
 
   const load = useCallback(async (p: string) => {
     const r = await fetch(`/api/chat?phone=${encodeURIComponent(p)}`).catch(() => null);
@@ -65,18 +76,35 @@ export default function ChatPage() {
         return;
       }
     }
+    if (r?.status === 401) {
+      setProfile(null);
+      setMsgs(null);
+      setErr('Требуется вход: подтвердите номер кодом из бота.');
+      return;
+    }
     setErr('Не удалось открыть чат. Проверьте номер и попробуйте ещё раз.');
   }, []);
 
-  // Автовход: ранее сохранённый номер
+  // Автовход: ранее сохранённый номер — только при валидной сессии на этот же телефон
   useEffect(() => {
     let saved = '';
     try { saved = localStorage.getItem(PHONE_KEY) || ''; } catch { /* нет доступа */ }
-    if (digitsOf(saved).length >= 10) {
-      setPhone(formatPhone(digitsOf(saved)));
-      setLoading(true);
-      load(saved).finally(() => setLoading(false));
-    }
+    if (digitsOf(saved).length < 10) return;
+    setPhone(formatPhone(digitsOf(saved)));
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch('/api/client-auth', { cache: 'no-store' });
+        const d = await r.json().catch(() => ({ session: null }));
+        const s = d.session || null;
+        if (alive && s && canon(digitsOf(saved)) === String(s.phone || '')) {
+          setLoading(true);
+          await load(saved);
+          setLoading(false);
+        }
+      } catch { /* без сессии — вводим номер вручную */ }
+    })();
+    return () => { alive = false; };
   }, [load]);
 
   // Подтягивание новых сообщений
@@ -96,6 +124,12 @@ export default function ChatPage() {
     if (digits.length < 10 || busy || !pdConsent) return; // 152-ФЗ
     setBusy(true);
     setErr('');
+    // Чужая активная сессия → выходим и входим под введённым номером
+    if (auth.session && canon(digits) !== String(auth.session.phone || '')) {
+      await auth.logout();
+    }
+    const s = await auth.ensure(phone);
+    if (!s) { setBusy(false); return; }
     setLoading(true);
     await load(phone);
     setLoading(false);
@@ -115,6 +149,10 @@ export default function ChatPage() {
     if (r && r.ok) {
       setText('');
       await load(phone);
+    } else if (r?.status === 401) {
+      setErr('Сессия истекла — откройте чат заново и подтвердите номер кодом из бота.');
+      setProfile(null);
+      setMsgs(null);
     } else {
       const d = await r?.json().catch(() => null);
       setErr(d?.error || 'Не удалось отправить сообщение');
@@ -124,6 +162,7 @@ export default function ChatPage() {
 
   const logout = () => {
     try { localStorage.removeItem(PHONE_KEY); } catch { /* нет доступа */ }
+    auth.logout();
     setProfile(null);
     setMsgs(null);
     setPhone('');
@@ -181,8 +220,8 @@ export default function ChatPage() {
             </form>
 
             <p className="text-[12px] text-zinc-400 mt-4 leading-relaxed">
-              Номер используется только для поиска вашей переписки — пароль не нужен.
-              У мастеров открывается чат их кабинета, у клиентов — чат по заявкам.
+              Первый вход — по номеру и коду из бота (без пароля). Дальше чат откроется сразу:
+              история сохраняется всегда. У мастеров — чат их кабинета, у клиентов — чат по заявкам.
             </p>
           </div>
 
@@ -192,6 +231,7 @@ export default function ChatPage() {
             </Link>
           </div>
         </main>
+        {auth.sheet}
       </div>
     );
   }
@@ -264,6 +304,7 @@ export default function ChatPage() {
           </Link>
         </div>
       </main>
+      {auth.sheet}
     </div>
   );
 }

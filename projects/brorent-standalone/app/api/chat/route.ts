@@ -6,11 +6,21 @@ import {
   resolvePhoneProfile, normPhone,
   type ChatMessage,
 } from '@/lib/admin/chat';
+import { CLIENT_SESSION_COOKIE, readClientSession, normClientPhone } from '@/lib/client-auth';
 
 export const dynamic = 'force-dynamic';
 
+/** Cookie bv_client должен совпадать с запрошенным телефоном */
+function authOk(req: NextRequest, digits: string): boolean {
+  const sess = readClientSession(req.cookies.get(CLIENT_SESSION_COOKIE)?.value);
+  if (!sess) return false;
+  const asked = normClientPhone(digits);
+  return !!asked && asked === sess.phone;
+}
+
 /**
- * Публичный чат «клиент/мастер ↔ руководитель». Вход — по номеру телефона.
+ * Публичный чат «клиент/мастер ↔ руководитель».
+ * Вход — телефон + код из бота (cookie bv_client, год).
  * GET  ?phone=+7…   — профиль (кто ты: клиент/мастер) + история треда
  * POST { phone, text } — отправить сообщение (тред создаётся при первом)
  */
@@ -19,6 +29,9 @@ export async function GET(req: NextRequest) {
   const digits = normPhone(phoneRaw);
   if (digits.length < 10) {
     return NextResponse.json({ error: 'Укажите номер телефона' }, { status: 400 });
+  }
+  if (!authOk(req, digits)) {
+    return NextResponse.json({ error: 'auth_required', message: 'Требуется вход по коду из бота' }, { status: 401 });
   }
 
   const profile = await resolvePhoneProfile(digits);
@@ -46,6 +59,9 @@ export async function POST(req: NextRequest) {
   const digits = normPhone(phoneRaw);
   if (digits.length < 10) return NextResponse.json({ error: 'Укажите номер телефона' }, { status: 400 });
   if (!text) return NextResponse.json({ error: 'Пустое сообщение' }, { status: 400 });
+  if (!authOk(req, digits)) {
+    return NextResponse.json({ error: 'auth_required', message: 'Требуется вход по коду из бота' }, { status: 401 });
+  }
 
   const profile = await resolvePhoneProfile(digits);
   const threadId = profile.kind === 'master'

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" width="320" height="220" role="img" aria-label="Мойка окон">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ECFDF5"/>
+      <stop offset="1" stop-color="#6EE7B7"/>
+    </linearGradient>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#BAE6FD"/>
+      <stop offset="1" stop-color="#E0F2FE"/>
+    </linearGradient>
+    <linearGradient id="frame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F8FAFC"/>
+      <stop offset="1" stop-color="#CBD5E1"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="220" fill="url(#bg)"/>
+  <circle cx="60" cy="172" r="64" fill="#FFFFFF" opacity="0.25"/>
+  <!-- рама окна -->
+  <rect x="86" y="26" width="150" height="164" rx="16" fill="url(#frame)"/>
+  <rect x="98" y="38" width="126" height="140" rx="10" fill="url(#sky)"/>
+  <!-- переплёт -->
+  <rect x="155" y="38" width="12" height="140" fill="#F1F5F9"/>
+  <rect x="98" y="102" width="126" height="12" fill="#F1F5F9"/>
+  <!-- облака -->
+  <ellipse cx="128" cy="72" rx="18" ry="10" fill="#FFFFFF" opacity="0.9"/>
+  <ellipse cx="140" cy="68" rx="12" ry="8" fill="#FFFFFF" opacity="0.9"/>
+  <ellipse cx="196" cy="146" rx="16" ry="9" fill="#FFFFFF" opacity="0.75"/>
+  <!-- блики чистоты -->
+  <path d="M118 52 l6 14 14 6 -14 6 -6 14 -6-14 -14-6 14-6z" fill="#FFFFFF"/>
+  <path d="M204 60 l4 10 10 4 -10 4 -4 10 -4-10 -10-4 10-4z" fill="#FFFFFF" opacity="0.95"/>
+  <path d="M176 158 l3 8 8 3 -8 3 -3 8 -3-8 -8-3 8-3z" fill="#FFFFFF" opacity="0.9"/>
+  <!-- стекло-мыльные капли -->
+  <circle cx="124" cy="132" r="6" fill="#FFFFFF" opacity="0.65"/>
+  <circle cx="140" cy="150" r="4" fill="#FFFFFF" opacity="0.55"/>
+  <circle cx="210" cy="88" r="5" fill="#FFFFFF" opacity="0.6"/>
+  <!-- подоконник -->
+  <rect x="74" y="188" width="174" height="14" rx="7" fill="#94A3B8"/>
+</svg>

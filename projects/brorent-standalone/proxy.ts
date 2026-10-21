@@ -5,18 +5,31 @@ import { NextResponse, type NextRequest } from 'next/server';
  * Владелец входит один раз по личной ссылке ?access=<CODE> — ставится
  * cookie bv_access (httpOnly, 1 год), дальше сайт открыт.
  * Всегда открыты: /privacy (152-ФЗ), /coming-soon (сама заглушка),
- * /admin и /chief (свои аутентификации), /api/admin/*.
+ * /admin и /chief (свои аутентификации), /api/admin/*,
+ * вход клиента и его точки: /api/client-* (в т.ч. Telegram-webhook бота),
+ * /api/chat, /api/telegram-notify, /api/order-status.
  */
 const ACCESS_CODE = process.env.SITE_ACCESS_CODE || 'bv-9f4c2x7q';
 const ACCESS_COOKIE = 'bv_access';
 
 const PUBLIC_ALWAYS = ['/privacy', '/coming-soon'];
 
+/** Публичные API, без которых не работают вход клиента и формы (бот шлёт webhook снаружи) */
+const OPEN_API = [
+  '/api/client-auth',
+  '/api/client-webhook',
+  '/api/client-setup',
+  '/api/chat',
+  '/api/telegram-notify',
+  '/api/order-status',
+];
+
 function isAlwaysOpen(pathname: string): boolean {
   if (PUBLIC_ALWAYS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return true;
   if (pathname === '/admin' || pathname.startsWith('/admin/')) return true;
   if (pathname === '/chief' || pathname.startsWith('/chief/')) return true;
   if (pathname.startsWith('/api/admin')) return true;
+  if (OPEN_API.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return true;
   return false;
 }
 

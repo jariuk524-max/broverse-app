@@ -8,6 +8,7 @@ import { saveOrder } from '@/components/Header';
 import ConsentCheckbox from '@/components/ConsentCheckbox';
 import DevStub from '@/components/DevStub';
 import { DATA_COLLECTION_LOCKED } from '@/lib/site-config';
+import { useClientAuth } from '@/lib/use-client-auth';
 
 export type OrderServiceItem = {
   name: string;
@@ -89,6 +90,7 @@ function getAvailableTimeSlots(isToday: boolean): typeof TIME_SLOTS {
 }
 
 export default function OrderModal({ service, cartItems, onClose }: OrderModalProps) {
+  const auth = useClientAuth();
   const items = cartItems && cartItems.length > 0 ? cartItems : [service];
   // Заявка мастеру — упрощённый флоу: дата/время визита → контакты, без арендной логики
   const isMasterOrder = !!service.isMaster || items.some(i => i.isMaster);
@@ -151,6 +153,9 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
 
   const handleSubmit = useCallback(async () => {
     if (!canSubmit) return; // 152-ФЗ: без согласия отправка запрещена
+    // Вход клиента: первый заказ требует телефон + код из бота
+    const authSession = await auth.ensure(phone);
+    if (!authSession) return;
     const timeLabel = TIME_SLOTS.find(t => t.id === timeSlot)?.label || timeSlot;
     const dateLabel = dateOption === 'custom' ? customDate : dateOptions.find(d => d.id === dateOption)?.label;
     const addons = ADDON_PRODUCTS.filter(p => selectedAddons.includes(p.id)).map(p => p.name).join(', ');
@@ -200,7 +205,7 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
       createdAt: new Date().toISOString(),
     });
     setSubmitted(true);
-  }, [canSubmit, service.name, service.brand, items, address, dateOption, customDate, timeSlot, rentDays, name, phone, comment, grandTotal, deliveryType, returnType, paymentMethod, selectedAddons]);
+  }, [canSubmit, auth, service.name, service.brand, items, address, dateOption, customDate, timeSlot, rentDays, name, phone, comment, grandTotal, deliveryType, returnType, paymentMethod, selectedAddons]);
 
   if (submitted) {
     return (
@@ -236,6 +241,7 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
   }
 
   return (
+    <>
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
       <div className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${closing ? 'opacity-0' : 'anim-fade'}`} onClick={handleClose} />
       <div className={`relative w-full sm:max-w-[420px] mx-4 mb-0 sm:mb-0 bg-white rounded-t-[24px] sm:rounded-[24px] shadow-2xl overflow-hidden transition-all duration-300 ease-out max-h-[90vh] flex flex-col ${closing ? 'translate-y-full sm:translate-y-8 opacity-0 scale-95' : 'anim-sheet'}`}>
@@ -692,5 +698,7 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
         </div>
       </div>
     </div>
+    {auth.sheet}
+    </>
   );
 }

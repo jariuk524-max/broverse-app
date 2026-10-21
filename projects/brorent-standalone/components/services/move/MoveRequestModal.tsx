@@ -6,6 +6,7 @@ import { createServiceRequest } from '@/lib/requests';
 import ConsentCheckbox from '@/components/ConsentCheckbox';
 import DevStub from '@/components/DevStub';
 import { DATA_COLLECTION_LOCKED } from '@/lib/site-config';
+import { useClientAuth } from '@/lib/use-client-auth';
 
 interface MoveRequestModalProps {
   presetService?: string | null;
@@ -115,8 +116,14 @@ export default function MoveRequestModal({ presetService, onClose }: MoveRequest
     return lines.filter(Boolean).join('\n');
   }, [fromAddr, toAddr, city, floor, lift, date, slot, objType, size, opts, comment, estimate]);
 
+  // Вход клиента (шторка авторизации)
+  const auth = useClientAuth();
+
   const submit = useCallback(async () => {
     if (submitting || !stepValid) return;
+    // Вход клиента: первая заявка требует телефон + код из бота
+    const authSession = await auth.ensure(phone);
+    if (!authSession) return;
     setSubmitting(true);
     setError('');
     const res = await createServiceRequest({
@@ -131,7 +138,7 @@ export default function MoveRequestModal({ presetService, onClose }: MoveRequest
     setSubmitting(false);
     if (res) setSubmitted(true);
     else setError('Не удалось отправить заявку. Попробуйте ещё раз.');
-  }, [submitting, stepValid, presetService, name, phone, fromAddr, toAddr, breakdown, estimate]);
+  }, [submitting, stepValid, auth, presetService, name, phone, fromAddr, toAddr, breakdown, estimate]);
 
   const next = () => { if (stepValid && step < 3) setStep(step + 1); };
   const back = () => { if (step > 0) setStep(step - 1); };
@@ -167,6 +174,7 @@ export default function MoveRequestModal({ presetService, onClose }: MoveRequest
   const StepIcon = STEP_ICONS[step];
 
   return (
+    <>
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center js-modal">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm anim-fade" onClick={onClose} />
       <div className="relative w-full sm:max-w-[440px] mx-4 bg-white rounded-t-[24px] sm:rounded-[24px] shadow-2xl overflow-hidden max-h-[92vh] flex flex-col anim-sheet">
@@ -382,5 +390,7 @@ export default function MoveRequestModal({ presetService, onClose }: MoveRequest
         </div>
       </div>
     </div>
+    {auth.sheet}
+    </>
   );
 }

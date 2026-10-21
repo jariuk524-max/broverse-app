@@ -6,6 +6,7 @@ import { createServiceRequest } from '@/lib/requests';
 import ConsentCheckbox from '@/components/ConsentCheckbox';
 import DevStub from '@/components/DevStub';
 import { DATA_COLLECTION_LOCKED } from '@/lib/site-config';
+import { useClientAuth } from '@/lib/use-client-auth';
 
 interface RequestModalProps {
   serviceName?: string;
@@ -42,6 +43,9 @@ export default function RequestModal({
     onClose();
   }, [onClose]);
 
+  // Вход клиента: первая заявка требует телефон + код из бота
+  const auth = useClientAuth();
+
   // 152-ФЗ: на время разработки вход закрыт заглушкой — данные не собираются
   if (DATA_COLLECTION_LOCKED) return <DevStub variant="card" onClose={onClose} title="Заявки временно закрыты" />;
 
@@ -59,6 +63,8 @@ export default function RequestModal({
 
   const handleSubmit = useCallback(async () => {
     if (!canSubmit) return;
+    const authSession = await auth.ensure(phone);
+    if (!authSession) return;
     setSubmitting(true);
     setError('');
     const res = await createServiceRequest({
@@ -80,7 +86,7 @@ export default function RequestModal({
     } else {
       setError('Не удалось отправить заявку. Попробуйте ещё раз.');
     }
-  }, [canSubmit, brand, serviceName, domain, phone, address, photo, description]);
+  }, [canSubmit, auth, brand, serviceName, domain, phone, address, photo, description]);
 
   if (submitted) {
     return (
@@ -107,6 +113,7 @@ export default function RequestModal({
   }
 
   return (
+    <>
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center js-modal">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm anim-fade" onClick={handleClose} />
       <div className="relative w-full sm:max-w-[420px] mx-4 bg-white rounded-t-[24px] sm:rounded-[24px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col anim-sheet">
@@ -225,5 +232,7 @@ export default function RequestModal({
         </div>
       </div>
     </div>
+    {auth.sheet}
+    </>
   );
 }

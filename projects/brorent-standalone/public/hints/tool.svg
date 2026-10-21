@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" width="320" height="220" role="img" aria-label="Аренда инструмента">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFBEB"/>
+      <stop offset="1" stop-color="#FCD34D"/>
+    </linearGradient>
+    <linearGradient id="drill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FACC15"/>
+      <stop offset="1" stop-color="#D97706"/>
+    </linearGradient>
+    <linearGradient id="dark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#475569"/>
+      <stop offset="1" stop-color="#1E293B"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="220" fill="url(#bg)"/>
+  <circle cx="56" cy="54" r="58" fill="#FFFFFF" opacity="0.32"/>
+  <circle cx="266" cy="172" r="60" fill="#FFFFFF" opacity="0.22"/>
+  <!-- дрель -->
+  <g transform="translate(70 56)">
+    <!-- патрон и сверло -->
+    <rect x="146" y="52" width="34" height="24" rx="8" fill="url(#dark)"/>
+    <rect x="176" y="57" width="54" height="14" rx="6" fill="#94A3B8"/>
+    <path d="M226 57 l24 7 -24 7z" fill="#64748B"/>
+    <!-- корпус -->
+    <rect x="54" y="34" width="102" height="60" rx="22" fill="url(#drill)"/>
+    <rect x="66" y="46" width="52" height="14" rx="7" fill="#FEF3C7" opacity="0.8"/>
+    <circle cx="136" cy="64" r="12" fill="#B45309" opacity="0.65"/>
+    <!-- рукоятка -->
+    <path d="M74 92 l-8 66 a20 20 0 0 0 40 2 l6-52z" fill="url(#dark)"/>
+    <rect x="66" y="132" width="44" height="16" rx="8" fill="#0F172A" opacity="0.6"/>
+    <!-- аккумулятор -->
+    <rect x="58" y="158" width="66" height="30" rx="12" fill="#334155"/>
+    <rect x="66" y="166" width="34" height="14" rx="6" fill="#22C55E" opacity="0.9"/>
+  </g>
+  <!-- искры работы -->
+  <path d="M268 92 l5 12 12 5 -12 5 -5 12 -5-12 -12-5 12-5z" fill="#FFFFFF"/>
+  <path d="M252 132 l3 8 8 3 -8 3 -3 8 -3-8 -8-3 8-3z" fill="#FFFFFF" opacity="0.9"/>
+  <path d="M40 120 l3 8 8 3 -8 3 -3 8 -3-8 -8-3 8-3z" fill="#FFFFFF" opacity="0.85"/>
+</svg>

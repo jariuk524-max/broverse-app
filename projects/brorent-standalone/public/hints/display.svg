@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" width="320" height="220" role="img" aria-label="Замена экрана телефона">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#EEF2FF"/>
+      <stop offset="1" stop-color="#A5B4FC"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1E293B"/>
+      <stop offset="1" stop-color="#0F172A"/>
+    </linearGradient>
+    <linearGradient id="new" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#38BDF8"/>
+      <stop offset="1" stop-color="#6366F1"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="220" fill="url(#bg)"/>
+  <circle cx="56" cy="52" r="58" fill="#FFFFFF" opacity="0.3"/>
+  <circle cx="270" cy="180" r="64" fill="#FFFFFF" opacity="0.22"/>
+  <!-- старый телефон с трещиной -->
+  <g transform="translate(52 46) rotate(-8 52 66)">
+    <rect x="0" y="0" width="96" height="152" rx="20" fill="#334155"/>
+    <rect x="7" y="7" width="82" height="138" rx="14" fill="url(#screen)"/>
+    <path d="M30 24 L52 58 L40 74 L64 112 L54 128" fill="none" stroke="#F8FAFC" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M52 58 L74 52 M40 74 L18 84 M64 112 L86 104" fill="none" stroke="#CBD5E1" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+  <!-- новый экран -->
+  <g transform="translate(168 40) rotate(7 50 70)">
+    <rect x="0" y="0" width="100" height="156" rx="22" fill="#0F172A"/>
+    <rect x="7" y="7" width="86" height="142" rx="16" fill="url(#new)"/>
+    <path d="M22 44 Q50 26 78 44" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" opacity="0.9"/>
+    <circle cx="50" cy="92" r="22" fill="#FFFFFF" opacity="0.28"/>
+    <path d="M40 92 l7 8 14-16" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M16 20 Q34 8 52 16" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" opacity="0.45"/>
+  </g>
+  <!-- искры -->
+  <path d="M150 30 l4 10 10 4 -10 4 -4 10 -4-10 -10-4 10-4z" fill="#FFFFFF"/>
+  <path d="M284 42 l3 8 8 3 -8 3 -3 8 -3-8 -8-3 8-3z" fill="#FFFFFF" opacity="0.9"/>
+</svg>

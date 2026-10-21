@@ -6,6 +6,7 @@ import Header from '@/components/Header';
 import SmartSearch from '@/components/SmartSearch';
 import OrderModal, { type OrderServiceItem } from '@/components/OrderModal';
 import RequestModal from '@/components/RequestModal';
+import AssistWidget from '@/components/AssistWidget';
 import { ChevronRight, Shield, Star, Clock, CheckCircle2, Wrench, Phone } from 'lucide-react';
 import { masterAdFallbackImage, type MasterAd } from '@/lib/master-ads';
 import { GARDEN_CATEGORIES } from '@/data/garden-services';
@@ -472,6 +473,7 @@ export default function DomainGrid() {
           onClose={() => setShowRequest(false)}
         />
       )}
+      <AssistWidget onRequest={() => setShowRequest(true)} />
     </div>
   );
 }

@@ -163,12 +163,12 @@ const PHOTO_ANALYSIS: Record<string, { domain: string; service: string; confiden
 };
 
 const QUICK_SUGGESTIONS = [
-  { text: 'Химчистка дивана', query: 'диван', icon: '🛋️' },
-  { text: 'Замена экрана', query: 'iphone', icon: '📱' },
-  { text: 'Переезд', query: 'переезд', icon: '🚚' },
-  { text: 'Ремонт техники', query: 'холодильник', icon: '🔧' },
-  { text: 'Мойка окон', query: 'окна', icon: '🪟' },
-  { text: 'Аренда инструмента', query: 'пылесос', icon: '🧹' },
+  { text: 'Химчистка дивана', query: 'диван', img: '/hints/sofa.svg' },
+  { text: 'Замена экрана', query: 'iphone', img: '/hints/display.svg' },
+  { text: 'Переезд', query: 'переезд', img: '/hints/move.svg' },
+  { text: 'Ремонт техники', query: 'холодильник', img: '/hints/repair.svg' },
+  { text: 'Мойка окон', query: 'окна', img: '/hints/window.svg' },
+  { text: 'Аренда инструмента', query: 'пылесос', img: '/hints/tool.svg' },
 ];
 
 function analyzeIntent(query: string): AIIntent[] {
@@ -599,16 +599,21 @@ export default function SmartSearch({ query: externalQuery, onQueryChange, onMas
       {/* Suggestions carousel */}
       {!query && !photoPreview && (
         <div className="px-4 sm:px-0 mt-3">
-          <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-1" style={{ scrollbarWidth: 'none' }}>
+          <div className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-1" style={{ scrollbarWidth: 'none' }}>
             {QUICK_SUGGESTIONS.map((s) => (
               <button
                 key={s.query}
                 type="button"
                 onClick={() => handleQuickClick(s.query)}
-                className="flex items-center gap-2 pl-2 pr-4 py-2 rounded-full bg-zinc-50 border border-zinc-100 snap-start shrink-0 active:scale-95 transition-transform"
+                aria-label={`Подсказка: ${s.text}`}
+                className="group relative w-[152px] h-[104px] shrink-0 snap-start rounded-[18px] overflow-hidden shadow-sm ring-1 ring-black/5 active:scale-[0.97] transition-transform duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
               >
-                <div className="w-9 h-9 rounded-full shadow-sm bg-white flex items-center justify-center text-lg">{s.icon}</div>
-                <span className="text-[13px] font-semibold text-zinc-700 whitespace-nowrap">{s.text}</span>
+                <img src={s.img} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
+                <p className="absolute inset-x-3 bottom-2.5 text-left text-[12.5px] font-bold text-white leading-tight drop-shadow-sm">{s.text}</p>
+                <span className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <ArrowRight size={12} className="text-white" />
+                </span>
               </button>
             ))}
           </div>

@@ -6,6 +6,7 @@ import { findRequestsByPhone, submitFeedback, feedbackAccess, type ServiceReques
 import ConsentCheckbox from '@/components/ConsentCheckbox';
 import DevStub from '@/components/DevStub';
 import { DATA_COLLECTION_LOCKED } from '@/lib/site-config';
+import { useClientAuth } from '@/lib/use-client-auth';
 
 interface FeedbackModalProps {
   onClose: () => void;
@@ -31,15 +32,20 @@ export default function FeedbackModal({ onClose }: FeedbackModalProps) {
   const [error, setError] = useState('');
   const [pdConsent, setPdConsent] = useState(false);
 
+  // Вход клиента: просмотр заявок/отзыв требует телефон + код из бота
+  const auth = useClientAuth();
+
   const search = useCallback(async () => {
     if (phone.replace(/\D/g, '').length < 6 || searching || !pdConsent) return; // 152-ФЗ
+    const authSession = await auth.ensure(phone);
+    if (!authSession) return;
     setSearching(true);
     setSearchError('');
     const found = await findRequestsByPhone(phone);
     setOrders(found);
     setSearching(false);
     if (found.length === 0) setSearchError('Заявки по этому номеру не найдены.');
-  }, [phone, searching, pdConsent]);
+  }, [phone, searching, pdConsent, auth]);
 
   const send = useCallback(async () => {
     if (!selected || resolved === null || submitting || !pdConsent) return; // 152-ФЗ
@@ -194,6 +200,7 @@ export default function FeedbackModal({ onClose }: FeedbackModalProps) {
 
   /* ── Поиск заявки по телефону ── */
   return (
+    <>
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center js-modal">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm anim-fade" onClick={handleClose} />
       <div className="relative w-full sm:max-w-[420px] mx-4 bg-white rounded-t-[24px] sm:rounded-[24px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col anim-sheet">
@@ -263,5 +270,7 @@ export default function FeedbackModal({ onClose }: FeedbackModalProps) {
         </div>
       </div>
     </div>
+    {auth.sheet}
+    </>
   );
 }

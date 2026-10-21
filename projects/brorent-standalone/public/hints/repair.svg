@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" width="320" height="220" role="img" aria-label="Ремонт техники">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#EFF6FF"/>
+      <stop offset="1" stop-color="#93C5FD"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#E2E8F0"/>
+      <stop offset="1" stop-color="#94A3B8"/>
+    </linearGradient>
+    <linearGradient id="handle" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <linearGradient id="grip" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#60A5FA"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="220" fill="url(#bg)"/>
+  <circle cx="52" cy="48" r="56" fill="#FFFFFF" opacity="0.32"/>
+  <circle cx="272" cy="176" r="62" fill="#FFFFFF" opacity="0.22"/>
+  <!-- шестерёнка -->
+  <g transform="translate(236 64)">
+    <g fill="#CBD5E1">
+      <rect x="-10" y="-52" width="20" height="24" rx="5"/>
+      <rect x="-10" y="-52" width="20" height="24" rx="5" transform="rotate(45)"/>
+      <rect x="-10" y="-52" width="20" height="24" rx="5" transform="rotate(90)"/>
+      <rect x="-10" y="-52" width="20" height="24" rx="5" transform="rotate(135)"/>
+      <rect x="-10" y="-52" width="20" height="24" rx="5" transform="rotate(180)"/>
+      <rect x="-10" y="-52" width="20" height="24" rx="5" transform="rotate(225)"/>
+      <rect x="-10" y="-52" width="20" height="24" rx="5" transform="rotate(270)"/>
+      <rect x="-10" y="-52" width="20" height="24" rx="5" transform="rotate(315)"/>
+    </g>
+    <circle r="34" fill="url(#metal)"/>
+    <circle r="15" fill="#EFF6FF"/>
+  </g>
+  <!-- отвёртка (по диагонали) -->
+  <g transform="rotate(-34 160 110)">
+    <rect x="152" y="30" width="16" height="70" rx="7" fill="url(#handle)"/>
+    <rect x="149" y="96" width="22" height="26" rx="8" fill="#1E3A8A"/>
+    <rect x="155" y="120" width="10" height="72" rx="4" fill="url(#metal)"/>
+    <path d="M155 188 h10 l-5 14z" fill="#64748B"/>
+    <rect x="152" y="40" width="16" height="8" rx="4" fill="#93C5FD" opacity="0.7"/>
+  </g>
+  <!-- гаечный ключ -->
+  <g transform="rotate(28 120 130)">
+    <rect x="112" y="74" width="17" height="96" rx="8" fill="url(#grip)"/>
+    <path d="M104 44 a21 21 0 1 1 34 16 l-6-10 -12 2 -2-12z" fill="url(#metal)"/>
+    <rect x="112" y="86" width="17" height="9" rx="4" fill="#BFDBFE" opacity="0.75"/>
+  </g>
+  <!-- искры -->
+  <path d="M84 40 l4 10 10 4 -10 4 -4 10 -4-10 -10-4 10-4z" fill="#FFFFFF"/>
+  <path d="M270 132 l3 8 8 3 -8 3 -3 8 -3-8 -8-3 8-3z" fill="#FFFFFF" opacity="0.9"/>
+</svg>
