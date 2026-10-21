@@ -598,7 +598,7 @@ export default function SmartSearch({ query: externalQuery, onQueryChange, onMas
 
       {/* Suggestions carousel */}
       {!query && !photoPreview && (
-        <div className="px-4 sm:px-0 mt-3">
+        <div className="px-4 sm:px-0 mt-3 mb-8">
           <div className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-1" style={{ scrollbarWidth: 'none' }}>
             {QUICK_SUGGESTIONS.map((s) => (
               <button
