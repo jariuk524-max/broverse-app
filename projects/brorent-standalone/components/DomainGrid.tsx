@@ -29,12 +29,12 @@ function BroVerseLogo({ className = '' }: { className?: string }) {
 }
 
 const CATEGORIES = [
-  { id: 'wash', label: 'BroWash', desc: 'Химчистка мебели, матрасов, ковров и салонов автомобилей', color: '#4285F4', bg: '#EBF3FF' },
-  { id: 'build', label: 'BroBuild', desc: 'Ремонт квартир, сантехники, электрики и бытовой техники', color: '#EA4335', bg: '#FDECEA' },
-  { id: 'frame', label: 'BroFrame', desc: 'Ремонт смартфонов, ноутбуков, роботов и сетевого оборудования', color: '#FBBC05', bg: '#FEF7E0' },
-  { id: 'move', label: 'BroMove', desc: 'Квартирные и офисные переезды, сборка мебели, грузоперевозки', color: '#34A853', bg: '#E8F5E9' },
-  { id: 'rent', label: 'BroRent', desc: 'Аренда профессионального инструмента и техники', color: '#00BCD4', bg: '#E0F7FA' },
-  { id: 'garden', label: 'BroGarden', desc: 'Озеленение, стрижка газонов и уборка снега', color: '#16A34A', bg: '#E7F6EC' },
+  { id: 'wash', label: 'BroWash', tagline: 'Химчистка как искусство', desc: 'Диваны, матрасы, ковры и салоны авто — глубокая чистка с выездом', color: '#4285F4', bg: '#EBF3FF', chips: ['От 350 ₽', 'Выезд от 1 ч'] },
+  { id: 'build', label: 'BroBuild', tagline: 'Дом починим под ключ', desc: 'Ремонт квартир, сантехника, электрика и бытовая техника', color: '#EA4335', bg: '#FDECEA', chips: ['Смета за 15 мин', 'Гарантия'] },
+  { id: 'frame', label: 'BroFrame', tagline: 'Живая электроника', desc: 'Экраны смартфонов, ноутбуки, роботы и сетевое оборудование', color: '#FBBC05', bg: '#FEF7E0', chips: ['Ремонт от 30 мин', 'Оригинальные детали'] },
+  { id: 'move', label: 'BroMove', tagline: 'Переезд без хлопот', desc: 'Квартирные и офисные переезды, сборка мебели, грузоперевозки', color: '#34A853', bg: '#E8F5E9', chips: ['Подача от 1 ч', 'Экипаж 2+'] },
+  { id: 'rent', label: 'BroRent', tagline: 'Инструмент напрокат', desc: 'Профессиональный инструмент и техника посуточно с доставкой', color: '#00BCD4', bg: '#E0F7FA', chips: ['От 500 ₽/день', 'Доставка'] },
+  { id: 'garden', label: 'BroGarden', tagline: 'Всё зелёное — у нас', desc: 'Озеленение, стрижка газонов и уборка снега на участке', color: '#16A34A', bg: '#E7F6EC', chips: ['Сезон 24/7', 'Участок под ключ'] },
 ];
 
 const TRUST_ITEMS = [
@@ -269,16 +269,58 @@ export default function DomainGrid() {
 
       <main className="max-w-7xl mx-auto px-4 md:px-6">
 
-        {/* Category Grid — 3x2 */}
+        {/* Category Grid — карточки 6 брендов */}
         <section className="mb-8">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
             {CATEGORIES.map((card) => (
-              <Link key={card.id} href={`/services/${card.id}`} className="group flex flex-col items-center text-center p-6 bg-white/80 backdrop-blur-md rounded-[24px] shadow-sm border border-white/20 transition-all duration-300 hover:shadow-lg hover:scale-[1.03] active:scale-[0.97] cursor-pointer">
-                <div className="mb-4 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
-                  <BrandLogo brand={card.id} size={48} />
+              <Link
+                key={card.id}
+                href={`/services/${card.id}`}
+                className="group relative flex flex-col p-5 md:p-6 rounded-[24px] border border-white/50 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.03] active:scale-[0.97] cursor-pointer"
+                style={{ background: `linear-gradient(160deg, #fff 45%, ${card.bg})` }}
+              >
+                {/* Цветовое пятно бренда в углу */}
+                <span
+                  className="pointer-events-none absolute -top-10 -right-10 w-32 h-32 rounded-full blur-2xl opacity-40 group-hover:opacity-60 group-hover:scale-110 transition-all duration-500"
+                  style={{ background: card.color }}
+                />
+
+                {/* Логотип в цветном кружке */}
+                <div
+                  className="relative mb-3.5 w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3"
+                  style={{ background: card.bg }}
+                >
+                  <BrandLogo brand={card.id} size={30} />
                 </div>
-                <span className="text-sm font-bold" style={{ color: card.color }}>{card.label}</span>
-                <span className="text-xs text-zinc-400 mt-1">{card.desc}</span>
+
+                <span className="relative text-[15px] font-black tracking-tight" style={{ color: card.color }}>
+                  {card.label}
+                </span>
+                <span className="relative text-[13px] font-bold text-zinc-800 mt-0.5 leading-snug">{card.tagline}</span>
+                <span className="relative text-[11px] text-zinc-500 mt-1.5 leading-relaxed line-clamp-2">{card.desc}</span>
+
+                {/* Чипсы */}
+                <div className="relative flex flex-wrap gap-1.5 mt-3">
+                  {card.chips.map((chip) => (
+                    <span
+                      key={chip}
+                      className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/90 border"
+                      style={{ color: card.color, borderColor: `${card.color}33` }}
+                    >
+                      {chip}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Переход */}
+                <span className="relative mt-auto pt-3.5 inline-flex items-center gap-1 text-[12px] font-bold text-zinc-900">
+                  Смотреть
+                  <ChevronRight
+                    size={13}
+                    className="transition-transform duration-300 group-hover:translate-x-1"
+                    style={{ color: card.color }}
+                  />
+                </span>
               </Link>
             ))}
           </div>
