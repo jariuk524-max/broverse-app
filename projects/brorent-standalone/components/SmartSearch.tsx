@@ -374,7 +374,7 @@ export default function SmartSearch({ query: externalQuery, onQueryChange, onMas
           }}
           onFocus={() => setIsOpen(true)}
           placeholder="Что нужно починить или почистить?"
-          className="flex-1 bg-transparent text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none min-w-0"
+          className="flex-1 bg-transparent text-[16px] sm:text-[15px] font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none min-w-0"
         />
         <input
           ref={fileInputRef}
@@ -459,7 +459,7 @@ export default function SmartSearch({ query: externalQuery, onQueryChange, onMas
                 <Loader2 size={16} className="animate-spin" />
                 <span className="text-xs sm:text-sm font-bold">AI анализирует фото...</span>
               </div>
-              <p className="mt-2 text-[10px] sm:text-xs text-zinc-400">
+              <p className="mt-2 text-xs text-zinc-500">
                 Распознаём объект и подбираем решение
               </p>
             </div>
@@ -571,7 +571,7 @@ export default function SmartSearch({ query: externalQuery, onQueryChange, onMas
           ) : query.trim() ? (
             <div className="p-6 sm:p-8 text-center">
               <p className="text-xs sm:text-sm font-bold text-zinc-500">Ничего не найдено</p>
-              <p className="mt-1 text-[10px] sm:text-xs text-zinc-400">Попробуйте загрузить фото или изменить запрос</p>
+              <p className="mt-1 text-xs text-zinc-500">Попробуйте загрузить фото или изменить запрос</p>
               <div className="mt-4 flex gap-2 justify-center">
                 <button
                   type="button"
@@ -610,7 +610,7 @@ export default function SmartSearch({ query: externalQuery, onQueryChange, onMas
               >
                 <img src={s.img} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
-                <p className="absolute inset-x-3 bottom-2.5 text-left text-[12.5px] font-bold text-white leading-tight drop-shadow-sm">{s.text}</p>
+                <p className="absolute inset-x-3 bottom-2.5 text-left text-[13px] font-bold text-white leading-tight drop-shadow-sm">{s.text}</p>
                 <span className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <ArrowRight size={12} className="text-white" />
                 </span>

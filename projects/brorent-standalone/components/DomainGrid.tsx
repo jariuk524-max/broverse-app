@@ -38,19 +38,17 @@ const CATEGORIES = [
 ];
 
 const TRUST_ITEMS = [
-  { icon: Shield, label: 'Trust Score 100', desc: 'Каждый мастер проходит строгую проверку и верификацию', color: '#34A853' },
-  { icon: Star, label: 'Рейтинг 5.0', desc: 'Средний балл по отзывам клиентов', color: '#FBBC05' },
-  { icon: Clock, label: 'Выезд от 1 часа', desc: 'Быстрый отклик и выезд мастера в удобное время', color: '#4285F4' },
-  { icon: CheckCircle2, label: 'Гарантия 12 мес', desc: 'Официальная гарантия на все виды выполненных работ', color: '#EA4335' },
+  { icon: Shield, label: '100% проверка', desc: 'Каждого мастера проверяем вручную', color: '#34A853' },
+  { icon: Star, label: 'Рейтинг 5.0', desc: 'Средняя оценка по отзывам клиентов', color: '#FBBC05' },
+  { icon: Clock, label: 'Выезд от 1 часа', desc: 'Приедем в удобное вам время', color: '#4285F4' },
+  { icon: CheckCircle2, label: 'Гарантия 12 мес', desc: 'Официальная гарантия на работы', color: '#EA4335' },
 ];
 
-
-
 const HOW_IT_WORKS = [
-  { num: '01', emoji: '📝', title: 'Опишите задачу', desc: 'Выберите услугу из каталога', chips: ['Фото помогает мастеру', 'AI-оценка стоимости'] },
-  { num: '02', emoji: '📞', title: 'Мастер свяжется', desc: 'В течение 5 минут', chips: ['Бесплатный выезд', 'Фиксированная стоимость'] },
-  { num: '03', emoji: '🔧', title: 'Работа выполняется', desc: 'Мастер приедет в удобное время', chips: ['Фотоотчёт', 'Соблюдение сроков'] },
-  { num: '04', emoji: '✅', title: 'Принимайте', desc: 'Проверьте результат', chips: ['Оплата после', 'Гарантия 12 мес'] },
+  { num: '01', emoji: '📝', title: 'Опишите задачу', desc: 'Расскажите, что случилось — или выберите услугу в каталоге', chips: ['Фото ускоряет диагноз', 'Предварительная цена'] },
+  { num: '02', emoji: '📞', title: 'Ответим за 5 минут', desc: 'Уточним детали, назовём точную стоимость и время', chips: ['Выезд бесплатный', 'Цена без сюрпризов'] },
+  { num: '03', emoji: '🔧', title: 'Мастер выполнит работу', desc: 'Приедет в удобное время и сделает аккуратно', chips: ['Фотоотчёт после работ', 'Сроки фиксируем'] },
+  { num: '04', emoji: '✅', title: 'Принимайте и платите', desc: 'Проверьте результат — оплата только после приёмки', chips: ['Оплата после работы', 'Гарантия 12 месяцев'] },
 ];
 
 function ServiceDetailModal({ service, onOrder, onClose }: { service: OrderServiceItem; onOrder: () => void; onClose: () => void }) {
@@ -296,15 +294,15 @@ export default function DomainGrid() {
                 <span className="relative text-sm font-black tracking-tight" style={{ color: card.color }}>
                   {card.label}
                 </span>
-                <span className="relative text-[13px] font-bold text-zinc-800 mt-0.5 leading-snug">{card.tagline}</span>
-                <span className="relative text-[11px] text-zinc-500 mt-1.5 leading-snug line-clamp-2">{card.desc}</span>
+                <span className="relative text-[14px] font-bold text-zinc-900 mt-0.5 leading-snug">{card.tagline}</span>
+                <span className="relative text-[12.5px] text-zinc-500 mt-1.5 leading-snug line-clamp-2">{card.desc}</span>
 
                 {/* Чипсы */}
                 <div className="relative flex flex-wrap gap-1.5 mt-2.5">
                   {card.chips.map((chip) => (
                     <span
                       key={chip}
-                      className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/90 border"
+                      className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-white/90 border"
                       style={{ color: card.color, borderColor: `${card.color}33` }}
                     >
                       {chip}
@@ -313,7 +311,7 @@ export default function DomainGrid() {
                 </div>
 
                 {/* Переход */}
-                <span className="relative mt-auto pt-3 inline-flex items-center gap-1 text-[12px] font-bold text-zinc-900">
+                <span className="relative mt-auto pt-3 inline-flex items-center gap-1 text-[13px] font-bold text-zinc-900">
                   Смотреть
                   <ChevronRight
                     size={13}
@@ -337,8 +335,8 @@ export default function DomainGrid() {
                     <Icon size={17} className="text-zinc-600" strokeWidth={2} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-zinc-800">{item.label}</p>
-                    <p className="text-[10px] text-zinc-400 leading-snug line-clamp-1">{item.desc}</p>
+                    <p className="text-[13px] font-bold text-zinc-900">{item.label}</p>
+                    <p className="text-xs text-zinc-500 leading-snug line-clamp-1 mt-0.5">{item.desc}</p>
                   </div>
                 </div>
               );
@@ -351,32 +349,32 @@ export default function DomainGrid() {
           <div className="flex items-center gap-3 mb-4">
             <BroVerseLogo className="w-10 h-10" />
             <div className="flex-1">
-              <h2 className="text-lg font-extrabold text-zinc-900">Все услуги BroVerse</h2>
-              <p className="text-xs text-zinc-400 mt-0.5">{filteredServices.length} услуг{masterItems.length > 0 ? ` · из них ${masterItems.length} от мастеров` : ''}</p>
+              <h2 className="text-xl font-extrabold text-zinc-900">Все услуги BroVerse</h2>
+              <p className="text-[13px] text-zinc-500 mt-0.5">{filteredServices.length} услуг · цены и сроки до выезда мастера{masterItems.length > 0 ? ` · из них ${masterItems.length} от мастеров` : ''}</p>
             </div>
           </div>
 
           {/* Filter pills */}
           <div className="flex gap-2 overflow-x-auto pb-1 mb-4 scrollbar-hide">
-            <button type="button" onClick={() => setFilter('all')} className={`flex-shrink-0 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 ${filter === 'all' ? 'bg-zinc-900 text-white shadow-md' : 'bg-white/80 text-zinc-500 hover:bg-white'}`}>Все ({allItems.length})</button>
+            <button type="button" onClick={() => setFilter('all')} className={`flex-shrink-0 px-4 py-2 rounded-full text-[13px] font-semibold transition-all duration-200 ${filter === 'all' ? 'bg-zinc-900 text-white shadow-md' : 'bg-white/80 text-zinc-600 hover:bg-white'}`}>Все ({allItems.length})</button>
             <button
               type="button"
               onClick={() => setFilter(filter === 'masters' ? 'all' : 'masters')}
-              className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 ${filter === 'masters' ? 'bg-zinc-900 text-white shadow-md' : 'bg-white/80 text-zinc-500 hover:bg-white'}`}
+              className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-semibold transition-all duration-200 ${filter === 'masters' ? 'bg-zinc-900 text-white shadow-md' : 'bg-white/80 text-zinc-600 hover:bg-white'}`}
             >
               <Wrench size={13} />Наши мастера ({masterItems.length})
             </button>
             {CATEGORIES.map((cat) => {
               const count = allItems.filter((s) => s.domain === cat.id && !s.isMaster).length;
               return (
-                <button key={cat.id} type="button" onClick={() => setFilter(filter === cat.id ? 'all' : cat.id)} className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 ${filter === cat.id ? 'text-white shadow-md' : 'hover:opacity-80'}`} style={{ backgroundColor: filter === cat.id ? cat.color : cat.bg, color: filter === cat.id ? '#fff' : cat.color }}>
+                <button key={cat.id} type="button" onClick={() => setFilter(filter === cat.id ? 'all' : cat.id)} className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-semibold transition-all duration-200 ${filter === cat.id ? 'text-white shadow-md' : 'hover:opacity-80'}`} style={{ backgroundColor: filter === cat.id ? cat.color : cat.bg, color: filter === cat.id ? '#fff' : cat.color }}>
                   <BrandLogo brand={cat.id} size={16} />{cat.label} ({count})
                 </button>
               );
             })}
             <Link
               href="/masters"
-              className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 bg-[#EA4335] text-white shadow-md hover:opacity-90"
+              className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-semibold transition-all duration-200 bg-[#EA4335] text-white shadow-md hover:opacity-90"
             >
               <Wrench size={13} /> Стать мастером
             </Link>
@@ -407,18 +405,18 @@ export default function DomainGrid() {
                 <div className="relative aspect-[16/10] overflow-hidden bg-zinc-100">
                   <img src={service.image} alt={service.name} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <span className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm text-[10px] font-bold text-white">{service.brand}</span>
+                  <span className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm text-[11px] font-semibold text-white">{service.brand}</span>
                   {service.isMaster ? (
-                    <span className="absolute bottom-2.5 left-2.5 flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-sm text-[10px] font-bold text-zinc-900">
-                      <Wrench size={10} className="text-zinc-500" /> Мастер{service.directionLabel ? ` · ${service.directionLabel}` : ''}
+                    <span className="absolute bottom-2.5 left-2.5 flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-sm text-[11px] font-semibold text-zinc-900">
+                      <Wrench size={11} className="text-zinc-500" /> Мастер{service.directionLabel ? ` · ${service.directionLabel}` : ''}
                     </span>
                   ) : (
-                    <span className="absolute bottom-2.5 left-2.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm text-[10px] font-bold text-white">{service.time}</span>
+                    <span className="absolute bottom-2.5 left-2.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm text-[11px] font-semibold text-white">{service.time}</span>
                   )}
                 </div>
                 <div className="p-3.5 md:p-4">
-                  <p className="text-[13px] font-semibold text-zinc-800 group-hover:text-zinc-950 transition-colors leading-tight line-clamp-1">{service.name}</p>
-                  <p className="text-[11px] text-zinc-400 mt-1 line-clamp-1">{service.desc}</p>
+                  <p className="text-sm font-semibold text-zinc-900 group-hover:text-zinc-950 transition-colors leading-snug line-clamp-1">{service.name}</p>
+                  <p className="text-xs text-zinc-500 mt-1 line-clamp-1">{service.desc}</p>
                   {service.isMaster && service.masterName && (
                     <div className="flex items-center gap-1.5 mt-2">
                       <span className="w-5 h-5 rounded-full bg-zinc-100 overflow-hidden flex items-center justify-center shrink-0">
@@ -428,15 +426,15 @@ export default function DomainGrid() {
                           <span className="text-[9px] font-bold text-zinc-500">{service.masterName.charAt(0).toUpperCase()}</span>
                         )}
                       </span>
-                      <span className="text-[11px] font-semibold text-zinc-600 truncate">{service.masterName}</span>
-                      <span className="flex items-center gap-0.5 text-[10px] font-bold text-amber-500 shrink-0">
-                        <Star size={10} fill="currentColor" />{(service.masterProfile?.rating ?? 5).toFixed(1)}
+                      <span className="text-xs font-medium text-zinc-600 truncate">{service.masterName}</span>
+                      <span className="flex items-center gap-0.5 text-[11px] font-bold text-amber-500 shrink-0">
+                        <Star size={11} fill="currentColor" />{(service.masterProfile?.rating ?? 5).toFixed(1)}
                       </span>
                     </div>
                   )}
                   <div className="flex items-center justify-between mt-2.5">
-                    <span className="text-sm font-bold text-zinc-900">от {service.price} ₽</span>
-                    <span className="text-[11px] font-semibold text-zinc-400 group-hover:text-zinc-600 transition-colors">Заказать →</span>
+                    <span className="text-[15px] font-extrabold text-zinc-900">от {service.price} ₽</span>
+                    <span className="text-xs font-medium text-zinc-500 group-hover:text-zinc-700 transition-colors">Заказать →</span>
                   </div>
                 </div>
               </button>
@@ -447,21 +445,24 @@ export default function DomainGrid() {
 
         {/* How it works */}
         <section className="mb-8">
-          <h2 className="text-lg font-extrabold text-zinc-900 mb-5 text-center">Как это работает</h2>
+          <div className="text-center mb-5">
+            <h2 className="text-xl font-extrabold text-zinc-900">Как это работает</h2>
+            <p className="text-[13px] text-zinc-500 mt-1">От заявки до результата — 4 простых шага</p>
+          </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {HOW_IT_WORKS.map((step) => (
               <div key={step.num} className="relative rounded-[20px] bg-white/80 backdrop-blur-md border border-white/20 shadow-sm p-4">
                 <div className="flex items-center gap-2.5 mb-3">
                   <span className="text-3xl">{step.emoji}</span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-300">Шаг {step.num}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Шаг {step.num}</span>
                 </div>
-                <h3 className="text-sm font-bold text-zinc-800 mb-1.5">{step.title}</h3>
-                <p className="text-[11px] text-zinc-500 leading-snug mb-2.5">{step.desc}</p>
-                <ul className="space-y-1">
+                <h3 className="text-sm font-bold text-zinc-900 mb-1.5 leading-snug">{step.title}</h3>
+                <p className="text-xs text-zinc-500 leading-snug mb-2.5">{step.desc}</p>
+                <ul className="space-y-1.5">
                   {step.chips.map((chip) => (
                     <li key={chip} className="flex items-start gap-1.5">
-                      <CheckCircle2 size={11} className="text-emerald-400 mt-0.5 shrink-0" />
-                      <span className="text-[10px] text-zinc-400 leading-snug">{chip}</span>
+                      <CheckCircle2 size={12} className="text-emerald-500 mt-0.5 shrink-0" />
+                      <span className="text-[11.5px] text-zinc-500 leading-snug">{chip}</span>
                     </li>
                   ))}
                 </ul>
@@ -477,9 +478,9 @@ export default function DomainGrid() {
             <div className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-[#34A853]/20 blur-3xl" />
             <div className="relative">
               <BroVerseLogo className="w-12 h-12 mx-auto mb-4" />
-              <h2 className="text-lg font-extrabold text-zinc-900 mb-2">Нужна помощь с выбором?</h2>
-              <p className="text-sm text-zinc-500 mb-6 max-w-md mx-auto">Опишите задачу — подберём мастера</p>
-              <button type="button" onClick={() => setShowRequest(true)} className="inline-flex items-center gap-2 bg-zinc-900 text-white text-sm font-bold px-8 py-3.5 rounded-full hover:bg-zinc-800 transition-colors shadow-xl shadow-black/20">
+              <h2 className="text-xl font-extrabold text-zinc-900 mb-2">Не знаете, кого вызвать?</h2>
+              <p className="text-sm text-zinc-500 mb-6 max-w-md mx-auto">Опишите задачу — подберём мастера и сразу назовём цену</p>
+              <button type="button" onClick={() => setShowRequest(true)} className="inline-flex items-center gap-2 bg-zinc-900 text-white text-[15px] font-bold px-8 py-3.5 rounded-full hover:bg-zinc-800 transition-colors shadow-xl shadow-black/20">
                 Оставить заявку <ChevronRight size={16} />
               </button>
             </div>
@@ -491,11 +492,11 @@ export default function DomainGrid() {
           <Link href="/master" className="block group">
             <div className="rounded-[24px] bg-gradient-to-br from-[#18181b] to-[#2a2a2e] p-6 md:p-8 text-center shadow-sm transition-transform active:scale-[0.99]">
               <p className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 mb-2">Мастерам</p>
-              <h2 className="text-lg font-extrabold text-white mb-2">Стать мастером BroVerse</h2>
-              <p className="text-sm text-zinc-400 mb-5 max-w-md mx-auto">
-                Заявка на доступ к заказам, свои услуги и цены, профиль для клиентов
+              <h2 className="text-xl font-extrabold text-white mb-2">Стать мастером BroVerse</h2>
+              <p className="text-sm text-zinc-300 mb-5 max-w-md mx-auto">
+                Заказы от клиентов, свои цены и профиль, который видят все
               </p>
-              <span className="inline-flex items-center gap-2 bg-white text-zinc-900 text-sm font-bold px-7 py-3 rounded-full group-hover:bg-zinc-100 transition-colors">
+              <span className="inline-flex items-center gap-2 bg-white text-zinc-900 text-[15px] font-bold px-7 py-3 rounded-full group-hover:bg-zinc-100 transition-colors">
                 Заполнить анкету <ChevronRight size={16} />
               </span>
             </div>
