@@ -10,9 +10,10 @@ function formatAt(iso: string): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-/** Чат клиент↔мастер по заявке (клиент — участник, from: 'client') */
-export default function OrderChat({ orderId }: { orderId?: string }) {
-  const [open, setOpen] = useState(false);
+/** Чат клиент↔мастер по заявке (клиент — участник, from: 'client').
+ *  preview: режим просмотра (без отправки) — например, в админке заявки */
+export default function OrderChat({ orderId, preview }: { orderId?: string; preview?: boolean }) {
+  const [open, setOpen] = useState(!!preview);
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -80,15 +81,17 @@ export default function OrderChat({ orderId }: { orderId?: string }) {
           <MessageCircle size={13} className="text-[#00BCD4]" />
           <p className="text-[11px] font-bold text-zinc-700">Чат с мастером</p>
         </div>
-        <button type="button" onClick={() => setOpen(false)} className="p-1 text-zinc-400 active:scale-90">
-          <X size={14} />
-        </button>
+        {!preview && (
+          <button type="button" onClick={() => setOpen(false)} className="p-1 text-zinc-400 active:scale-90">
+            <X size={14} />
+          </button>
+        )}
       </div>
 
       <div className="max-h-44 overflow-y-auto px-3 py-2 space-y-1.5">
         {msgs.length === 0 && (
           <p className="text-[10px] text-zinc-400 text-center py-2">
-            Напишите мастеру — сообщение появится в его кабинете по заявке
+            {preview ? 'Сообщений пока нет' : 'Напишите мастеру — сообщение появится в его кабинете по заявке'}
           </p>
         )}
         {msgs.map((m) => (
@@ -108,26 +111,28 @@ export default function OrderChat({ orderId }: { orderId?: string }) {
         <div ref={bottomRef} />
       </div>
 
-      <div className="flex items-center gap-2 px-2.5 pb-2.5">
-        <input
-          ref={inputRef}
-          type="text"
-          value={text}
-          maxLength={500}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') void send(); }}
-          placeholder="Сообщение мастеру…"
-          className="flex-1 min-w-0 bg-white border border-zinc-200 rounded-xl px-2.5 py-2 text-[11px] text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-[#00BCD4]"
-        />
-        <button
-          type="button"
-          onClick={() => void send()}
-          disabled={sending || !text.trim()}
-          className="shrink-0 w-8 h-8 rounded-xl bg-[#00BCD4] text-white flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40"
-        >
-          {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-        </button>
-      </div>
+        {!preview && (
+          <div className="flex items-center gap-2 px-2.5 pb-2.5">
+            <input
+              ref={inputRef}
+              type="text"
+              value={text}
+              maxLength={500}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') void send(); }}
+              placeholder="Сообщение мастеру…"
+              className="flex-1 min-w-0 bg-white border border-zinc-200 rounded-xl px-2.5 py-2 text-[11px] text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-[#00BCD4]"
+            />
+            <button
+              type="button"
+              onClick={() => void send()}
+              disabled={sending || !text.trim()}
+              className="shrink-0 w-8 h-8 rounded-xl bg-[#00BCD4] text-white flex items-center justify-center active:scale-95 transition-transform disabled:opacity-40"
+            >
+              {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+            </button>
+          </div>
+        )}
     </div>
   );
 }

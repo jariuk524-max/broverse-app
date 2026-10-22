@@ -9,7 +9,7 @@ import {
   Eye, RefreshCw, KeyRound, Users, GripVertical, Trash2, Camera, ImagePlus, Sparkles,
 } from 'lucide-react';
 import {
-  listServiceRequests,
+  listServiceRequests, getRequestSnapshot,
   STATUS_LABEL, orderPayPrice, type ServiceRequest, type RequestStatus,
 } from '@/lib/requests';
 import { unlockDirectionForMaster } from '@/lib/admin/unlock';
@@ -17,6 +17,7 @@ import { MASTER_DIRECTIONS } from '@/lib/master-ads';
 import SupportChat from '@/components/SupportChat';
 import PromoEditor from '@/components/PromoEditor';
 import FinanceChart, { type DailyPoint } from '@/components/FinanceChart';
+import OrderHistoryCard, { type StoredOrder, type OrderSnapshot, statusKeyFromSnapshot } from '@/components/OrderHistoryCard';
 import { Onest } from 'next/font/google';
 
 const onest = Onest({ subsets: ['latin', 'cyrillic'], display: 'swap' });
@@ -1570,6 +1571,44 @@ function OrderRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** Заявка Supabase → карточка заказа, как её видит клиент в «Истории заказов».
+ *  Детали визита/аренды лежат в metadata.comment (пишет OrderModal). */
+function toClientOrder(o: ServiceRequest, snap: OrderSnapshot | null): StoredOrder {
+  const md = o.metadata;
+  const c = String(md?.comment || '');
+  const created = new Date(o.created_at);
+  const msk = { timeZone: 'Europe/Moscow' } as const;
+  const timeM = c.match(/(\d{1,2}:\d{2}\s*[—–-]\s*\d{1,2}:\d{2})/);
+  const dateM = c.match(/(?:Визит|доставка):\s*([^]*?)\s*\d{1,2}:\d{2}/);
+  const grab = (re: RegExp, fallback: string) => {
+    const m = c.match(re);
+    return m ? m[1].charAt(0).toUpperCase() + m[1].slice(1) : fallback;
+  };
+  const daysM = c.match(/Аренда\s+(\d+)\s*дн/);
+  const rawTotal = md?.price ?? md?.proposed_price ?? 0;
+  const total = Number(String(rawTotal).replace(/[^\d.]/g, '')) || 0;
+  return {
+    id: o.id,
+    requestId: o.id,
+    name: o.client_name,
+    phone: o.client_phone,
+    service: o.service_name,
+    date: dateM
+      ? dateM[1].trim().replace(/[.,]+$/, '')
+      : created.toLocaleDateString('ru-RU', msk),
+    time: timeM
+      ? timeM[1]
+      : created.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', ...msk }),
+    delivery: grab(/получение:\s*(курьер|самовывоз)/i, 'Курьер'),
+    returnType: grab(/возврат:\s*(курьер|самовывоз)/i, 'Курьер'),
+    payment: grab(/оплата:\s*(онлайн|наличные)/i, 'Наличные'),
+    days: daysM ? Number(daysM[1]) : 1,
+    total,
+    status: statusKeyFromSnapshot(snap?.status ?? o.status),
+    createdAt: o.created_at,
+  };
+}
+
 function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id: TabId) => void }) {
   const [orders, setOrders] = useState<ServiceRequest[] | null>(null);
   const [admins, setAdmins] = useState<{ login: string; display_name: string; roles: string[]; password_set_at: string | null; last_login_at: string | null; avatar_url?: string | null; title?: string | null }[] | null>(null);
@@ -1598,6 +1637,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
   const orderRef = useRef<string[]>([]);
   const [statusList, setStatusList] = useState<'queue' | 'all' | RequestStatus | null>(null);
   const [openOrder, setOpenOrder] = useState<string | null>(null);
+  const [openOrderSnap, setOpenOrderSnap] = useState<OrderSnapshot | null>(null);
   const [openCabinet, setOpenCabinet] = useState<string | null>(null);
   const [pwValue, setPwValue] = useState('');
   const [pwBusy, setPwBusy] = useState(false);
@@ -1642,6 +1682,19 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
     document.addEventListener('visibilitychange', onVis);
     return () => { clearInterval(id); document.removeEventListener('visibilitychange', onVis); };
   }, []);
+
+  // Живой снимок открытой заявки — карточка рисует статус клиента (к оплате, реквизиты, отказ мастера)
+  useEffect(() => {
+    if (!openOrder) { setOpenOrderSnap(null); return; }
+    let alive = true;
+    const tick = async () => {
+      const s = await getRequestSnapshot(openOrder);
+      if (alive) setOpenOrderSnap(s);
+    };
+    void tick();
+    const t = setInterval(tick, 15000);
+    return () => { alive = false; clearInterval(t); };
+  }, [openOrder]);
 
   useEffect(() => {
     if (!openCabinet) return;
@@ -2384,44 +2437,46 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                   <X size={13} />
                 </button>
               </div>
-              <div className="p-4 space-y-2.5">
-                <OrderRow label="Клиент" value={o.client_name} />
-                <OrderRow label="Телефон" value={o.client_phone} />
-                <OrderRow label="Адрес" value={o.address} />
-                <OrderRow label="Создана" value={new Date(o.created_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })} />
-                {md?.domain && <OrderRow label="Сайт" value={md.domain} />}
-                {md?.description && <OrderRow label="Описание" value={md.description} />}
-                {md?.price != null && <OrderRow label="Цена" value={String(md.price)} />}
-                {md?.master_name && <OrderRow label="Мастер" value={`${md.master_name}${md.master_phone ? ` · ${md.master_phone}` : ''}`} />}
-                {fb && <OrderRow label="Отзыв" value={`${fb.rating ?? '—'}★ · ${fb.comment || 'без комментария'}${fb.resolved ? ' · решён' : ' · не решён'}`} />}
-                {decline && <OrderRow label="Причина отказа" value={decline} />}
-                {comment && <OrderRow label="Комментарий" value={comment} />}
-                {decision && (
-                  <OrderRow
-                    label="Решение"
-                    value={`${String(decision.details?.to) === 'approved' ? '✓ Одобрена' : '✕ Отклонена'} · ${decision.actor_name || decision.actor_login}`}
-                  />
-                )}
-                {['new', 'review'].includes(o.status) && (
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      type="button"
-                      disabled={busyId === o.id}
-                      onClick={() => decide(o, 'approved')}
-                      className="flex-1 py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform disabled:opacity-40"
-                    >
-                      <CheckCircle2 size={14} /> Одобрить
-                    </button>
-                    <button
-                      type="button"
-                      disabled={busyId === o.id}
-                      onClick={() => decide(o, 'rejected')}
-                      className="flex-1 py-2.5 rounded-xl bg-white border border-zinc-200 text-red-500 text-[12px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform disabled:opacity-40"
-                    >
-                      <XCircle size={14} /> Отклонить
-                    </button>
-                  </div>
-                )}
+              <div className="p-4 space-y-3">
+                <OrderHistoryCard order={toClientOrder(o, openOrderSnap)} snap={openOrderSnap ?? undefined} preview />
+                <div className="border-t border-zinc-100 pt-3 space-y-2.5">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Администрирование</p>
+                  <OrderRow label="Клиент" value={o.client_name} />
+                  <OrderRow label="Телефон" value={o.client_phone} />
+                  <OrderRow label="Адрес" value={o.address} />
+                  {md?.domain && <OrderRow label="Сайт" value={md.domain} />}
+                  {md?.description && <OrderRow label="Описание" value={md.description} />}
+                  {md?.master_name && <OrderRow label="Мастер" value={`${md.master_name}${md.master_phone ? ` · ${md.master_phone}` : ''}`} />}
+                  {fb && <OrderRow label="Отзыв" value={`${fb.rating ?? '—'}★ · ${fb.comment || 'без комментария'}${fb.resolved ? ' · решён' : ' · не решён'}`} />}
+                  {decline && <OrderRow label="Причина отказа" value={decline} />}
+                  {comment && <OrderRow label="Комментарий" value={comment} />}
+                  {decision && (
+                    <OrderRow
+                      label="Решение"
+                      value={`${String(decision.details?.to) === 'approved' ? '✓ Одобрена' : '✕ Отклонена'} · ${decision.actor_name || decision.actor_login}`}
+                    />
+                  )}
+                  {['new', 'review'].includes(o.status) && (
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        disabled={busyId === o.id}
+                        onClick={() => decide(o, 'approved')}
+                        className="flex-1 py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform disabled:opacity-40"
+                      >
+                        <CheckCircle2 size={14} /> Одобрить
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busyId === o.id}
+                        onClick={() => decide(o, 'rejected')}
+                        className="flex-1 py-2.5 rounded-xl bg-white border border-zinc-200 text-red-500 text-[12px] font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform disabled:opacity-40"
+                      >
+                        <XCircle size={14} /> Отклонить
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
