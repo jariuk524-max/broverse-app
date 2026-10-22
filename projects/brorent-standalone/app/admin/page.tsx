@@ -1187,6 +1187,7 @@ function CatalogTab() {
     return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-600" /></div>;
   }
 
+  const ordered = applyServiceOrder(services, edits['__order__']?.order);
   let lastCategory = '';
 
   return (
@@ -1208,8 +1209,12 @@ function CatalogTab() {
         Правки сохраняются и сразу отображаются на страницах сервисов. Кнопка ↻ возвращает оригинал из кода.
       </p>
 
+      <p className="text-[11px] text-zinc-600 mb-3 px-1">
+        Порядок (↑↓), добавление и удаление услуг — во вкладке «Зеркало» → «Список».
+      </p>
+
       <div className="space-y-2.5">
-        {services.map((s) => {
+        {ordered.map((s) => {
           const isEdited = !!edits[s.name];
           const isEditing = editing === s.name;
           const current = { ...s, ...(edits[s.name] || {}) };
@@ -1222,7 +1227,7 @@ function CatalogTab() {
           return (
             <div key={s.name}>
               {header}
-              <div className="bg-white rounded-[20px] shadow-sm overflow-hidden">
+              <div className={`bg-white rounded-[20px] shadow-sm overflow-hidden ${s.deleted ? 'opacity-55' : ''}`}>
                 <div className="flex items-center gap-3 p-3">
                   <div className="w-14 h-14 rounded-xl bg-zinc-100 overflow-hidden shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1231,7 +1236,9 @@ function CatalogTab() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <p className="text-[13px] font-bold text-zinc-900 truncate font-sans">{s.name}</p>
-                      {isEdited && <span className="shrink-0 px-1.5 py-0.5 rounded bg-zinc-900 text-white text-[9px] font-bold">изменено</span>}
+                      {s.deleted && <span className="shrink-0 px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-500 text-[9px] font-bold">скрыта</span>}
+                      {s.isNew && <span className="shrink-0 px-1.5 py-0.5 rounded bg-zinc-900 text-white text-[9px] font-bold">новая</span>}
+                      {isEdited && !s.deleted && !s.isNew && <span className="shrink-0 px-1.5 py-0.5 rounded bg-zinc-900 text-white text-[9px] font-bold">изменено</span>}
                     </div>
                     <p className="text-[11px] text-zinc-600 truncate">{current.desc}</p>
                     <p className="text-[11px] font-bold text-zinc-700 mt-0.5">{current.price} ₽ · {current.time}</p>
@@ -1248,6 +1255,7 @@ function CatalogTab() {
                       <button
                         type="button"
                         disabled={busy}
+                        title={s.deleted ? 'Восстановить услугу' : 'Вернуть оригинал из кода'}
                         onClick={() => revert(s.name)}
                         className="w-9 h-9 rounded-xl bg-zinc-900 flex items-center justify-center text-white active:scale-95 transition-transform"
                       >
@@ -3473,7 +3481,7 @@ function MirrorTab() {
           const current = { ...s, ...(edits[s.name] || {}) };
 
           return (
-            <div key={s.name} className="bg-white rounded-[20px] shadow-sm overflow-hidden">
+            <div key={s.name} className={`bg-white rounded-[20px] shadow-sm overflow-hidden ${s.deleted ? 'opacity-55' : ''}`}>
               <div className="flex items-center gap-3 p-3">
                 <div className="flex flex-col gap-0.5 shrink-0">
                   <button
@@ -3500,7 +3508,9 @@ function MirrorTab() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <p className="text-[13px] font-bold text-zinc-900 truncate font-sans">{s.name}</p>
-                    {isEdited && <span className="shrink-0 px-1.5 py-0.5 rounded bg-zinc-900 text-white text-[9px] font-bold">изменено</span>}
+                    {s.deleted && <span className="shrink-0 px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-500 text-[9px] font-bold">скрыта</span>}
+                    {s.isNew && <span className="shrink-0 px-1.5 py-0.5 rounded bg-zinc-900 text-white text-[9px] font-bold">новая</span>}
+                    {isEdited && !s.deleted && !s.isNew && <span className="shrink-0 px-1.5 py-0.5 rounded bg-zinc-900 text-white text-[9px] font-bold">изменено</span>}
                   </div>
                   <p className="text-[11px] text-zinc-600 truncate">{current.desc}</p>
                   <p className="text-[11px] font-bold text-zinc-700 mt-0.5">{current.price} ₽ · {current.time}</p>
@@ -3517,6 +3527,7 @@ function MirrorTab() {
                     <button
                       type="button"
                       disabled={busy}
+                      title={s.deleted ? 'Восстановить услугу' : 'Вернуть оригинал из кода'}
                       onClick={() => revert(s.name)}
                       className="w-9 h-9 rounded-xl bg-zinc-900 flex items-center justify-center text-white active:scale-95 transition-transform"
                     >
