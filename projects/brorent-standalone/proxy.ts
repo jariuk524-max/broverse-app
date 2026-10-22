@@ -7,8 +7,9 @@ import { NextResponse, type NextRequest } from 'next/server';
  * Всегда открыты: /privacy (152-ФЗ), /coming-soon (сама заглушка),
  * /admin и /chief (свои аутентификации), /api/admin/*,
  * вход клиента и его точки: /api/client-* (в т.ч. Telegram-webhook бота),
-  * /api/chat, /api/telegram-notify, /api/order-status, /api/order-chat.
- */
+  * /api/chat, /api/telegram-notify, /api/order-status, /api/order-chat,
+  * /api/browash (галерея «Мои фото» BroWash на лендинге).
+  */
 const ACCESS_CODE = process.env.SITE_ACCESS_CODE || 'bv-9f4c2x7q';
 const ACCESS_COOKIE = 'bv_access';
 
@@ -24,6 +25,7 @@ const OPEN_API = [
   '/api/order-status',
   '/api/order-chat',
   '/api/order-notify',
+  '/api/browash',
 ];
 
 function isAlwaysOpen(pathname: string): boolean {

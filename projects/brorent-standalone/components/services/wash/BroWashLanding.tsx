@@ -103,6 +103,7 @@ export default function BroWashLanding() {
   const [selectedService, setSelectedService] = useState<OrderServiceItem | null>(null);
   const [showRequest, setShowRequest] = useState(false);
   const [liveEdits, setLiveEdits] = useState<Record<string, Partial<WashService>>>({});
+  const [freshPhotos, setFreshPhotos] = useState<string[]>([]);
 
   useEffect(() => {
     fetch('/api/catalog/wash')
@@ -112,6 +113,10 @@ export default function BroWashLanding() {
         (d.services || []).forEach((s: WashService) => { map[s.name] = s; });
         setLiveEdits(map);
       })
+      .catch(() => {});
+    fetch('/api/browash')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setFreshPhotos(Array.isArray(d?.photos) ? d.photos : []))
       .catch(() => {});
   }, []);
 
@@ -207,6 +212,22 @@ export default function BroWashLanding() {
             <WorksCarousel />
           </div>
         </section>
+
+        {/* Свежие фото — галерея «Мои фото» из админки (до 10), если заполнена */}
+        {freshPhotos.length > 0 && (
+          <section className="mb-8">
+            <div className="bg-white rounded-[28px] p-4 shadow-sm">
+              <h3 className="text-[16px] font-bold text-zinc-900 mb-3 px-2">Свежие фото</h3>
+              <div className="grid grid-cols-2 gap-2.5">
+                {freshPhotos.map((u) => (
+                  <div key={u} className="rounded-[20px] overflow-hidden bg-zinc-100" style={{ aspectRatio: '1' }}>
+                    <Photo src={u} fallback={u} alt="Работа мастера" className="w-full h-full object-cover" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Как это работает */}
         <section className="mb-8">

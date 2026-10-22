@@ -1256,6 +1256,9 @@ const AUDIT_ACTION_LABEL: Record<string, string> = {
   password_set_by_admin: 'Задал пароль сотруднику',
   password_reset_by_admin: 'Сбросил пароль сотруднику',
   avatar_set: 'Обновил фото профиля',
+  browash_edit: 'Обновил галерею «Мои фото» (BroWash)',
+  promo_create: 'Создал акцию',
+  promo_delete: 'Удалил акцию',
 };
 
 type AuditEntry = {
@@ -2904,6 +2907,8 @@ function MirrorTab() {
   const lpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lpFired = useRef(false);
   const [lpItem, setLpItem] = useState<HomeItem | null>(null);
+  const [browashPhotos, setBrowashPhotos] = useState<string[] | null>(null);
+  const [bsUploading, setBsUploading] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/catalog');
@@ -2911,6 +2916,18 @@ function MirrorTab() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Галерея «Мои фото» BroWash (до 10) — Supabase browash-data.json
+  const loadBrowash = useCallback(async () => {
+    try {
+      const r = await fetch('/api/admin/browash');
+      setBrowashPhotos(r.ok ? ((await r.json()).photos ?? []) : []);
+    } catch {
+      setBrowashPhotos([]);
+    }
+  }, []);
+
+  useEffect(() => { loadBrowash(); }, [loadBrowash]);
 
   // Услуги главной клиентской страницы — как их видит клиент (/api/services + BroGarden)
   useEffect(() => {
@@ -3166,6 +3183,43 @@ function MirrorTab() {
     const [item] = names.splice(from, 1);
     names.splice(to, 0, item);
     void saveOrder(names);
+  };
+
+  const saveBrowash = async (next: string[]) => {
+    setBrowashPhotos(next);
+    const r = await fetch('/api/admin/browash', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ photos: next }),
+    }).catch(() => null);
+    if (!r || !r.ok) await loadBrowash();
+  };
+
+  const addBrowashFiles = async (files: FileList) => {
+    if (bsUploading || !browashPhotos) return;
+    setBsUploading(true);
+    try {
+      const next = [...browashPhotos];
+      for (const f of Array.from(files)) {
+        if (next.length >= 10) break;
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => resolve(r.result as string);
+          r.onerror = reject;
+          r.readAsDataURL(f);
+        });
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ domainId: 'wash', serviceName: `browash-${Date.now()}-${next.length}`, data: dataUrl }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (json.path) next.push(json.path);
+      }
+      if (next.length !== browashPhotos.length) await saveBrowash(next);
+    } finally {
+      setBsUploading(false);
+    }
   };
 
   const openClientCard = async (s: ClientCardData, dom?: string) => {
@@ -3439,6 +3493,61 @@ function MirrorTab() {
             </div>
           );
         })}
+      </div>
+      )}
+
+      {view === 'list' && (
+      <div className="mt-4 bg-white rounded-[20px] shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-zinc-100">
+          <div className="min-w-0">
+            <p className="text-[13px] font-bold text-zinc-900">BroWash · Мои фото для песочницы</p>
+            <p className="text-[11px] text-zinc-500 truncate">
+              {browashPhotos === null ? 'Загрузка…' : `${browashPhotos.length}/10 · фото показываются в разделе «Свежие фото» на странице BroWash`}
+            </p>
+          </div>
+          <label className={`shrink-0 flex items-center gap-1 px-3 py-2 rounded-xl bg-zinc-900 text-white text-[11px] font-bold active:scale-95 transition-transform ${bsUploading ? 'opacity-50' : ''}`}>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              disabled={bsUploading}
+              onChange={(e) => { if (e.target.files) void addBrowashFiles(e.target.files); e.target.value = ''; }}
+            />
+            {bsUploading ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Добавить
+          </label>
+        </div>
+        <div className="p-3 grid grid-cols-2 gap-2">
+          {(browashPhotos || []).map((u, i) => (
+            <div key={u} className="relative aspect-square rounded-xl overflow-hidden bg-zinc-100">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={u} alt="" className="w-full h-full object-cover" />
+              <button
+                type="button"
+                disabled={bsUploading}
+                onClick={() => void saveBrowash(browashPhotos!.filter((_, idx) => idx !== i))}
+                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px] active:scale-90 disabled:opacity-50"
+              >
+                ✕
+              </button>
+              <span className="absolute bottom-1 left-1 w-5 h-5 rounded-md bg-black/60 text-white text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
+            </div>
+          ))}
+          {browashPhotos !== null && browashPhotos.length < 10 && (
+            <label className="aspect-square rounded-xl border-2 border-dashed border-zinc-200 flex flex-col items-center justify-center cursor-pointer active:bg-zinc-50 transition-colors">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                disabled={bsUploading}
+                onChange={(e) => { if (e.target.files) void addBrowashFiles(e.target.files); e.target.value = ''; }}
+              />
+              <span className="text-2xl text-zinc-300">+</span>
+              <span className="text-[10px] text-zinc-400">{bsUploading ? 'Загрузка…' : 'Добавить'}</span>
+            </label>
+          )}
+        </div>
       </div>
       )}
 
