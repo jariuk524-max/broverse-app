@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, CheckCircle2, Star, Clock, Users, CreditCard, Building2, Smartphone, Wallet } from 'lucide-react';
 import { getRequestSnapshot, forwardRequestToMaster } from '@/lib/requests';
+import OrderChat from '@/components/OrderChat';
 import type { MasterAd } from '@/lib/master-ads';
 
 /** Прямая заявка ждёт ответа мастера, затем клиенту предлагают альтернативы */
@@ -13,7 +14,7 @@ type Reason = 'timeout' | 'declined' | 'admin';
 
 const REASON_TEXT: Record<Reason, string> = {
   timeout: 'Мастер сейчас занят и не ответил за 3 минуты.',
-  declined: 'Мастер отказался от заявки.',
+  declined: 'Мастер, к сожалению, занят на это время.',
   admin: 'Заявку не подтвердили.',
 };
 
@@ -44,7 +45,7 @@ export default function MasterOrderStatus({
 
   // Живой статус: принят → работа завершена (к оплате) → оплачено; иначе отказ/истекло
   useEffect(() => {
-    if (phase !== 'waiting' && phase !== 'accepted' && phase !== 'to_pay') return;
+    if (phase !== 'waiting' && phase !== 'accepted' && phase !== 'to_pay' && phase !== 'no') return;
     let alive = true;
     const tick = async () => {
       const snap = await getRequestSnapshot(orderId);
@@ -61,6 +62,15 @@ export default function MasterOrderStatus({
         if (snap.status === 'rejected') { setReason('admin'); setPhase('prompt'); return; }
         if (snap.declinedBy) { setReason('declined'); setPhase('prompt'); return; }
         if (Date.now() >= deadline) { setReason('timeout'); setPhase('prompt'); }
+      }
+      // Заявка в общей ленте: как только её взял новый мастер — сообщаем клиенту
+      if (phase === 'no') {
+        if (snap.status === 'rejected') { setReason('admin'); setPhase('prompt'); return; }
+        if (snap.status === 'accepted' && snap.masterId) {
+          if (snap.masterName) setCurrentName(snap.masterName);
+          setCurrentId(snap.masterId);
+          setPhase('accepted');
+        }
       }
     };
     tick();
@@ -150,6 +160,9 @@ export default function MasterOrderStatus({
           {!hasReq && <p className="text-[11px] text-zinc-500 text-center mt-2">Реквизиты уточните у мастера</p>}
         </div>
         <p className="text-xs text-zinc-400 mb-4">Счёт также виден в разделе «История».<br />Мастер подтвердит получение оплаты.</p>
+        <div className="mb-3">
+          <OrderChat orderId={orderId} />
+        </div>
         <button type="button" onClick={onClose} className="w-full py-3 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold hover:bg-[#0097A7] transition-colors">
           Понятно
         </button>
@@ -182,7 +195,10 @@ export default function MasterOrderStatus({
         </div>
         <h3 className="text-lg font-bold text-zinc-900 mb-2">Мастер принял заявку</h3>
         <p className="text-sm text-zinc-500 mb-1">{currentName ? `Мастер ${currentName} · ` : ''}{serviceName}</p>
-        <p className="text-xs text-zinc-400 mb-6">Свяжется с вами для подтверждения деталей визита</p>
+        <p className="text-xs text-zinc-400 mb-4">Свяжется с вами для подтверждения деталей визита</p>
+        <div className="mb-3">
+          <OrderChat orderId={orderId} />
+        </div>
         <button type="button" onClick={onClose} className="w-full py-3 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold hover:bg-[#0097A7] transition-colors">
           Отлично
         </button>
@@ -199,12 +215,12 @@ export default function MasterOrderStatus({
         <h3 className="text-lg font-bold text-zinc-900 mb-2">Мастер занят</h3>
         <p className="text-sm text-zinc-500 mb-1">{currentName ? `Мастер ${currentName} · ` : ''}{serviceName}</p>
         <p className="text-sm text-zinc-600 mb-6">{REASON_TEXT[reason]}</p>
-        <p className="text-sm font-semibold text-zinc-900 mb-4">Показать других мастеров с рейтингом?</p>
+        <p className="text-sm font-semibold text-zinc-900 mb-4">Можем перенаправить заявку другим свободным мастерам — показать их рейтинг?</p>
         <button type="button" onClick={showAlternatives} className="w-full py-3 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold hover:bg-[#0097A7] transition-colors mb-2">
-          Да, показать
+          Да, перенаправить
         </button>
         <button type="button" onClick={() => setPhase('no')} className="w-full py-3 rounded-2xl bg-zinc-100 text-zinc-600 text-sm font-bold hover:bg-zinc-200 transition-colors">
-          Нет, спасибо
+          Нет, оставить в общей ленте
         </button>
       </div>
     );
@@ -278,8 +294,9 @@ export default function MasterOrderStatus({
         <div className="mx-auto w-16 h-16 rounded-full bg-zinc-100 flex items-center justify-center mb-4">
           <Users size={30} className="text-zinc-500" />
         </div>
-        <h3 className="text-lg font-bold text-zinc-900 mb-2">Заявка в общей ленте</h3>
-        <p className="text-sm text-zinc-500 mb-6">Любой свободный мастер возьмёт её первым. Заявка сохранена.</p>
+        <h3 className="text-lg font-bold text-zinc-900 mb-2">Ищем подходящего мастера для Вас</h3>
+        <p className="text-sm text-zinc-500 mb-2">Заявка вернулась в общий пул — её возьмёт первый свободный мастер.</p>
+        <p className="text-xs text-zinc-400 mb-6">Как только мастер примет заявку, здесь появится его имя и контакт.</p>
         <button type="button" onClick={onClose} className="w-full py-3 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold hover:bg-[#0097A7] transition-colors">
           Закрыть
         </button>

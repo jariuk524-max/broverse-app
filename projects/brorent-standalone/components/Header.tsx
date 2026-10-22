@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Sparkles, History, X, ArrowLeft, Phone, MessageCircle, ShieldCheck, Star, CreditCard, Building2, Smartphone } from 'lucide-react';
 import OrderModal, { type OrderServiceItem } from '@/components/OrderModal';
 import FeedbackModal from '@/components/FeedbackModal';
+import OrderChat from '@/components/OrderChat';
 import { getRequestSnapshot } from '@/lib/requests';
 
 export interface StoredOrder {
@@ -224,6 +225,7 @@ export default function Header() {
                     const priceChanged = payPrice !== null && Math.round(payPrice) !== Math.round(order.total);
                     const req = snap?.masterRequisites;
                     const hasReq = !!(req?.card || req?.account || req?.sbp);
+                    const isMasterReq = !!(snap && (snap.masterId || snap.declinedBy));
                     return (
                       <div key={order.id} className="bg-zinc-50 rounded-xl p-3">
                         <div className="flex items-center justify-between mb-2">
@@ -287,6 +289,16 @@ export default function Header() {
                             ) : (
                               <p className="text-[11px] text-zinc-500">Реквизиты уточните у мастера</p>
                             )}
+                          </div>
+                        )}
+
+                        {/* Мастерская заявка: чат с мастером + пометка, если мастер занят */}
+                        {isMasterReq && snap?.declinedBy && statusKey === 'new' && (
+                          <p className="mt-2 text-[10px] font-semibold text-amber-600">Мастер занят — ищем для Вас другого мастера</p>
+                        )}
+                        {isMasterReq && order.requestId && (
+                          <div className="mt-2">
+                            <OrderChat orderId={order.requestId} />
                           </div>
                         )}
 

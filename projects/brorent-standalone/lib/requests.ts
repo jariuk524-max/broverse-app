@@ -288,6 +288,17 @@ export async function forwardRequestToMaster(
     console.error('[Requests] forward error:', error);
     return false;
   }
+  // Уведомляем клиента, что заявку принял новый мастер
+  try {
+    await fetch('/api/order-notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order_id: id, event: 'accepted' }),
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch (err) {
+    console.error('[Requests] order-notify failed:', err);
+  }
   return true;
 }
 

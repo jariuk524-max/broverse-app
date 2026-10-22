@@ -7,7 +7,7 @@ import { NextResponse, type NextRequest } from 'next/server';
  * Всегда открыты: /privacy (152-ФЗ), /coming-soon (сама заглушка),
  * /admin и /chief (свои аутентификации), /api/admin/*,
  * вход клиента и его точки: /api/client-* (в т.ч. Telegram-webhook бота),
- * /api/chat, /api/telegram-notify, /api/order-status.
+  * /api/chat, /api/telegram-notify, /api/order-status, /api/order-chat.
  */
 const ACCESS_CODE = process.env.SITE_ACCESS_CODE || 'bv-9f4c2x7q';
 const ACCESS_COOKIE = 'bv_access';
@@ -22,6 +22,8 @@ const OPEN_API = [
   '/api/chat',
   '/api/telegram-notify',
   '/api/order-status',
+  '/api/order-chat',
+  '/api/order-notify',
 ];
 
 function isAlwaysOpen(pathname: string): boolean {
