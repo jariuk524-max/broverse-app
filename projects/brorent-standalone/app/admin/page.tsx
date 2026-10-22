@@ -13,7 +13,9 @@ import {
   STATUS_LABEL, orderPayPrice, type ServiceRequest, type RequestStatus,
 } from '@/lib/requests';
 import { unlockDirectionForMaster } from '@/lib/admin/unlock';
+import { MASTER_DIRECTIONS } from '@/lib/master-ads';
 import SupportChat from '@/components/SupportChat';
+import PromoEditor from '@/components/PromoEditor';
 import { Onest } from 'next/font/google';
 
 const onest = Onest({ subsets: ['latin', 'cyrillic'], display: 'swap' });
@@ -304,8 +306,8 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
 
   if (checking) {
     return (
-      <div className={`min-h-[100dvh] flex items-center justify-center ${chief ? 'chief-dark bg-[#0A0A0B]' : 'bg-[#F2F2F7]'}`}>
-        <Loader2 size={26} className={`animate-spin ${chief ? 'text-zinc-400' : 'text-zinc-600'}`} />
+      <div className="min-h-[100dvh] flex items-center justify-center bg-[#F2F2F7]">
+        <Loader2 size={26} className="animate-spin text-zinc-600" />
       </div>
     );
   }
@@ -314,7 +316,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
     // Кабинет руководителя закрыт для гостей — только сообщение руководителю/поддержка
     if (chief) return <ChiefLockedScreen />;
     return (
-      <div className={`min-h-[100dvh] flex items-center justify-center px-4 ${chief ? 'chief-dark bg-[#0A0A0B]' : 'bg-[#F2F2F7]'}`}>
+      <div className="min-h-[100dvh] flex items-center justify-center px-4 bg-[#F2F2F7]">
         <form
           onSubmit={submitAuth}
           className="w-full max-w-[360px] bg-white rounded-[24px] p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)]"
@@ -392,13 +394,13 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
   // Кабинет руководителя: вход только для руководителя (admin) и тех, с кем он поделился (роль chief)
   if (chief && !hasChiefAccess(session)) {
     return (
-      <div className="min-h-[100dvh] chief-dark bg-[#0A0A0B] flex items-center justify-center px-4">
-        <div className="w-full max-w-[360px] bg-[#141417] rounded-[24px] p-6 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-[#1E1E22] flex items-center justify-center mx-auto mb-4">
-            <Lock size={20} className="text-zinc-300" />
+      <div className="min-h-[100dvh] bg-[#F2F2F7] flex items-center justify-center px-4">
+        <div className="w-full max-w-[360px] bg-white rounded-[28px] p-6 text-center shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+          <div className="w-12 h-12 rounded-2xl bg-zinc-100 flex items-center justify-center mx-auto mb-4">
+            <Lock size={20} className="text-zinc-500" />
           </div>
-          <h1 className="text-lg font-bold text-white mb-1">Доступ ограничен</h1>
-          <p className="text-[12px] text-zinc-400 mb-1">
+          <h1 className="text-lg font-bold text-zinc-900 mb-1">Доступ ограничен</h1>
+          <p className="text-[12px] text-zinc-600 mb-1">
             Кабинет руководителя проекта — только для руководителя.
           </p>
           <p className="text-[12px] text-zinc-500 mb-5">
@@ -408,14 +410,14 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
           <div className="space-y-2">
             <a
               href="/admin"
-              className="block w-full py-3 rounded-2xl bg-white text-zinc-900 text-sm font-bold active:scale-[0.98] transition-transform"
+              className="block w-full py-3 rounded-2xl bg-zinc-900 text-white text-sm font-bold active:scale-[0.98] transition-transform"
             >
               Перейти в мой кабинет
             </a>
             <button
               type="button"
               onClick={logout}
-              className="w-full py-3 rounded-2xl bg-[#1E1E22] text-zinc-300 text-sm font-bold active:scale-[0.98] transition-transform"
+              className="w-full py-3 rounded-2xl bg-zinc-100 text-zinc-700 text-sm font-bold active:scale-[0.98] transition-transform"
             >
               Выйти
             </button>
@@ -432,7 +434,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
   const visibleTabs = TABS; // все разделы видимы; закрытые — с замком
 
   return (
-    <div className={`min-h-[100dvh] ${chief ? 'chief-dark bg-[#0A0A0B]' : 'bg-[#F2F2F7]'}`} style={{ fontFamily: onest.style.fontFamily }}>
+    <div className="min-h-[100dvh] bg-[#F2F2F7]" style={{ fontFamily: onest.style.fontFamily }}>
       <header className="sticky top-0 z-10 bg-white/70 backdrop-blur-xl border-b border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -454,8 +456,8 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
               )}
             </div>
             <div>
-              <h1 className="text-[14px] font-bold text-zinc-900 leading-tight">{chief ? 'Кабинет руководителя' : 'BroVerse Админ'}</h1>
-              <p className="text-[10px] text-zinc-600">{chief ? (session.display_name || session.login) : `Администратор: ${session.display_name || session.login}`}</p>
+              <h1 className="text-[14px] font-bold text-zinc-900 leading-tight">{chief ? 'Кабинет руководителя проекта' : 'BroVerse Админ'}</h1>
+              <p className="text-[10px] text-zinc-600">{chief ? (session.display_name === 'Администратор' ? 'Руководитель проекта' : (session.display_name || session.login)) : `Администратор: ${session.display_name || session.login}`}</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -467,18 +469,33 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
             >
               <MessageSquare size={15} />
             </button>
-            <button
-              type="button"
-              onClick={() => setShowProfile(true)}
-              className="flex items-center gap-1.5 bg-zinc-100 hover:bg-zinc-200 rounded-full pl-3 pr-2 py-1.5 transition-colors"
-            >
-              <span className="text-[11px] font-bold text-zinc-700 max-w-[110px] truncate">
-                {session.display_name || session.login}
-              </span>
-              <span className="w-6 h-6 rounded-full bg-zinc-900 flex items-center justify-center">
-                <User size={12} className="text-white" />
-              </span>
-            </button>
+            {chief ? (
+              <button
+                type="button"
+                onClick={() => setShowProfile(true)}
+                title="Профиль"
+                className="w-9 h-9 rounded-full overflow-hidden bg-zinc-900 flex items-center justify-center active:scale-95 transition-transform"
+              >
+                {session.avatar_url ? (
+                  <img src={session.avatar_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <User size={15} className="text-white" />
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowProfile(true)}
+                className="flex items-center gap-1.5 bg-zinc-100 hover:bg-zinc-200 rounded-full pl-3 pr-2 py-1.5 transition-colors"
+              >
+                <span className="text-[11px] font-bold text-zinc-700 max-w-[110px] truncate">
+                  {session.display_name || session.login}
+                </span>
+                <span className="w-6 h-6 rounded-full bg-zinc-900 flex items-center justify-center">
+                  <User size={12} className="text-white" />
+                </span>
+              </button>
+            )}
           </div>
         </div>
         <div className="max-w-2xl mx-auto px-4 pb-3">
@@ -488,7 +505,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
                 key={t.id}
                 type="button"
                 onClick={() => { setLockedTab(null); setTab(t.id); }}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors whitespace-nowrap inline-flex items-center gap-1 ${!lockedTab && tab === t.id ? (chief ? 'chief-active-pill' : 'bg-white shadow-sm text-zinc-900') : 'text-zinc-500'}`}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors whitespace-nowrap inline-flex items-center gap-1 ${!lockedTab && tab === t.id ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-500'}`}
               >
                 {tabLabel(t.id, session.roles, chief)}
               </button>
@@ -508,7 +525,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
                         if (locked) { setLockedTab(t.id); }
                         else { setLockedTab(null); setTab(t.id); }
                       }}
-                      className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors whitespace-nowrap inline-flex items-center gap-1 ${!locked && tab === t.id && !lockedTab ? (chief ? 'chief-active-pill' : 'bg-white shadow-sm text-zinc-900') : locked ? 'text-zinc-500' : 'text-zinc-500'}`}
+                      className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors whitespace-nowrap inline-flex items-center gap-1 ${!locked && tab === t.id && !lockedTab ? 'bg-white shadow-sm text-zinc-900' : locked ? 'text-zinc-500' : 'text-zinc-500'}`}
                     >
                       {locked && <Lock size={10} />}
                       {tabLabel(t.id, session.roles, chief)}
@@ -1597,6 +1614,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
   const [pwValue, setPwValue] = useState('');
   const [pwBusy, setPwBusy] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [promoFor, setPromoFor] = useState<{ id?: string; name?: string } | null>(null);
 
   const load = useCallback(async () => {
     const [o, a, au, ad, lay] = await Promise.all([
@@ -1697,6 +1715,35 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
     if (j === -1) return -1;
     return i - j;
   });
+
+  const isLead = (a: { roles: string[] }) => a.roles.includes('chief') || a.roles.includes('team');
+  const leadAdmins = orderedAdmins.filter(isLead);
+  const staffAdmins = orderedAdmins.filter((a) => !isLead(a));
+
+  type HubMaster = { id: string; name: string; photo?: string | null; subtitle?: string | null };
+  const mastersMap = new Map<string, HubMaster>();
+  for (const raw of ads) {
+    const ad = raw as {
+      master?: { id?: string; name?: string; photo?: string | null };
+      specialization?: string | null;
+      direction?: string | null;
+    };
+    const m = ad?.master;
+    if (!m?.id) continue;
+    const cur = mastersMap.get(m.id);
+    const subtitle =
+      ad.specialization ||
+      (ad.direction ? MASTER_DIRECTIONS[ad.direction]?.label || ad.direction : null) ||
+      cur?.subtitle ||
+      null;
+    mastersMap.set(m.id, {
+      id: m.id,
+      name: m.name || m.id,
+      photo: m.photo || cur?.photo || null,
+      subtitle,
+    });
+  }
+  const hubMasters = [...mastersMap.values()];
 
   const saveLayout = (list: string[]) => {
     fetch('/api/admin/layout', {
@@ -1876,30 +1923,120 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
 
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-[24px] p-5 shadow-sm">
-        <div className="flex items-center gap-3">
+      <div className="relative overflow-hidden bg-white rounded-[24px] p-5 shadow-sm">
+        <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full blur-2xl opacity-40 bg-[#4285F4]" aria-hidden />
+        <div className="absolute -bottom-12 -left-8 w-28 h-28 rounded-full blur-2xl opacity-40 bg-[#34A853]" aria-hidden />
+        <div className="relative flex items-center gap-3">
           {session.avatar_url ? (
             <img src={session.avatar_url} alt="" className="w-12 h-12 rounded-2xl object-cover shrink-0" />
           ) : (
-            <span className="w-12 h-12 rounded-2xl bg-zinc-900 text-white text-[20px] font-black flex items-center justify-center shrink-0">
+            <span className="relative w-12 h-12 rounded-2xl bg-zinc-900 text-white text-[20px] font-black flex items-center justify-center shrink-0">
               {(session.display_name || session.login).slice(0, 1).toUpperCase()}
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#34A853] border-2 border-white" />
             </span>
           )}
           <div className="min-w-0">
-            <p className="text-[16px] font-black text-zinc-900 leading-tight">Кабинет руководителя Broverse</p>
-            <p className="text-[13px] font-bold text-zinc-600 truncate">{session.display_name || session.login}</p>
+            <p className="text-[16px] font-black text-zinc-900 leading-tight">Кабинет руководителя проекта</p>
+            <p className="text-[13px] font-bold text-zinc-600 truncate">
+              {session.display_name === 'Администратор' ? 'Руководитель проекта' : (session.display_name || session.login)}
+            </p>
           </div>
         </div>
-        <p className="text-[11px] text-zinc-600 mt-2 leading-relaxed">
+        <p className="relative text-[11px] text-zinc-600 mt-2 leading-relaxed">
           Все процессы и кабинеты сотрудников — здесь.
         </p>
-        <button
-          type="button"
-          onClick={() => { setCreateOpen(true); setCreateDone(''); setCreateErr(''); }}
-          className="w-full mt-4 py-3 rounded-2xl bg-zinc-900 text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform"
-        >
-          <Plus size={15} /> Создать кабинет
-        </button>
+      </div>
+
+      {leadAdmins.length > 0 && (
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 px-1 mb-2">Руководящий персонал · {leadAdmins.length}</p>
+          <div className="space-y-2">
+            {leadAdmins.map((a) => (
+              <div
+                key={a.login}
+                onClick={(e) => {
+                  if ((e.target as HTMLElement).closest('button')) return;
+                  setPwMsg(null);
+                  setPwValue('');
+                  setOpenCabinet(a.login);
+                }}
+                className="bg-white rounded-[20px] p-3.5 shadow-sm flex items-center gap-2.5 cursor-pointer active:bg-zinc-50 transition-colors"
+              >
+                {a.avatar_url ? (
+                  <img src={a.avatar_url} alt="" className="w-11 h-11 rounded-2xl object-cover shrink-0" />
+                ) : (
+                  <span className="w-11 h-11 rounded-2xl bg-zinc-900 text-white text-[15px] font-black flex items-center justify-center shrink-0">
+                    {(a.display_name || a.login).slice(0, 1).toUpperCase()}
+                  </span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-bold text-zinc-900 truncate">{a.display_name || a.login}</p>
+                  <p className="text-[10.5px] text-zinc-600 truncate">
+                    {a.title || (a.login === 'admin' ? 'Руководитель проекта' : 'Руководство')} · @{a.login}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setChatWith(a.login)}
+                  className="shrink-0 px-3 py-1.5 rounded-full bg-zinc-100 text-zinc-700 text-[10.5px] font-bold active:scale-95 transition-transform"
+                >
+                  Чат
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => { setCreateOpen(true); setCreateDone(''); setCreateErr(''); }}
+        className="w-full py-3.5 rounded-full bg-zinc-900 text-white text-[13px] font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-black/10 active:scale-[0.98] transition-transform"
+      >
+        <Plus size={15} /> Создать кабинет
+      </button>
+
+      <div>
+        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 px-1 mb-2">Мастера · {hubMasters.length}</p>
+        {hubMasters.length === 0 ? (
+          <div className="bg-white rounded-[20px] py-6 text-center shadow-sm">
+            <Users size={22} className="text-zinc-500 mx-auto mb-1.5" />
+            <p className="text-[12px] text-zinc-600">Мастеров пока нет</p>
+          </div>
+        ) : (
+          <div className="flex gap-2.5 overflow-x-auto pb-1 -mx-1 px-1 snap-x">
+            {hubMasters.map((m) => (
+              <div key={m.id} className="shrink-0 w-[148px] bg-white rounded-[20px] p-3 shadow-sm snap-start">
+                {m.photo ? (
+                  <img src={m.photo} alt="" className="w-full aspect-square rounded-2xl object-cover mb-2" />
+                ) : (
+                  <div className="w-full aspect-square rounded-2xl bg-zinc-100 flex items-center justify-center mb-2">
+                    <span className="text-[24px] font-black text-zinc-500">{m.name.slice(0, 1).toUpperCase()}</span>
+                  </div>
+                )}
+                <p className="text-[12px] font-bold text-zinc-900 truncate">{m.name}</p>
+                <p className="text-[10px] text-zinc-600 truncate">{m.subtitle || 'мастер'}</p>
+                <button
+                  type="button"
+                  onClick={() => setPromoFor({ id: m.id, name: m.name })}
+                  className="w-full mt-2 py-1.5 rounded-full bg-zinc-900 text-white text-[10.5px] font-bold active:scale-95 transition-transform"
+                >
+                  Акция
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setPromoFor({})}
+              className="shrink-0 w-[148px] rounded-[20px] border-2 border-dashed border-zinc-300 bg-white/60 flex flex-col items-center justify-center gap-1.5 text-zinc-500 snap-start active:scale-[0.98] transition-transform"
+              style={{ minHeight: 210 }}
+            >
+              <Plus size={22} />
+              <span className="text-[11px] font-bold">Предложить акцию</span>
+              <span className="text-[9.5px] text-zinc-500 text-center px-2 leading-tight">всем, группе или мастеру</span>
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-2.5">
@@ -1911,10 +2048,10 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
 
       <div>
         <div className="flex items-center justify-between mb-1 px-1">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-600">Кабинеты сотрудников · {orderedAdmins.length}</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-600">Кабинеты сотрудников · {staffAdmins.length}</p>
         </div>
         <p className="text-[10px] text-zinc-500 mb-2.5 px-1">Потяните блок за ⠿ — порядок сохранится</p>
-        {orderedAdmins.length === 0 ? (
+        {staffAdmins.length === 0 ? (
           <div className="bg-white rounded-[18px] py-8 text-center shadow-sm">
             <Users size={24} className="text-zinc-500 mx-auto mb-2" />
             <p className="text-[12px] text-zinc-600">Кабинетов пока нет</p>
@@ -1928,7 +2065,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
           </div>
         ) : (
           <div className="space-y-2.5">
-            {orderedAdmins.map((a) => (
+            {staffAdmins.map((a) => (
               <div
                 key={a.login}
                 data-cabinet={a.login}
@@ -2147,6 +2284,14 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
         <Stat label="Отзывов" value={feedbacks.length} sub={`средняя оценка: ${avgRating}`} />
         <Stat label="Не закрытых отзывов" value={unresolvedFb} sub={unresolvedFb ? 'нужна реакция' : 'всё в порядке'} />
       </div>
+
+      <PromoEditor
+        open={promoFor !== null}
+        onClose={() => setPromoFor(null)}
+        onCreated={load}
+        masters={hubMasters.map(({ id, name }) => ({ id, name }))}
+        presetMaster={promoFor?.id && promoFor.name ? { id: promoFor.id, name: promoFor.name } : null}
+      />
 
       {statusList && (() => {
         const rows = orders.filter((o) =>
@@ -2775,31 +2920,32 @@ type AdminPromo = {
   title: string;
   body: string;
   cta: string;
+  /** '' — всем мастерам; 'direction:<key>' — группа; иначе master_id */
   audience: string;
   start_at: string;
   end_at: string;
   author: string;
   created_at: string;
   seen_by: string[];
+  /** Ссылка по кнопке акции (пусто — кнопка закрывает плашку) */
+  url?: string;
+  /** Действие кнопки в кабинете мастера: brocare — открытие направления, services — создание услуг */
+  action?: string;
 };
 
-/** datetime-local значение из даты (локальное время) */
-const toLocalInput = (d: Date): string => {
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+const promoAudienceLabel = (audience: string, masters: { id: string; name: string }[]): string => {
+  if (!audience) return 'все мастера';
+  if (audience.startsWith('direction:')) {
+    const key = audience.slice('direction:'.length);
+    return `группа: ${MASTER_DIRECTIONS[key]?.label || key}`;
+  }
+  return `мастер: ${masters.find((m) => m.id === audience)?.name || audience}`;
 };
 
 function PromosTab() {
   const [promos, setPromos] = useState<AdminPromo[] | null>(null);
-  const [ads, setAds] = useState<{ master: { id: string; name: string } }[]>([]);
-  const [audience, setAudience] = useState('');
-  const [title, setTitle] = useState('');
-  const [text, setText] = useState('');
-  const [cta, setCta] = useState('Забрать уровень');
-  const [startAt, setStartAt] = useState(() => toLocalInput(new Date()));
-  const [endAt, setEndAt] = useState(() => toLocalInput(new Date(Date.now() + 3 * 24 * 3600 * 1000)));
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
+  const [masters, setMasters] = useState<{ id: string; name: string }[]>([]);
+  const [editorOpen, setEditorOpen] = useState(false);
 
   const load = useCallback(async () => {
     const [p, a] = await Promise.all([
@@ -2807,46 +2953,15 @@ function PromosTab() {
       fetch('/api/masters/ads').then((r) => (r.ok ? r.json().catch(() => null) : null)).catch(() => null),
     ]);
     setPromos(Array.isArray(p.promos) ? p.promos : []);
-    const masters = new Map<string, string>();
+    const map = new Map<string, string>();
     for (const ad of Array.isArray(a) ? a : []) {
       const m = (ad as { master?: { id: string; name: string } }).master;
-      if (m?.id) masters.set(m.id, m.name || m.id);
+      if (m?.id) map.set(m.id, m.name || m.id);
     }
-    setAds([...masters.entries()].map(([id, name]) => ({ master: { id, name } })));
+    setMasters([...map.entries()].map(([id, name]) => ({ id, name })));
   }, []);
 
   useEffect(() => { load(); }, [load]);
-
-  const create = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (busy || !title.trim()) return;
-    setBusy(true);
-    setErr('');
-    try {
-      const r = await fetch('/api/admin/promos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          body: text,
-          cta,
-          audience,
-          start_at: new Date(startAt).toISOString(),
-          end_at: new Date(endAt).toISOString(),
-        }),
-      });
-      if (!r.ok) {
-        const d = await r.json().catch(() => ({}));
-        setErr(d.error || 'Не удалось создать акцию');
-      } else {
-        setTitle('');
-        setText('');
-        await load();
-      }
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const remove = async (id: string) => {
     await fetch('/api/admin/promos', {
@@ -2880,8 +2995,10 @@ function PromosTab() {
           </div>
           {p.body && <p className="text-[11px] text-zinc-500 mt-0.5 break-words">{p.body}</p>}
           <p className="text-[10px] text-zinc-600 mt-1">
-            Кнопка: «{p.cta}» · {p.audience ? `мастер ${p.audience}` : 'все мастера'}
+            Кнопка: «{p.cta}» · {promoAudienceLabel(p.audience, masters)}
+            {p.action === 'brocare' ? ' · откроет направление' : p.action === 'services' ? ' · откроет создание услуг' : ''}
           </p>
+          {p.url && <p className="text-[10px] text-zinc-500 truncate">Ссылка: {p.url}</p>}
           <p className="text-[10px] text-zinc-500 mt-0.5">
             {new Date(p.start_at).toLocaleString('ru-RU')} → {new Date(p.end_at).toLocaleString('ru-RU')}
             {' · '}просмотрели: {p.seen_by?.length || 0} · @{p.author}
@@ -2901,37 +3018,20 @@ function PromosTab() {
 
   return (
     <div className="space-y-4">
-      <form onSubmit={create} className="bg-white rounded-[18px] p-4 shadow-sm space-y-2">
-        <p className="text-[12px] font-bold text-zinc-900">Новая акция «новый уровень»</p>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Заголовок: Новый уровень: Эксперт открыт" className={INPUT} maxLength={200} />
-        <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Текст акции для мастера (необязательно)" rows={2} className={`${INPUT} resize-none`} maxLength={1000} />
-        <input value={cta} onChange={(e) => setCta(e.target.value)} placeholder="Кнопка: Забрать уровень" className={INPUT} maxLength={60} />
-        <select value={audience} onChange={(e) => setAudience(e.target.value)} className={INPUT}>
-          <option value="">— все мастера —</option>
-          {ads.map((a) => (
-            <option key={a.master.id} value={a.master.id}>{a.master.name}</option>
-          ))}
-          {ads.length === 0 && <option value="master-1">Евгений (демо)</option>}
-        </select>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Показывать с</label>
-            <input type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} className={INPUT} />
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">до</label>
-            <input type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} className={INPUT} />
-          </div>
-        </div>
-        {err && <p className="text-[11px] text-zinc-800 font-semibold">{err}</p>}
-        <button
-          type="submit"
-          disabled={busy || !title.trim()}
-          className="w-full py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform disabled:opacity-40"
-        >
-          {busy ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} Запустить акцию
-        </button>
-      </form>
+      <button
+        type="button"
+        onClick={() => setEditorOpen(true)}
+        className="w-full py-3.5 rounded-full bg-zinc-900 text-white text-[13px] font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-black/10 active:scale-[0.98] transition-transform"
+      >
+        <Sparkles size={15} /> Новая акция
+      </button>
+
+      <PromoEditor
+        open={editorOpen}
+        onClose={() => setEditorOpen(false)}
+        onCreated={load}
+        masters={masters}
+      />
 
       <div>
         <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 px-1 mb-2">В эфире ({live.length})</p>
@@ -5149,29 +5249,29 @@ function ChiefLockedScreen() {
   };
 
   const D =
-    'w-full px-4 py-3 rounded-2xl bg-[#0F0F11] border border-white/10 text-[13px] text-white placeholder:text-zinc-500 outline-none focus:border-white/25 transition-colors';
+    'w-full px-4 py-3 rounded-2xl bg-zinc-50 border border-zinc-200 text-[13px] text-zinc-900 placeholder:text-zinc-500 outline-none focus:border-zinc-400 transition-colors';
 
   return (
-    <div className="min-h-[100dvh] chief-dark bg-[#0A0A0B] flex items-center justify-center px-4">
-      <div className="w-full max-w-[380px] bg-[#141417] rounded-[24px] p-6 text-center">
-        <span className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center mx-auto">
-          <Lock size={20} className="text-zinc-400" />
+    <div className="min-h-[100dvh] bg-[#F2F2F7] flex items-center justify-center px-4">
+      <div className="w-full max-w-[380px] bg-white rounded-[28px] p-6 text-center shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+        <span className="w-12 h-12 rounded-2xl bg-zinc-100 flex items-center justify-center mx-auto">
+          <Lock size={20} className="text-zinc-500" />
         </span>
-        <p className="text-[17px] font-black text-white mt-4">Кабинет руководителя закрыт</p>
-        <p className="text-[12.5px] text-zinc-500 mt-1.5 leading-relaxed">
+        <p className="text-[17px] font-black text-zinc-900 mt-4">Кабинет руководителя закрыт</p>
+        <p className="text-[12.5px] text-zinc-600 mt-1.5 leading-relaxed">
           Вход только для руководителя проекта. Если вам нужна помощь — напишите сообщение,
           оно уйдёт руководителю и поддержке.
         </p>
 
         {sent ? (
           <div className="mt-5 space-y-3">
-            <p className="text-[13px] text-white font-semibold">
+            <p className="text-[13px] text-zinc-900 font-semibold">
               Сообщение отправлено руководителю проекта
             </p>
             <button
               type="button"
               onClick={() => setSent(false)}
-              className="w-full py-3 rounded-2xl bg-white text-zinc-900 text-[13px] font-bold active:scale-95 transition-transform"
+              className="w-full py-3 rounded-2xl bg-zinc-900 text-white text-[13px] font-bold active:scale-95 transition-transform"
             >
               Написать ещё
             </button>
@@ -5200,21 +5300,21 @@ function ChiefLockedScreen() {
               maxLength={1000}
               className={D + ' resize-none'}
             />
-            {err && <p className="text-[11.5px] font-semibold text-red-400">{err}</p>}
+            {err && <p className="text-[11.5px] font-semibold text-red-500">{err}</p>}
             <button
               type="submit"
               disabled={busy || !name.trim() || !text.trim()}
-              className="w-full py-3 rounded-2xl bg-white text-zinc-900 text-[13px] font-bold active:scale-95 transition-transform disabled:opacity-40"
+              className="w-full py-3 rounded-2xl bg-zinc-900 text-white text-[13px] font-bold active:scale-95 transition-transform disabled:opacity-40"
             >
               {busy ? 'Отправка…' : 'Отправить руководителю'}
             </button>
           </form>
         )}
 
-        <div className="mt-4 pt-4 border-t border-white/10">
+        <div className="mt-4 pt-4 border-t border-zinc-100">
           <a
             href="/admin"
-            className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-zinc-400 hover:text-white transition-colors"
+            className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-zinc-500 hover:text-zinc-900 transition-colors"
           >
             Поддержка и помощь →
           </a>

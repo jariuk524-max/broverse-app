@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Loader2, CheckCircle2, Star, Clock, Users, CreditCard, Building2, Smartphone, Wallet } from 'lucide-react';
-import { getRequestSnapshot, forwardRequestToMaster } from '@/lib/requests';
+import { getRequestSnapshot, forwardRequestToMaster, agreeRequestRematch } from '@/lib/requests';
 import OrderChat from '@/components/OrderChat';
 import type { MasterAd } from '@/lib/master-ads';
 
@@ -60,7 +60,12 @@ export default function MasterOrderStatus({
       if (phase === 'waiting') {
         if (snap.status === 'accepted') { setPhase('accepted'); return; }
         if (snap.status === 'rejected') { setReason('admin'); setPhase('prompt'); return; }
-        if (snap.declinedBy) { setReason('declined'); setPhase('prompt'); return; }
+        if (snap.declinedBy) {
+          setReason('declined');
+          // Клиент уже согласился (кнопка в Telegram или на сайте) — сразу «Ищем мастера»
+          setPhase(snap.rematchAgreed ? 'no' : 'prompt');
+          return;
+        }
         if (Date.now() >= deadline) { setReason('timeout'); setPhase('prompt'); }
       }
       // Заявка в общей ленте: как только её взял новый мастер — сообщаем клиенту
@@ -100,6 +105,12 @@ export default function MasterOrderStatus({
   const showAlternatives = () => {
     setPhase('picking');
     void loadAlternatives();
+  };
+
+  /** «Оставить в общей ленте» — согласие клиента: другие мастера увидят заявку */
+  const agreeAndSearch = async () => {
+    await agreeRequestRematch(orderId);
+    setPhase('no');
   };
 
   const pick = async (ad: MasterAd) => {
@@ -219,7 +230,7 @@ export default function MasterOrderStatus({
         <button type="button" onClick={showAlternatives} className="w-full py-3 rounded-2xl bg-[#00BCD4] text-white text-sm font-bold hover:bg-[#0097A7] transition-colors mb-2">
           Да, перенаправить
         </button>
-        <button type="button" onClick={() => setPhase('no')} className="w-full py-3 rounded-2xl bg-zinc-100 text-zinc-600 text-sm font-bold hover:bg-zinc-200 transition-colors">
+        <button type="button" onClick={() => void agreeAndSearch()} className="w-full py-3 rounded-2xl bg-zinc-100 text-zinc-600 text-sm font-bold hover:bg-zinc-200 transition-colors">
           Нет, оставить в общей ленте
         </button>
       </div>
@@ -240,9 +251,9 @@ export default function MasterOrderStatus({
         )}
         {alts !== null && alts.length === 0 && (
           <div className="py-6 text-center">
-            <p className="text-sm text-zinc-500 mb-4">Свободных мастеров сейчас нет — заявка остаётся в общей ленте, её возьмёт первый свободный.</p>
-            <button type="button" onClick={onClose} className="w-full py-3 rounded-2xl bg-zinc-100 text-zinc-700 text-sm font-bold">
-              Закрыть
+            <p className="text-sm text-zinc-500 mb-4">Свободных мастеров сейчас нет — заявка останется в общей ленте, её возьмёт первый свободный.</p>
+            <button type="button" onClick={() => void agreeAndSearch()} className="w-full py-3 rounded-2xl bg-zinc-100 text-zinc-700 text-sm font-bold">
+              Оставить в общей ленте
             </button>
           </div>
         )}
@@ -281,7 +292,7 @@ export default function MasterOrderStatus({
             ))}
           </div>
         )}
-        <button type="button" onClick={() => setPhase('no')} className="w-full mt-4 py-2.5 rounded-2xl bg-zinc-100 text-zinc-500 text-[11px] font-bold">
+        <button type="button" onClick={() => void agreeAndSearch()} className="w-full mt-4 py-2.5 rounded-2xl bg-zinc-100 text-zinc-500 text-[11px] font-bold">
           Нет, оставить в общей ленте
         </button>
       </div>

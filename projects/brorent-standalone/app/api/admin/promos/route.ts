@@ -15,13 +15,17 @@ export type AdminPromo = {
   title: string;
   body: string;
   cta: string;
-  /** '' — всем мастерам; иначе master_id */
+  /** '' — всем мастерам; 'direction:<key>' — группа направления; иначе master_id */
   audience: string;
   start_at: string;
   end_at: string;
   author: string;
   created_at: string;
   seen_by: string[];
+  /** Ссылка по кнопке акции (пусто — кнопка закрывает плашку) */
+  url?: string;
+  /** Действие кнопки в кабинете мастера: brocare — открытие направления, services — создание услуг */
+  action?: string;
 };
 
 function client() {
@@ -82,6 +86,9 @@ export async function POST(req: NextRequest) {
   const text = String(body?.body || '').trim().slice(0, 1000);
   const cta = String(body?.cta || '').trim().slice(0, 60);
   const audience = String(body?.audience || '').trim().slice(0, 64);
+  const url = String(body?.url || '').trim().slice(0, 300);
+  const actionRaw = String(body?.action || '').trim();
+  const action = actionRaw === 'brocare' || actionRaw === 'services' ? actionRaw : '';
   const startAt = String(body?.start_at || '').trim();
   const endAt = String(body?.end_at || '').trim();
   if (!title || !startAt || !endAt || Number.isNaN(Date.parse(startAt)) || Number.isNaN(Date.parse(endAt))) {
@@ -105,6 +112,8 @@ export async function POST(req: NextRequest) {
     author: sess.admin.login,
     created_at: new Date().toISOString(),
     seen_by: [],
+    url,
+    action,
   };
   const promos = await readPromos(db);
   await writePromos(db, [promo, ...promos]);

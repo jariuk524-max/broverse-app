@@ -29,14 +29,23 @@ async function loadBindings(db: SupabaseClient): Promise<Record<string, number>>
   }
 }
 
-async function sendTelegram(chatId: number, text: string) {
+async function sendTelegram(
+  chatId: number,
+  text: string,
+  replyMarkup?: { inline_keyboard: { text: string; callback_data: string }[][] },
+) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) return;
   try {
     const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: 'HTML',
+        ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+      }),
       signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) console.error('[order-notify] sendMessage:', await res.text());
@@ -71,15 +80,27 @@ export async function POST(req: Request) {
     let text = '';
     const patch: Record<string, unknown> = {};
     let needsFlag = false;
+    let inline: { inline_keyboard: { text: string; callback_data: string }[][] } | undefined;
 
     if (event === 'declined') {
       if (!meta.declined_by) return NextResponse.json({ ok: true, skipped: 'not_declined' });
       if (meta.declined_notified_at) return NextResponse.json({ ok: true, skipped: 'already' });
       const master = meta.declined_name ? `Мастер ${esc(meta.declined_name)}` : 'Мастер';
-      text =
-        `😔 <b>${master}</b>, к сожалению, сейчас занят${order.service_name ? `\n🔧 Услуга: <b>${esc(order.service_name)}</b>` : ''}\n\n` +
-        'Заявка вернулась в общий пул — мы уже ищем Вам другого мастера.\n' +
-        'Как только свободный мастер примет заявку, сообщим здесь.';
+      if (meta.rematch_agreed) {
+        // Клиент уже согласился на сайте — заявка уже в общем пуле
+        text =
+          `😔 <b>${master}</b>, к сожалению, сейчас занят${order.service_name ? `\n🔧 Услуга: <b>${esc(order.service_name)}</b>` : ''}\n\n` +
+          'Заявка вернулась в общий пул — мы уже ищем Вам другого мастера.\n' +
+          'Как только свободный мастер примет заявку, сообщим здесь.';
+      } else {
+        text =
+          `😔 <b>${master}</b>, к сожалению, сейчас занят${order.service_name ? `\n🔧 Услуга: <b>${esc(order.service_name)}</b>` : ''}\n\n` +
+          'Заявку пока показали только Вам. Если согласны — найдём другого мастера: нажмите кнопку ниже, ' +
+          'и заявка уйдёт в общий пул.';
+        inline = {
+          inline_keyboard: [[{ text: '✅ Согласен — ищем другого мастера', callback_data: `rematch:${orderId}` }]],
+        };
+      }
       patch.declined_notified_at = new Date().toISOString();
       needsFlag = true;
     } else if (event === 'forwarded') {
@@ -105,7 +126,7 @@ export async function POST(req: Request) {
     const chatId = phone ? bindings[phone] : null;
 
     if (chatId) {
-      await sendTelegram(chatId, text);
+      await sendTelegram(chatId, text, inline);
       // Флаг — только при успешной отправке (чтобы не терять уведомление из-за отсутствия бота)
       if (needsFlag) {
         await db

@@ -225,6 +225,8 @@ export async function getRequestSnapshot(id: string): Promise<{
   masterId: string | null;
   masterName: string | null;
   declinedBy: string | null;
+  /** Клиент согласился искать другого мастера — заявка в общем пуле */
+  rematchAgreed: boolean;
   finalPrice: number | null;
   masterRequisites: { card?: string; account?: string; sbp?: string } | null;
   paymentConfirmedAt: string | null;
@@ -236,6 +238,21 @@ export async function getRequestSnapshot(id: string): Promise<{
     return body?.order ?? null;
   } catch {
     return null;
+  }
+}
+
+/** Клиент согласен на поиск другого мастера после отмены — заявка уходит в общий пул */
+export async function agreeRequestRematch(id: string): Promise<boolean> {
+  try {
+    const res = await fetch('/api/order-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, action: 'agree_rematch' }),
+      cache: 'no-store',
+    });
+    return res.ok;
+  } catch {
+    return false;
   }
 }
 
