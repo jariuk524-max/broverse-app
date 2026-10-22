@@ -53,7 +53,7 @@ async function sendTelegram(chatId: number, text: string) {
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const orderId = String(body.order_id || '');
-  const event = body.event === 'declined' || body.event === 'accepted' ? body.event : '';
+  const event = body.event === 'declined' || body.event === 'accepted' || body.event === 'forwarded' ? body.event : '';
   if (!orderId || !/^[0-9a-f-]{36}$/i.test(orderId) || !event) {
     return NextResponse.json({ error: 'Некорректный запрос' }, { status: 400 });
   }
@@ -70,6 +70,7 @@ export async function POST(req: Request) {
     const meta = (order.metadata || {}) as Record<string, any>;
     let text = '';
     const patch: Record<string, unknown> = {};
+    let needsFlag = false;
 
     if (event === 'declined') {
       if (!meta.declined_by) return NextResponse.json({ ok: true, skipped: 'not_declined' });
@@ -80,6 +81,14 @@ export async function POST(req: Request) {
         'Заявка вернулась в общий пул — мы уже ищем Вам другого мастера.\n' +
         'Как только свободный мастер примет заявку, сообщим здесь.';
       patch.declined_notified_at = new Date().toISOString();
+      needsFlag = true;
+    } else if (event === 'forwarded') {
+      // Перенаправление: мастер ещё НЕ принимал заявку — не пишем «принял»
+      if (!meta.master_id) return NextResponse.json({ ok: true, skipped: 'no_master' });
+      const master = meta.master_name ? `Мастер <b>${esc(meta.master_name)}</b>` : 'Новый мастер';
+      text =
+        `📨 Заявку${order.service_name ? ` (<b>${esc(order.service_name)}</b>)` : ''} передали: <b>${master}</b>\n\n` +
+        'Он подтвердит в течение 3 минут. Ответ появится в кабинете по заявке.';
     } else {
       if (!meta.master_id) return NextResponse.json({ ok: true, skipped: 'no_master' });
       if (meta.accepted_notified_for === meta.master_id) return NextResponse.json({ ok: true, skipped: 'already' });
@@ -88,6 +97,7 @@ export async function POST(req: Request) {
         `✅ <b>${master}</b> принял Вашу заявку${order.service_name ? `\n🔧 Услуга: <b>${esc(order.service_name)}</b>` : ''}\n\n` +
         'Откройте заявку в кабинете — с мастером можно написать в чате.';
       patch.accepted_notified_for = meta.master_id;
+      needsFlag = true;
     }
 
     const phone = normClientPhone(order.client_phone);
@@ -97,10 +107,12 @@ export async function POST(req: Request) {
     if (chatId) {
       await sendTelegram(chatId, text);
       // Флаг — только при успешной отправке (чтобы не терять уведомление из-за отсутствия бота)
-      await db
-        .from('orders')
-        .update({ metadata: { ...meta, ...patch } })
-        .eq('id', orderId);
+      if (needsFlag) {
+        await db
+          .from('orders')
+          .update({ metadata: { ...meta, ...patch } })
+          .eq('id', orderId);
+      }
     }
 
     return NextResponse.json({ ok: true, notified: !!chatId });
