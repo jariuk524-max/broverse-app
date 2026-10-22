@@ -5,7 +5,7 @@ import {
   CheckCircle2, XCircle, Pencil, Save, RotateCcw, Loader2, Upload, ArrowLeft,
   ShieldCheck, Package, ImageIcon, Lock, Star, MessageSquare,
   LogOut, User, History, Plus, BarChart3, ListTodo, LayoutGrid,
-  ChevronUp, ChevronDown, ChevronRight, Send, Search, Square, CheckSquare, X,
+  ChevronUp, ChevronDown, ChevronRight, Send, Search, Square, CheckSquare, X, Paperclip,
   Eye, RefreshCw, KeyRound, Users, GripVertical, Trash2, Camera, ImagePlus, Sparkles,
 } from 'lucide-react';
 import {
@@ -543,7 +543,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
         ) : tab === 'overview' ? (chief ? <OverviewTab session={session} onOpenTab={setTab} /> : <MyCabinetTab session={session} onOpenTab={setTab} onAskLocked={setLockedTab} onEditProfile={() => setShowProfile(true)} onOpenSupport={() => setSupportOpen(true)} chief={chief} />) : tab === 'orders' ? <OrdersTab /> : tab === 'chat' ? <ChatTab session={session} /> : tab === 'tasks' ? <TasksTab /> : tab === 'promos' ? <PromosTab /> : tab === 'finance' ? <FinanceTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : tab === 'catalog' ? <CatalogTab /> : tab === 'mirror' ? <MirrorTab /> : tab === 'team' ? <TeamTab session={session} /> : <AuditTab />}
       </main>
 
-      <SupportChat open={supportOpen} onClose={() => setSupportOpen(false)} />
+      <SupportChat open={supportOpen} onClose={() => setSupportOpen(false)} session={session} />
 
       {showProfile && (
         <ProfilePanel session={session} onClose={() => setShowProfile(false)} onLogout={logout} onAvatar={(url) => setSession((s) => (s ? { ...s, avatar_url: url } : s))} onName={(n) => setSession((s) => (s ? { ...s, display_name: n } : s))} />
@@ -4184,7 +4184,7 @@ function LockedSection({ label, onAsk, onBack }: { label: string; onAsk: () => v
   );
 }
 
-type ChatMsg = { id: string; from: 'staff' | 'admin' | 'client' | 'master'; author?: string; login?: string; text: string; created_at: string };
+type ChatMsg = { id: string; from: 'staff' | 'admin' | 'client' | 'master'; author?: string; login?: string; text: string; created_at: string; file?: { url: string; name: string; mime: string } | null };
 
 /**
  * Лента одного треда (сотрудник / клиент / мастер / поддержка).
@@ -4195,6 +4195,18 @@ function ChatPanel({ threadId, mySide = 'staff', peerLabel }: { threadId?: strin
   const [msgs, setMsgs] = useState<ChatMsg[] | null>(null);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [attach, setAttach] = useState<{ data: string; name: string; mime: string; size: number } | null>(null);
+  const [fileErr, setFileErr] = useState('');
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  const pickFile = (f: File | null | undefined) => {
+    setFileErr('');
+    if (!f) return;
+    if (f.size > 5 * 1024 * 1024) { setFileErr('Файл больше 5 МБ'); return; }
+    const reader = new FileReader();
+    reader.onload = () => setAttach({ data: String(reader.result || ''), name: f.name, mime: f.type || 'application/octet-stream', size: f.size });
+    reader.readAsDataURL(f);
+  };
 
   const load = useCallback(async () => {
     const url = threadId ? `/api/admin/chat?with=${encodeURIComponent(threadId)}` : '/api/admin/chat';
@@ -4214,16 +4226,31 @@ function ChatPanel({ threadId, mySide = 'staff', peerLabel }: { threadId?: strin
   const send = async (e: React.FormEvent) => {
     e.preventDefault();
     const t = text.trim();
-    if (!t || busy) return;
+    if ((!t && !attach) || busy) return;
     setBusy(true);
-    await fetch('/api/admin/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...(threadId ? { to: threadId } : {}), text: t }),
-    }).catch(() => {});
-    setText('');
-    await load();
-    setBusy(false);
+    try {
+      let file: ChatMsg['file'] = null;
+      if (attach) {
+        const up = await fetch('/api/admin/chat-file', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: attach.name, data: attach.data }),
+        });
+        const ud = await up.json().catch(() => ({}));
+        if (!up.ok) { setFileErr(ud.error || 'Не удалось загрузить файл'); return; }
+        file = { url: ud.url, name: ud.name, mime: ud.mime };
+      }
+      await fetch('/api/admin/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...(threadId ? { to: threadId } : {}), text: t, ...(file ? { file } : {}) }),
+      }).catch(() => {});
+      setText('');
+      setAttach(null);
+      await load();
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (!msgs) {
@@ -4244,7 +4271,17 @@ function ChatPanel({ threadId, mySide = 'staff', peerLabel }: { threadId?: strin
           return (
             <div key={m.id} className={`flex ${own ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 ${own ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-800 shadow-sm'}`}>
-                <p className="text-[13px] leading-snug break-words">{m.text}</p>
+                {m.file && (m.file.mime.startsWith('image/') ? (
+                  <a href={m.file.url} target="_blank" rel="noreferrer" className="block mb-1">
+                    <img src={m.file.url} alt={m.file.name} className="rounded-xl max-w-[220px] max-h-[220px] object-cover" />
+                  </a>
+                ) : (
+                  <a href={m.file.url} target="_blank" rel="noreferrer" className={`flex items-center gap-2 rounded-xl px-3 py-2 mb-1 text-[12.5px] font-semibold max-w-[240px] ${own ? 'bg-white/15 text-white' : 'bg-zinc-100 text-zinc-700'}`}>
+                    <Paperclip size={13} className="shrink-0" />
+                    <span className="truncate">{m.file.name}</span>
+                  </a>
+                ))}
+                {m.text && <p className="text-[13px] leading-snug break-words">{m.text}</p>}
                 <p className="text-[9px] mt-1 text-zinc-500">
                   {author ? `${author} · ` : ''}{new Date(m.created_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                 </p>
@@ -4253,7 +4290,32 @@ function ChatPanel({ threadId, mySide = 'staff', peerLabel }: { threadId?: strin
           );
         })}
       </div>
+      {fileErr && <p className="text-[11.5px] font-semibold text-red-500 mt-2">{fileErr}</p>}
+      {attach && (
+        <div className="flex items-center gap-2 bg-zinc-100 rounded-xl px-3 py-2 mt-3">
+          <Paperclip size={13} className="text-zinc-500 shrink-0" />
+          <span className="text-[12px] text-zinc-700 font-semibold truncate flex-1">{attach.name}</span>
+          <span className="text-[10px] text-zinc-400 shrink-0">{Math.max(1, Math.round(attach.size / 1024))} КБ</span>
+          <button type="button" onClick={() => setAttach(null)} aria-label="Убрать файл" className="shrink-0">
+            <X size={14} className="text-zinc-400 hover:text-zinc-700" />
+          </button>
+        </div>
+      )}
       <form onSubmit={send} className="flex gap-2 mt-3 sticky bottom-3">
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          aria-label="Прикрепить файл"
+          className="shrink-0 w-10 rounded-xl bg-zinc-100 text-zinc-600 flex items-center justify-center active:scale-95 transition-transform hover:bg-zinc-200"
+        >
+          <Paperclip size={15} />
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          className="hidden"
+          onChange={(e) => { pickFile(e.target.files?.[0]); e.target.value = ''; }}
+        />
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -4263,7 +4325,7 @@ function ChatPanel({ threadId, mySide = 'staff', peerLabel }: { threadId?: strin
         />
         <button
           type="submit"
-          disabled={busy || !text.trim()}
+          disabled={busy || (!text.trim() && !attach)}
           className="shrink-0 px-4 rounded-xl bg-zinc-900 text-white text-[12px] font-bold active:scale-95 transition-transform disabled:opacity-40"
         >
           <Send size={15} />

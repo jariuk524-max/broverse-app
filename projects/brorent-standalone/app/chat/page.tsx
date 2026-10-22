@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, MessageCircle, Send, Home } from 'lucide-react';
+import { ArrowLeft, Loader2, MessageCircle, Send, Home, Paperclip } from 'lucide-react';
 import ConsentCheckbox from '@/components/ConsentCheckbox';
 import DevStub from '@/components/DevStub';
 import { DATA_COLLECTION_LOCKED } from '@/lib/site-config';
@@ -15,6 +15,7 @@ type ChatMsg = {
   login?: string;
   text: string;
   created_at: string;
+  file?: { url: string; name: string; mime: string } | null;
 };
 
 type Profile = {
@@ -268,7 +269,17 @@ export default function ChatPage() {
                 <div key={m.id} className={`flex ${own ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${own ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-900'}`}>
                     {!own && <p className="text-[12px] font-bold text-zinc-500 mb-1">{m.author || 'Поддержка BroVerse'}</p>}
-                    <p className="text-[15px] leading-snug break-words">{m.text}</p>
+                    {m.file && (m.file.mime.startsWith('image/') ? (
+                      <a href={m.file.url} target="_blank" rel="noreferrer" className="block mb-1">
+                        <img src={m.file.url} alt={m.file.name} className="rounded-xl max-w-[240px] max-h-[240px] object-cover" />
+                      </a>
+                    ) : (
+                      <a href={m.file.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-xl px-3 py-2 mb-1 text-[13px] font-semibold bg-white text-zinc-700 max-w-[240px]">
+                        <Paperclip size={14} className="shrink-0" />
+                        <span className="truncate">{m.file.name}</span>
+                      </a>
+                    ))}
+                    {m.text && <p className="text-[15px] leading-snug break-words">{m.text}</p>}
                     <p className={`text-[10px] mt-1 ${own ? 'text-zinc-500' : 'text-zinc-400'}`}>
                       {new Date(m.created_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                     </p>

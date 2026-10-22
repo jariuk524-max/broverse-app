@@ -6,12 +6,16 @@ import { createClient } from '@supabase/supabase-js';
 
 export type ChatThreadKind = 'employee' | 'client' | 'master' | 'support';
 
+export type ChatFile = { url: string; name: string; mime: string };
+
 export type ChatMessage = {
   id: string;
   from: 'admin' | 'staff' | 'client' | 'master';
   author: string; // отображаемое имя автора
   text: string;
   created_at: string;
+  /** Прикреплённый файл (скрепка) */
+  file?: ChatFile | null;
 };
 
 export type ChatThread = {

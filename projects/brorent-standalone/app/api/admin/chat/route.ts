@@ -109,7 +109,11 @@ export async function GET(req: NextRequest) {
   }
 
   const withParam = q.get('with');
-  const key = withParam && isChief ? toThreadId(withParam) : `emp:${sess.admin.login}`;
+  // Поддержка: любой вошедший читает треды кабинетов (emp) и мастеров (master);
+  // клиентские и служебные — только руководитель (team)
+  const asked = withParam ? toThreadId(withParam) : '';
+  const canRead = isChief || asked.startsWith('emp:') || asked.startsWith('master:');
+  const key = asked && canRead ? asked : `emp:${sess.admin.login}`;
   const t = findThread(threads, key);
   return NextResponse.json({ messages: t ? t.messages : [], key });
 }
@@ -122,13 +126,33 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => null);
   const text = String(body?.text || '').trim().slice(0, 1000);
-  if (!text) return NextResponse.json({ error: 'Пустое сообщение' }, { status: 400 });
+
+  // Прикреплённый файл (скрепка)
+  let file: { url: string; name: string; mime: string } | null = null;
+  const f = body?.file;
+  if (f && typeof f === 'object') {
+    const fUrl = String(f.url || '');
+    const fName = String(f.name || '').trim().slice(0, 120);
+    const fMime = String(f.mime || '').toLowerCase().slice(0, 64);
+    if (/^https:\/\/.+\/storage\/v1\/object\/public\/catalog-photos\//.test(fUrl) && fName) {
+      file = { url: fUrl, name: fName, mime: fMime };
+    } else {
+      return NextResponse.json({ error: 'Недопустимый файл' }, { status: 400 });
+    }
+  }
+  if (!text && !file) return NextResponse.json({ error: 'Пустое сообщение' }, { status: 400 });
+  const newTitle = String(body?.title || '').trim().slice(0, 80);
 
   const isChief = sess.admin.roles.includes('team');
   const rawTo = String(body?.to || '').trim();
-  // Сотрудник всегда пишет в свой тред; руководитель — в указанный
-  const target = isChief && rawTo ? toThreadId(rawTo) : `emp:${sess.admin.login}`;
-  if (isChief && !rawTo) return NextResponse.json({ error: 'Укажите чат' }, { status: 400 });
+  const target = rawTo ? toThreadId(rawTo) : `emp:${sess.admin.login}`;
+  if (!rawTo && isChief) return NextResponse.json({ error: 'Укажите чат' }, { status: 400 });
+  // Поддержка: любой пишет в кабинеты (emp) и мастерам (master);
+  // клиентские и служебные треды — только руководитель
+  const targetKind = inferKind(target);
+  if ((targetKind === 'client' || targetKind === 'support') && !isChief) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   const threads = await readThreads();
   let t = findThread(threads, target);
@@ -138,7 +162,7 @@ export async function POST(req: NextRequest) {
     const kind = inferKind(target);
     const rawId = target.slice(target.indexOf(':') + 1);
     t = ensureThread(threads, target, {
-      title: patch?.title || (kind === 'client' ? prettyPhone(rawId) : rawId),
+      title: patch?.title || newTitle || (kind === 'client' ? prettyPhone(rawId) : rawId),
       kind: patch?.kind || kind,
       login: patch?.login ?? (kind === 'employee' ? rawId : null),
       phone: patch?.phone ?? (kind === 'client' || kind === 'master' ? rawId : null),
@@ -157,8 +181,9 @@ export async function POST(req: NextRequest) {
   const msg: ChatMessage = {
     id: newMsgId(),
     from: isChief ? 'admin' : 'staff',
-    author: isChief ? sess.admin.display_name || sess.admin.login : sess.admin.display_name || sess.admin.login,
+    author: sess.admin.display_name || sess.admin.login,
     text,
+    file,
     created_at: new Date().toISOString(),
   };
   appendMessage(t, msg);
@@ -170,7 +195,7 @@ export async function POST(req: NextRequest) {
     action: 'chat_message',
     entity_type: 'chat',
     entity_id: target,
-    entity_label: text.slice(0, 80),
+    entity_label: (text || file?.name || '').slice(0, 80),
     details: { to: target, kind: t.kind },
   });
 
