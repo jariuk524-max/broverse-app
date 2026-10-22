@@ -16,6 +16,7 @@ import { unlockDirectionForMaster } from '@/lib/admin/unlock';
 import { MASTER_DIRECTIONS } from '@/lib/master-ads';
 import SupportChat from '@/components/SupportChat';
 import PromoEditor from '@/components/PromoEditor';
+import FinanceChart, { type DailyPoint } from '@/components/FinanceChart';
 import { Onest } from 'next/font/google';
 
 const onest = Onest({ subsets: ['latin', 'cyrillic'], display: 'swap' });
@@ -1616,6 +1617,8 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
   const [pwMsg, setPwMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [promoFor, setPromoFor] = useState<{ id?: string; name?: string } | null>(null);
   const [confirmDel, setConfirmDel] = useState<{ login: string; name: string } | null>(null);
+  const [teamFilter, setTeamFilter] = useState<'all' | 'lead' | 'active'>('all');
+  const [orderMode, setOrderMode] = useState(false);
 
   const load = useCallback(async () => {
     const [o, a, au, ad, lay] = await Promise.all([
@@ -1745,6 +1748,17 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
     });
   }
   const hubMasters = [...mastersMap.values()];
+
+  const weekAgoMs = Date.now() - 7 * 24 * 3600 * 1000;
+  const isActive = (a: { last_login_at: string | null }) =>
+    !!a.last_login_at && Number.isFinite(Date.parse(a.last_login_at)) && Date.parse(a.last_login_at) > weekAgoMs;
+  const activeCount = orderedAdmins.filter(isActive).length;
+  const showLeadFilter = leadAdmins.length > 0 && staffAdmins.length > 0;
+  const showActiveFilter = activeCount > 0 && activeCount < orderedAdmins.length;
+  const teamVisible =
+    teamFilter === 'lead' ? orderedAdmins.filter(isLead)
+    : teamFilter === 'active' ? orderedAdmins.filter(isActive)
+    : orderedAdmins;
 
   const saveLayout = (list: string[]) => {
     fetch('/api/admin/layout', {
@@ -1948,66 +1962,153 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
         </p>
       </div>
 
-      {leadAdmins.length > 0 && (
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 px-1 mb-2">Руководящий персонал · {leadAdmins.length}</p>
-          <div className="space-y-2">
-            {leadAdmins.map((a) => (
-              <div
-                key={a.login}
-                onClick={(e) => {
-                  if ((e.target as HTMLElement).closest('button')) return;
-                  setPwMsg(null);
-                  setPwValue('');
-                  setOpenCabinet(a.login);
-                }}
-                className="bg-white rounded-[20px] p-3.5 shadow-sm flex items-center gap-2.5 cursor-pointer active:bg-zinc-50 transition-colors"
-              >
-                {a.avatar_url ? (
-                  <img src={a.avatar_url} alt="" className="w-11 h-11 rounded-2xl object-cover shrink-0" />
-                ) : (
-                  <span className="w-11 h-11 rounded-2xl bg-zinc-900 text-white text-[15px] font-black flex items-center justify-center shrink-0">
-                    {(a.display_name || a.login).slice(0, 1).toUpperCase()}
-                  </span>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-bold text-zinc-900 truncate">{a.display_name || a.login}</p>
-                  <p className="text-[10.5px] text-zinc-600 truncate">
-                    {a.title || (a.login === 'admin' ? 'Руководитель проекта' : 'Руководство')} · @{a.login}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
+      <div>
+        <div className="flex items-center justify-between gap-2 mb-2 px-1">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-600">
+            Команда · {teamVisible.length}{orderedAdmins.length !== teamVisible.length ? ` из ${orderedAdmins.length}` : ''}
+          </p>
+          <div className="flex items-center gap-1.5">
+            {(showLeadFilter || showActiveFilter) && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => { setTeamFilter('all'); setOrderMode(false); }}
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold active:scale-95 transition-transform ${teamFilter === 'all' ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600'}`}
+                >
+                  Все
+                </button>
+                {showLeadFilter && (
                   <button
                     type="button"
-                    onClick={() => setChatWith(a.login)}
-                    className="px-3 py-1.5 rounded-full bg-zinc-100 text-zinc-700 text-[10.5px] font-bold active:scale-95 transition-transform"
+                    onClick={() => { setTeamFilter('lead'); setOrderMode(false); }}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold active:scale-95 transition-transform ${teamFilter === 'lead' ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600'}`}
                   >
-                    Чат
+                    Руководство
                   </button>
-                  {a.login !== session.login && (
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDel({ login: a.login, name: a.display_name || a.login })}
-                      className="px-3 py-1.5 rounded-full bg-white border border-zinc-200 text-red-500 text-[10.5px] font-bold active:scale-95 transition-transform"
-                      title="Удалить кабинет"
-                    >
-                      Удалить
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
+                )}
+                {showActiveFilter && (
+                  <button
+                    type="button"
+                    onClick={() => { setTeamFilter('active'); setOrderMode(false); }}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold active:scale-95 transition-transform ${teamFilter === 'active' ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600'}`}
+                  >
+                    Активные
+                  </button>
+                )}
+              </>
+            )}
+            {orderedAdmins.length > 1 && teamFilter === 'all' && (
+              <button
+                type="button"
+                onClick={() => setOrderMode(!orderMode)}
+                className={`px-2.5 py-1 rounded-full text-[10px] font-bold flex items-center gap-1 active:scale-95 transition-transform ${orderMode ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600'}`}
+              >
+                <GripVertical size={11} /> Порядок
+              </button>
+            )}
           </div>
         </div>
-      )}
+        {orderMode && (
+          <p className="text-[10px] text-zinc-500 mb-2 px-1">Потяните карточку на нужное место — порядок сохранится</p>
+        )}
 
-      <button
-        type="button"
-        onClick={() => { setCreateOpen(true); setCreateDone(''); setCreateErr(''); }}
-        className="w-full py-3.5 rounded-full bg-zinc-900 text-white text-[13px] font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-black/10 active:scale-[0.98] transition-transform"
-      >
-        <Plus size={15} /> Создать кабинет
-      </button>
+        {teamVisible.length === 0 ? (
+          <p className="text-[12px] text-zinc-600 px-1 py-3">Нет кабинетов по фильтру.</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+            {teamVisible.map((a) => {
+              const lead = isLead(a);
+              const active = isActive(a);
+              const acts = workByLogin.get(a.login)?.count || 0;
+              return (
+                <div
+                  key={a.login}
+                  data-cabinet={a.login}
+                  onClick={(e) => {
+                    if (orderMode || dragMoved.current) return;
+                    if ((e.target as HTMLElement).closest('button')) return;
+                    setPwMsg(null);
+                    setPwValue('');
+                    setOpenCabinet(a.login);
+                  }}
+                  onPointerDown={orderMode ? (e) => startDrag(e, a.login) : undefined}
+                  onPointerMove={orderMode ? moveDrag : undefined}
+                  onPointerUp={orderMode ? endDrag : undefined}
+                  onPointerCancel={orderMode ? endDrag : undefined}
+                  className={`rounded-[20px] p-3 shadow-sm transition-all ${
+                    lead ? 'bg-zinc-900' : 'bg-white'
+                  } ${
+                    orderMode ? 'cursor-grab touch-none active:cursor-grabbing' : 'cursor-pointer active:scale-[0.98]'
+                  } ${dragId === a.login ? 'ring-2 ring-[#4285F4] opacity-80 scale-[1.01]' : ''}`}
+                >
+                  {a.avatar_url ? (
+                    <img src={a.avatar_url} alt="" className="w-full aspect-square rounded-2xl object-cover" />
+                  ) : (
+                    <div className={`w-full aspect-square rounded-2xl flex items-center justify-center ${lead ? 'bg-zinc-800' : 'bg-zinc-100'}`}>
+                      <span className={`text-[26px] font-black ${lead ? 'text-white' : 'text-zinc-500'}`}>
+                        {(a.display_name || a.login).slice(0, 1).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                  <p className={`mt-2 text-[12.5px] font-bold truncate ${lead ? 'text-white' : 'text-zinc-900'}`}>
+                    {a.display_name || a.login}
+                  </p>
+                  <p className={`text-[10px] truncate ${lead ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                    {a.title || (lead ? 'Руководство' : `@${a.login}`)}
+                  </p>
+                  <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                    {a.roles.slice(0, 2).map((r) => (
+                      <span key={r} className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${lead ? 'bg-white/10 text-zinc-300' : 'bg-zinc-100 text-zinc-600'}`}>
+                        {ROLE_LABEL[r] || r}
+                      </span>
+                    ))}
+                    {a.roles.length > 2 && (
+                      <span className={`text-[9px] font-bold ${lead ? 'text-zinc-400' : 'text-zinc-500'}`}>+{a.roles.length - 2}</span>
+                    )}
+                    <span
+                      className={`ml-auto w-2 h-2 rounded-full shrink-0 ${active ? 'bg-[#34A853]' : lead ? 'bg-zinc-700' : 'bg-zinc-300'}`}
+                      title={active ? 'Входил за последние 7 дней' : 'Входа за 7 дней не было'}
+                    />
+                  </div>
+                  {acts > 0 && (
+                    <p className="text-[9.5px] text-zinc-500 mt-1">{acts} действий за неделю</p>
+                  )}
+                  {!orderMode && (
+                    <div className="flex gap-1.5 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setChatWith(a.login)}
+                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold active:scale-95 transition-transform ${lead ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'}`}
+                      >
+                        Чат
+                      </button>
+                      {a.login !== session.login && (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDel({ login: a.login, name: a.display_name || a.login })}
+                          className={`py-1.5 px-2.5 rounded-lg text-[10px] font-bold active:scale-95 transition-transform ${lead ? 'border border-white/15 text-zinc-400' : 'border border-zinc-200 text-zinc-600'}`}
+                        >
+                          Удалить
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {teamFilter === 'all' && (
+              <button
+                type="button"
+                onClick={() => { setCreateOpen(true); setCreateDone(''); setCreateErr(''); }}
+                className="rounded-[20px] border-2 border-dashed border-zinc-300 bg-white/60 min-h-[180px] flex flex-col items-center justify-center gap-1.5 text-zinc-500 active:scale-[0.98] transition-transform"
+              >
+                <Plus size={22} />
+                <span className="text-[11px] font-bold">Создать кабинет</span>
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       <div>
         <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 px-1 mb-2">Мастера · {hubMasters.length}</p>
@@ -2057,114 +2158,6 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
         <Stat label="Одобрено" value={approvedCount} sub="прошли модерацию" onClick={() => setStatusList('approved')} />
         <Stat label="Отклонено" value={statusCounts.rejected || 0} sub="с причинами" onClick={() => setStatusList('rejected')} />
         <Stat label="Сегодня / всего" value={`${todayCount} / ${orders.length}`} sub="новые заявки" onClick={() => setStatusList('all')} />
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between mb-1 px-1">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-600">Кабинеты сотрудников · {staffAdmins.length}</p>
-        </div>
-        <p className="text-[10px] text-zinc-500 mb-2.5 px-1">Потяните блок за ⠿ — порядок сохранится</p>
-        {staffAdmins.length === 0 ? (
-          <div className="bg-white rounded-[18px] py-8 text-center shadow-sm">
-            <Users size={24} className="text-zinc-500 mx-auto mb-2" />
-            <p className="text-[12px] text-zinc-600">Кабинетов пока нет</p>
-            <button
-              type="button"
-              onClick={() => { setCreateOpen(true); setCreateDone(''); setCreateErr(''); }}
-              className="mt-3 px-4 py-2 rounded-xl bg-zinc-900 text-white text-[11px] font-bold active:scale-95 transition-transform"
-            >
-              Создать первый
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-2.5">
-            {staffAdmins.map((a) => (
-              <div
-                key={a.login}
-                data-cabinet={a.login}
-                onClick={(e) => {
-                  if (dragMoved.current) return;
-                  if ((e.target as HTMLElement).closest('button')) return;
-                  setPwMsg(null);
-                  setPwValue('');
-                  setOpenCabinet(a.login);
-                }}
-                className={`bg-white rounded-[18px] p-3.5 shadow-sm transition-all cursor-pointer ${dragId === a.login ? 'ring-2 ring-zinc-900 opacity-80 scale-[1.01]' : ''}`}
-              >
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onPointerDown={(e) => startDrag(e, a.login)}
-                    onPointerMove={moveDrag}
-                    onPointerUp={endDrag}
-                    onPointerCancel={endDrag}
-                    className="w-7 h-9 -ml-1 flex items-center justify-center text-zinc-500 touch-none select-none cursor-grab active:cursor-grabbing shrink-0"
-                    title="Перетащить блок"
-                  >
-                    <GripVertical size={16} />
-                  </button>
-                  {a.avatar_url ? (
-                    <img src={a.avatar_url} alt="" className="w-9 h-9 rounded-xl object-cover shrink-0" />
-                  ) : (
-                    <span className="w-9 h-9 rounded-xl bg-zinc-900 text-white text-[13px] font-black flex items-center justify-center shrink-0">
-                      {(a.display_name || a.login).slice(0, 1).toUpperCase()}
-                    </span>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-bold text-zinc-900 truncate">{a.display_name || a.login}</p>
-                    <p className="text-[10px] text-zinc-600 truncate">
-                      {a.title ? `${a.title} · ` : ''}@{a.login} · {a.password_set_at ? 'пароль задан' : 'ждёт первый вход'}
-                      {a.last_login_at ? ` · вход ${new Date(a.last_login_at).toLocaleDateString('ru-RU')}` : ''}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {a.roles.length === 0 && <span className="text-[10px] text-zinc-600">без разделов</span>}
-                  {a.roles.map((r) => (
-                    <span key={r} className="px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 text-[9.5px] font-bold">
-                      {ROLE_LABEL[r] || r}
-                    </span>
-                  ))}
-                </div>
-                {activityMap[a.login]?.length ? (
-                  <p className="text-[10px] text-zinc-600 mt-1.5 truncate">
-                    {activityMap[a.login].map((x) => x.action).join(' · ')}
-                  </p>
-                ) : null}
-                <div className="flex gap-1.5 mt-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setChatWith(a.login)}
-                    className="flex-1 py-1.5 rounded-lg bg-zinc-900 text-white text-[10.5px] font-bold active:scale-95 transition-transform"
-                  >
-                    Чат
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onOpenTab('team')}
-                    className="flex-1 py-1.5 rounded-lg bg-zinc-100 text-zinc-700 text-[10.5px] font-bold active:scale-95 transition-transform"
-                  >
-                    Навыки
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => copyAccess(a)}
-                    className="flex-1 py-1.5 rounded-lg bg-zinc-100 text-zinc-700 text-[10.5px] font-bold active:scale-95 transition-transform"
-                  >
-                    {copiedFor === a.login ? '✓ Скопировано' : 'Доступ'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDel({ login: a.login, name: a.display_name || a.login })}
-                    className="py-1.5 px-2.5 rounded-lg bg-white border border-zinc-200 text-zinc-600 text-[10.5px] font-bold active:scale-95 transition-transform"
-                  >
-                    Удалить
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       <div className="bg-white rounded-[18px] p-4 shadow-sm">
@@ -4248,6 +4241,30 @@ function FinanceTab() {
   const doneSum = doneList.reduce((s, o) => s + orderPrice(o), 0);
   const avg = withPrice.length ? Math.round(total / withPrice.length) : 0;
 
+  // Непрерывный ряд дневной выручки (пустые дни = 0) — для биржевой кривой
+  const daily = ((): DailyPoint[] => {
+    const dayStart = (t: number) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+    const today = dayStart(Date.now());
+    const defStart = new Date(today);
+    defStart.setDate(defStart.getDate() - 29);
+    let start = defStart.getTime();
+    const sums = new Map<number, number>();
+    for (const o of withPrice) {
+      const ts = dayStart(Date.parse(o.created_at));
+      if (!Number.isFinite(ts)) continue;
+      sums.set(ts, (sums.get(ts) || 0) + orderPrice(o));
+      if (ts < start) start = ts;
+    }
+    const out: DailyPoint[] = [];
+    const cur = new Date(start);
+    while (cur.getTime() <= today) {
+      const ts = cur.getTime();
+      out.push({ ts, value: sums.get(ts) || 0 });
+      cur.setDate(cur.getDate() + 1);
+    }
+    return out;
+  })();
+
   const byDomain = new Map<string, { count: number; sum: number }>();
   for (const o of withPrice) {
     const d = String(o.metadata?.domain || '—');
@@ -4259,6 +4276,8 @@ function FinanceTab() {
 
   return (
     <div className="space-y-4">
+      <FinanceChart daily={daily} />
+
       <div className="grid grid-cols-2 gap-2.5">
         <Stat label="Сумма по заявкам" value={`${total.toLocaleString('ru-RU')} ₽`} sub={`${withPrice.length} шт. с ценой`} />
         <Stat label="Средний чек" value={`${avg.toLocaleString('ru-RU')} ₽`} />
