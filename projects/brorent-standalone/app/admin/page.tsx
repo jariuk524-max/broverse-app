@@ -456,7 +456,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
                 <ShieldCheck size={15} className="text-white" />
               )}
             </div>
-            <div>
+            <div className={chief ? 'cursor-pointer active:opacity-70 transition-opacity' : undefined} onClick={chief ? () => setShowProfile(true) : undefined} title={chief ? 'Профиль и выход' : undefined}>
               <h1 className="text-[14px] font-bold text-zinc-900 leading-tight">{chief ? 'Кабинет руководителя проекта' : 'BroVerse Админ'}</h1>
               <p className="text-[10px] text-zinc-600">{chief ? (session.display_name === 'Администратор' ? 'Руководитель проекта' : (session.display_name || session.login)) : `Администратор: ${session.display_name || session.login}`}</p>
             </div>
@@ -470,20 +470,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
             >
               <MessageSquare size={15} />
             </button>
-            {chief ? (
-              <button
-                type="button"
-                onClick={() => setShowProfile(true)}
-                title="Профиль"
-                className="w-9 h-9 rounded-full overflow-hidden bg-zinc-900 flex items-center justify-center active:scale-95 transition-transform"
-              >
-                {session.avatar_url ? (
-                  <img src={session.avatar_url} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <User size={15} className="text-white" />
-                )}
-              </button>
-            ) : (
+            {!chief && (
               <button
                 type="button"
                 onClick={() => setShowProfile(true)}
