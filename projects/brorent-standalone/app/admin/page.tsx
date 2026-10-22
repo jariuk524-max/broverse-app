@@ -6,7 +6,7 @@ import {
   ShieldCheck, Package, ImageIcon, Lock, Star, MessageSquare,
   LogOut, User, History, Plus, BarChart3, ListTodo, LayoutGrid,
   ChevronUp, ChevronDown, ChevronRight, Send, Search, Square, CheckSquare, X,
-  Eye, RefreshCw, KeyRound, Users, GripVertical, Trash2, Camera, ImagePlus,
+  Eye, RefreshCw, KeyRound, Users, GripVertical, Trash2, Camera, ImagePlus, Sparkles,
 } from 'lucide-react';
 import {
   listServiceRequests,
@@ -26,13 +26,14 @@ type Session = {
   avatar_url?: string | null;
 };
 
-type TabId = 'overview' | 'orders' | 'chat' | 'tasks' | 'finance' | 'masters' | 'feedback' | 'catalog' | 'mirror' | 'audit' | 'team';
+type TabId = 'overview' | 'orders' | 'chat' | 'tasks' | 'promos' | 'finance' | 'masters' | 'feedback' | 'catalog' | 'mirror' | 'audit' | 'team';
 
 const TABS: { id: TabId; label: string; role: string | null }[] = [
   { id: 'overview', label: 'Обзор', role: null },
   { id: 'orders', label: 'Заявки', role: 'requests' },
   { id: 'chat', label: 'Чат', role: null },
   { id: 'tasks', label: 'Задачи', role: 'tasks' },
+  { id: 'promos', label: 'Акции', role: 'tasks' },
   { id: 'finance', label: 'Финансы', role: 'finance' },
   { id: 'masters', label: 'Мастера', role: 'masters' },
   { id: 'feedback', label: 'Отзывы', role: 'feedback' },
@@ -450,7 +451,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
               setTab('chat');
             }}
           />
-        ) : tab === 'overview' ? (chief && session.roles.includes('team') ? <OverviewTab session={session} onOpenTab={setTab} /> : <MyCabinetTab session={session} onOpenTab={setTab} onAskLocked={setLockedTab} onEditProfile={() => setShowProfile(true)} chief={chief} />) : tab === 'orders' ? <OrdersTab /> : tab === 'chat' ? <ChatTab session={session} /> : tab === 'tasks' ? <TasksTab /> : tab === 'finance' ? <FinanceTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : tab === 'catalog' ? <CatalogTab /> : tab === 'mirror' ? <MirrorTab /> : tab === 'team' ? <TeamTab session={session} /> : <AuditTab />}
+        ) : tab === 'overview' ? (chief && session.roles.includes('team') ? <OverviewTab session={session} onOpenTab={setTab} /> : <MyCabinetTab session={session} onOpenTab={setTab} onAskLocked={setLockedTab} onEditProfile={() => setShowProfile(true)} chief={chief} />) : tab === 'orders' ? <OrdersTab /> : tab === 'chat' ? <ChatTab session={session} /> : tab === 'tasks' ? <TasksTab /> : tab === 'promos' ? <PromosTab /> : tab === 'finance' ? <FinanceTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : tab === 'catalog' ? <CatalogTab /> : tab === 'mirror' ? <MirrorTab /> : tab === 'team' ? <TeamTab session={session} /> : <AuditTab />}
       </main>
 
       {showProfile && (
@@ -1350,6 +1351,7 @@ function AuditTab() {
 
 const TAB_ICONS: Record<TabId, React.ComponentType<{ size?: number; className?: string }>> = {
   overview: BarChart3, orders: Package, chat: MessageSquare, tasks: ListTodo,
+  promos: Sparkles,
   finance: History, masters: Star, feedback: Star, catalog: ImageIcon,
   mirror: LayoutGrid, audit: History, team: Users,
 };
@@ -2661,6 +2663,196 @@ function TasksTab() {
 
       <p className="text-[10px] text-zinc-500 px-1">
         Задачи появляются мастеру в кабинете (Заказы) и исчезают после отметки «выполнено».
+      </p>
+    </div>
+  );
+}
+
+type AdminPromo = {
+  id: string;
+  title: string;
+  body: string;
+  cta: string;
+  audience: string;
+  start_at: string;
+  end_at: string;
+  author: string;
+  created_at: string;
+  seen_by: string[];
+};
+
+/** datetime-local значение из даты (локальное время) */
+const toLocalInput = (d: Date): string => {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+
+function PromosTab() {
+  const [promos, setPromos] = useState<AdminPromo[] | null>(null);
+  const [ads, setAds] = useState<{ master: { id: string; name: string } }[]>([]);
+  const [audience, setAudience] = useState('');
+  const [title, setTitle] = useState('');
+  const [text, setText] = useState('');
+  const [cta, setCta] = useState('Забрать уровень');
+  const [startAt, setStartAt] = useState(() => toLocalInput(new Date()));
+  const [endAt, setEndAt] = useState(() => toLocalInput(new Date(Date.now() + 3 * 24 * 3600 * 1000)));
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  const load = useCallback(async () => {
+    const [p, a] = await Promise.all([
+      fetch('/api/admin/promos').then((r) => (r.ok ? r.json().catch(() => ({ promos: [] })) : { promos: [] })).catch(() => ({ promos: [] })),
+      fetch('/api/masters/ads').then((r) => (r.ok ? r.json().catch(() => null) : null)).catch(() => null),
+    ]);
+    setPromos(Array.isArray(p.promos) ? p.promos : []);
+    const masters = new Map<string, string>();
+    for (const ad of Array.isArray(a) ? a : []) {
+      const m = (ad as { master?: { id: string; name: string } }).master;
+      if (m?.id) masters.set(m.id, m.name || m.id);
+    }
+    setAds([...masters.entries()].map(([id, name]) => ({ master: { id, name } })));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const create = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (busy || !title.trim()) return;
+    setBusy(true);
+    setErr('');
+    try {
+      const r = await fetch('/api/admin/promos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          body: text,
+          cta,
+          audience,
+          start_at: new Date(startAt).toISOString(),
+          end_at: new Date(endAt).toISOString(),
+        }),
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        setErr(d.error || 'Не удалось создать акцию');
+      } else {
+        setTitle('');
+        setText('');
+        await load();
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (id: string) => {
+    await fetch('/api/admin/promos', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    }).catch(() => {});
+    await load();
+  };
+
+  if (!promos) {
+    return <div className="flex justify-center py-16"><Loader2 size={22} className="animate-spin text-zinc-600" /></div>;
+  }
+
+  const now = Date.now();
+  const live = promos.filter((p) => Date.parse(p.start_at) <= now && now <= Date.parse(p.end_at));
+  const scheduled = promos.filter((p) => Date.parse(p.start_at) > now);
+  const ended = promos.filter((p) => Date.parse(p.end_at) < now);
+
+  const renderPromo = (p: AdminPromo, tone: 'live' | 'scheduled' | 'ended') => (
+    <div key={p.id} className={`bg-white rounded-[16px] p-3.5 shadow-sm ${tone === 'ended' ? 'opacity-60' : ''}`}>
+      <div className="flex items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-[13px] font-bold text-zinc-900">{p.title}</p>
+            <span className={`shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
+              tone === 'live' ? 'bg-emerald-100 text-emerald-700' : tone === 'scheduled' ? 'bg-sky-100 text-sky-700' : 'bg-zinc-100 text-zinc-500'
+            }`}>
+              {tone === 'live' ? 'В эфире' : tone === 'scheduled' ? 'Запланирована' : 'Завершена'}
+            </span>
+          </div>
+          {p.body && <p className="text-[11px] text-zinc-500 mt-0.5 break-words">{p.body}</p>}
+          <p className="text-[10px] text-zinc-600 mt-1">
+            Кнопка: «{p.cta}» · {p.audience ? `мастер ${p.audience}` : 'все мастера'}
+          </p>
+          <p className="text-[10px] text-zinc-500 mt-0.5">
+            {new Date(p.start_at).toLocaleString('ru-RU')} → {new Date(p.end_at).toLocaleString('ru-RU')}
+            {' · '}просмотрели: {p.seen_by?.length || 0} · @{p.author}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => remove(p.id)}
+          className="shrink-0 w-8 h-8 rounded-xl bg-zinc-100 text-zinc-500 flex items-center justify-center active:scale-95 transition-transform hover:bg-rose-50 hover:text-rose-600"
+          title="Удалить акцию"
+        >
+          <Trash2 size={15} />
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <form onSubmit={create} className="bg-white rounded-[18px] p-4 shadow-sm space-y-2">
+        <p className="text-[12px] font-bold text-zinc-900">Новая акция «новый уровень»</p>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Заголовок: Новый уровень: Эксперт открыт" className={INPUT} maxLength={200} />
+        <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Текст акции для мастера (необязательно)" rows={2} className={`${INPUT} resize-none`} maxLength={1000} />
+        <input value={cta} onChange={(e) => setCta(e.target.value)} placeholder="Кнопка: Забрать уровень" className={INPUT} maxLength={60} />
+        <select value={audience} onChange={(e) => setAudience(e.target.value)} className={INPUT}>
+          <option value="">— все мастера —</option>
+          {ads.map((a) => (
+            <option key={a.master.id} value={a.master.id}>{a.master.name}</option>
+          ))}
+          {ads.length === 0 && <option value="master-1">Евгений (демо)</option>}
+        </select>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">Показывать с</label>
+            <input type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} className={INPUT} />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">до</label>
+            <input type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} className={INPUT} />
+          </div>
+        </div>
+        {err && <p className="text-[11px] text-zinc-800 font-semibold">{err}</p>}
+        <button
+          type="submit"
+          disabled={busy || !title.trim()}
+          className="w-full py-2.5 rounded-xl bg-zinc-900 text-white text-[12px] font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform disabled:opacity-40"
+        >
+          {busy ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} Запустить акцию
+        </button>
+      </form>
+
+      <div>
+        <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 px-1 mb-2">В эфире ({live.length})</p>
+        {live.length === 0 ? <p className="text-[12px] text-zinc-600 px-1">Нет активных акций.</p> : <div className="space-y-2">{live.map((p) => renderPromo(p, 'live'))}</div>}
+      </div>
+
+      {scheduled.length > 0 && (
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 px-1 mb-2">Запланированы ({scheduled.length})</p>
+          <div className="space-y-2">{scheduled.map((p) => renderPromo(p, 'scheduled'))}</div>
+        </div>
+      )}
+
+      {ended.length > 0 && (
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 px-1 mb-2">Завершены ({ended.length})</p>
+          <div className="space-y-2">{ended.map((p) => renderPromo(p, 'ended'))}</div>
+        </div>
+      )}
+
+      <p className="text-[10px] text-zinc-500 px-1">
+        Плашка появляется мастеру в ленте «Заказы» только в указанный срок и исчезает сразу после просмотра
+        (кнопка или крестик). Постоянный уровень карьеры — в профиле мастера, плитка BroCare.
       </p>
     </div>
   );
