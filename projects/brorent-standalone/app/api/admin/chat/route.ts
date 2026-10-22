@@ -99,6 +99,7 @@ export async function GET(req: NextRequest) {
         kind: t.kind,
         role: t.role || null,
         account_deleted: t.account_deleted || false,
+        legacy_status: t.legacy_status || null,
         count: t.messages.length,
         last: t.messages.length ? t.messages[t.messages.length - 1] : null,
       }))
@@ -147,7 +148,8 @@ export async function POST(req: NextRequest) {
   } else {
     // Свежее имя/должность из источника; для удалённого кабинета patch = null — история не трогается
     const patch = await resolveThreadPatch(target);
-    if (patch) {
+    // У support-тредов title/статус живут в самом треде (в т.ч. импорт истории) — не перетираем
+    if (patch && t.kind !== 'support') {
       t = ensureThread(threads, target, patch);
     }
   }

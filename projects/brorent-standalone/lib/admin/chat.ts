@@ -23,6 +23,8 @@ export type ChatThread = {
   master_id?: string | null;
   role?: string | null; // должность (бейдж в списке)
   account_deleted?: boolean;
+  /** Статус из старой системы support_chats (импорт истории) */
+  legacy_status?: 'open' | 'answered' | 'closed';
   created_at: string;
   updated_at: string;
   messages: ChatMessage[];
@@ -35,6 +37,7 @@ export type ChatThreadSummary = {
   kind: ChatThreadKind;
   role?: string | null;
   account_deleted?: boolean;
+  legacy_status?: string | null;
   count: number;
   last: ChatMessage | null;
   fresh?: boolean; // ещё нет треда — виртуальная строка из заявки

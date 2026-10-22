@@ -4274,6 +4274,7 @@ type ChatListItem = {
   kind: 'employee' | 'client' | 'master' | 'support';
   role?: string | null;
   account_deleted?: boolean;
+  legacy_status?: string | null;
   count: number;
   last: ChatMsg | null;
   fresh?: boolean;
@@ -4286,17 +4287,58 @@ const CHAT_KIND_LABEL: Record<string, string> = {
   support: 'Поддержка',
 };
 
+const LEGACY_STATUS_LABEL: Record<string, string> = {
+  open: 'открыт',
+  answered: 'отвечен',
+  closed: 'закрыт',
+};
+
 function chatBadge(c: ChatListItem): string {
   if (c.kind === 'employee') return c.role || 'Сотрудник';
+  if (c.kind === 'support' && c.legacy_status && LEGACY_STATUS_LABEL[c.legacy_status]) {
+    return `Поддержка · ${LEGACY_STATUS_LABEL[c.legacy_status]}`;
+  }
   return CHAT_KIND_LABEL[c.kind] || 'Чат';
 }
 
 function ChatTab({ session }: { session: Session }) {
   const isChief = session.roles.includes('team');
   const [list, setList] = useState<ChatListItem[] | null>(null);
-  const [filter, setFilter] = useState<'all' | 'employee' | 'client' | 'master'>('all');
+  const [filter, setFilter] = useState<'all' | 'employee' | 'client' | 'master' | 'support'>('all');
   const [openId, setOpenId] = useState<string | null>(null);
   const [openTitle, setOpenTitle] = useState('');
+  const [legacyPending, setLegacyPending] = useState(0);
+  const [importing, setImporting] = useState(false);
+
+  const reloadList = () =>
+    fetch('/api/admin/chat?list=1')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setList(Array.isArray(d?.chats) ? d.chats : []))
+      .catch(() => setList([]));
+
+  useEffect(() => {
+    if (!isChief) return;
+    fetch('/api/admin/chat/import')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setLegacyPending(Number(d?.pending) || 0))
+      .catch(() => {});
+  }, [isChief]);
+
+  const runImport = async () => {
+    if (importing) return;
+    setImporting(true);
+    try {
+      const r = await fetch('/api/admin/chat/import', { method: 'POST' });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) {
+        setLegacyPending(0);
+        await reloadList();
+      }
+      return d;
+    } finally {
+      setImporting(false);
+    }
+  };
 
   useEffect(() => {
     if (!isChief) return;
@@ -4349,14 +4391,16 @@ function ChatTab({ session }: { session: Session }) {
     employee: list.filter((c) => c.kind === 'employee').length,
     client: list.filter((c) => c.kind === 'client').length,
     master: list.filter((c) => c.kind === 'master').length,
+    support: list.filter((c) => c.kind === 'support').length,
   };
   const filtered = list.filter((c) => filter === 'all' || c.kind === filter);
 
-  const FILTERS: { id: 'all' | 'employee' | 'client' | 'master'; label: string }[] = [
+  const FILTERS: { id: 'all' | 'employee' | 'client' | 'master' | 'support'; label: string }[] = [
     { id: 'all', label: `Все (${list.length})` },
     { id: 'employee', label: `Сотрудники (${counts.employee})` },
     { id: 'client', label: `Клиенты (${counts.client})` },
     { id: 'master', label: `Мастера (${counts.master})` },
+    { id: 'support', label: `Поддержка (${counts.support})` },
   ];
 
   return (
@@ -4365,6 +4409,26 @@ function ChatTab({ session }: { session: Session }) {
         Общая переписка: сотрудники, клиенты и мастера пишут со своих кабинетов — вы отвечаете здесь.
         История хранится, даже если кабинет удалён.
       </p>
+
+      {legacyPending > 0 && (
+        <div className="bg-white rounded-[16px] p-3.5 shadow-sm flex items-center gap-3">
+          <span className="w-9 h-9 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+            <History size={15} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[12px] font-bold text-zinc-900">Старые обращения поддержки: {legacyPending}</p>
+            <p className="text-[10px] text-zinc-500">История из прежней админки — перенести в новые чаты</p>
+          </div>
+          <button
+            type="button"
+            disabled={importing}
+            onClick={() => void runImport()}
+            className="shrink-0 px-3.5 py-2 rounded-xl bg-zinc-900 text-white text-[11px] font-bold active:scale-95 transition-transform disabled:opacity-50"
+          >
+            {importing ? '…' : 'Импортировать'}
+          </button>
+        </div>
+      )}
 
       <div className="flex gap-2 overflow-x-auto pb-1">
         {FILTERS.map((f) => (
