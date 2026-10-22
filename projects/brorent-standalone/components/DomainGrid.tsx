@@ -11,17 +11,101 @@ import { ChevronRight, Shield, Star, Clock, CheckCircle2, Wrench, Phone } from '
 import { masterAdFallbackImage, type MasterAd } from '@/lib/master-ads';
 import { GARDEN_CATEGORIES } from '@/data/garden-services';
 
-function BrandLogo({ brand, size = 24 }: { brand: string; size?: number }) {
-  const s = size;
+/**
+ * Аватары 6 брендов — в стиле app-иконок (iOS/Яндекс.Еда):
+ * скруглённый квадрат с фирменным градиентом + белый глиф.
+ */
+const BRAND_GRADIENTS: Record<string, [string, string]> = {
+  wash: ['#4285F4', '#1A73E8'],
+  build: ['#EA4335', '#C5221F'],
+  frame: ['#FBBC05', '#F29900'],
+  move: ['#34A853', '#188038'],
+  rent: ['#00BCD4', '#00838F'],
+  garden: ['#16A34A', '#0E7A38'],
+};
+
+function BrandGlyph({ brand }: { brand: string }) {
+  const common = { fill: 'none', stroke: '#fff', strokeWidth: 1.7, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
   switch (brand) {
-    case 'wash': return (<svg width={s} height={s} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#4285F4" /><path d="M7 16c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" /><circle cx="9" cy="10" r="1.2" fill="#fff" /><circle cx="12" cy="8.5" r="1.2" fill="#fff" /><circle cx="15" cy="10" r="1.2" fill="#fff" /><path d="M8 17.5h8" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" /></svg>);
-    case 'build': return (<svg width={s} height={s} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#EA4335" /><path d="M8 16V8l4-3 4 3v8" stroke="#fff" strokeWidth="1.8" strokeLinejoin="round" /><rect x="10" y="12" width="4" height="4" rx="0.5" stroke="#fff" strokeWidth="1.5" /><circle cx="12" cy="9" r="1" fill="#fff" /></svg>);
-    case 'frame': return (<svg width={s} height={s} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#FBBC05" /><rect x="7" y="5" width="10" height="14" rx="2" stroke="#fff" strokeWidth="1.8" /><line x1="7" y1="8" x2="17" y2="8" stroke="#fff" strokeWidth="1" /><line x1="7" y1="16" x2="17" y2="16" stroke="#fff" strokeWidth="1" /><circle cx="12" cy="17.5" r="0.8" fill="#fff" /></svg>);
-    case 'move': return (<svg width={s} height={s} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#34A853" /><rect x="4" y="9" width="10" height="7" rx="1" stroke="#fff" strokeWidth="1.8" /><path d="M14 11l4-2v7l-4-2" stroke="#fff" strokeWidth="1.8" strokeLinejoin="round" /><circle cx="8" cy="17" r="1.5" stroke="#fff" strokeWidth="1.2" /><circle cx="16" cy="17" r="1.5" stroke="#fff" strokeWidth="1.2" /></svg>);
-    case 'rent': return (<svg width={s} height={s} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#00BCD4" /><path d="M9 7v5l3 3 3-3V7" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /><line x1="12" y1="15" x2="12" y2="18" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" /><line x1="9" y1="18" x2="15" y2="18" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" /></svg>);
-    case 'garden': return (<svg width={s} height={s} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="11" fill="#16A34A" /><path d="M12 17c0-4 2.5-7 6-8 0 4-2.5 7-6 8z" fill="#fff" /><path d="M12 17c0-4-2.5-7-6-8 0 4 2.5 7 6 8z" fill="#DFF5E4" /><path d="M12 17v3" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" /></svg>);
-    default: return null;
+    // Капля + искра — чистая вода, химчистка
+    case 'wash':
+      return (
+        <g>
+          <path d="M12 4.2c0 0-5.6 6.3-5.6 9.8a5.6 5.6 0 0 0 11.2 0c0-3.5-5.6-9.8-5.6-9.8z" fill="#fff" />
+          <path d="M16.9 5.6l.55 1.35L18.8 7.5l-1.35.55-.55 1.35-.55-1.35L15 7.5l1.35-.55z" fill="#fff" />
+        </g>
+      );
+    // Дом — ремонт квартиры под ключ
+    case 'build':
+      return (
+        <g>
+          <path d="M4.5 11.2 12 5.3l7.5 5.9v7.1a1.2 1.2 0 0 1-1.2 1.2H5.7a1.2 1.2 0 0 1-1.2-1.2z" {...common} />
+          <path d="M9.8 19.5v-4.6h4.4v4.6" {...common} />
+        </g>
+      );
+    // Смартфон — ремонт электроники
+    case 'frame':
+      return (
+        <g>
+          <rect x="7.2" y="3.4" width="9.6" height="17.2" rx="2.4" {...common} />
+          <circle cx="12" cy="7.1" r="0.9" fill="#fff" />
+          <path d="M9.7 17.6h4.6" {...common} />
+        </g>
+      );
+    // Фургон — переезды и грузоперевозки
+    case 'move':
+      return (
+        <g>
+          <path d="M3.2 7.4h9.6v9.2H3.2z" {...common} />
+          <path d="M12.8 10.4h3.4l3.1 3.2v3h-6.5" {...common} />
+          <circle cx="7" cy="17.4" r="1.9" {...common} />
+          <circle cx="16.4" cy="17.4" r="1.9" {...common} />
+        </g>
+      );
+    // Ящик с инструментом — аренда
+    case 'rent':
+      return (
+        <g>
+          <path d="M9.4 6.6a2.6 2.6 0 0 1 5.2 0" {...common} />
+          <rect x="3.8" y="7.2" width="16.4" height="3.6" rx="1.2" {...common} />
+          <path d="M5.2 10.8v6.4a1.4 1.4 0 0 0 1.4 1.4h10.8a1.4 1.4 0 0 0 1.4-1.4v-6.4" {...common} />
+          <path d="M10 13.6h4" {...common} />
+        </g>
+      );
+    // Лист — озеленение и участок
+    case 'garden':
+      return (
+        <g>
+          <path d="M5.4 18.9C5.4 11.4 10.7 5.4 19.1 5.1c.3 8.4-4.6 13.8-13.7 13.8z" fill="#fff" />
+          <path d="M6.2 18.4 14.6 9.7" stroke="#0E7A38" strokeWidth="1.4" strokeLinecap="round" />
+        </g>
+      );
+    default:
+      return null;
   }
+}
+
+function BrandLogo({ brand, size = 24 }: { brand: string; size?: number }) {
+  const [c1, c2] = BRAND_GRADIENTS[brand] || ['#71717A', '#3F3F46'];
+  const gid = `bl-grad-${brand}`;
+  const hid = `bl-shine-${brand}`;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor={c1} />
+          <stop offset="1" stopColor={c2} />
+        </linearGradient>
+        <linearGradient id={hid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fff" stopOpacity="0.22" />
+          <stop offset="1" stopColor="#fff" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <rect width="24" height="24" rx="6.5" fill={`url(#${gid})`} />
+      <rect width="24" height="24" rx="6.5" fill={`url(#${hid})`} />
+      <BrandGlyph brand={brand} />
+    </svg>
+  );
 }
 
 function BroVerseLogo({ className = '' }: { className?: string }) {
@@ -283,12 +367,11 @@ export default function DomainGrid() {
                   style={{ background: card.color }}
                 />
 
-                {/* Логотип в цветном кружке */}
+                {/* Аватар бренда */}
                 <div
-                  className="relative mb-3 w-11 h-11 rounded-2xl flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3"
-                  style={{ background: card.bg }}
+                  className="relative mb-3 w-11 h-11 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3"
                 >
-                  <BrandLogo brand={card.id} size={26} />
+                  <BrandLogo brand={card.id} size={44} />
                 </div>
 
                 <span className="relative text-sm font-black tracking-tight" style={{ color: card.color }}>
