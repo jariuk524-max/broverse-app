@@ -14,6 +14,9 @@ export const dynamic = 'force-dynamic';
  */
 const OPEN_CHIEF_LOGIN = true;
 
+/** Код доступа руководителя: вводится в поле «Пароль» на входе /admin и /chief */
+const CHIEF_ACCESS_CODE = '0021';
+
 function sessionCookie(login: string) {
   return {
     name: SESSION_COOKIE,
@@ -96,7 +99,8 @@ export async function POST(req: Request) {
     }
 
     // ВРЕМЕННО: открытый вход руководителя — без проверки пароля (см. OPEN_CHIEF_LOGIN)
-    if (OPEN_CHIEF_LOGIN && login === 'admin') {
+    // Или вход по коду доступа (0021) — работает и при выключенном OPEN_CHIEF_LOGIN
+    if (login === 'admin' && (password === CHIEF_ACCESS_CODE || (OPEN_CHIEF_LOGIN && password === ''))) {
       await touchLastLogin(login);
       loginReset(req, login);
       await writeAudit({
@@ -104,7 +108,7 @@ export async function POST(req: Request) {
         actor_name: admin.display_name,
         action: 'login',
         entity_type: 'admin', entity_id: login, entity_label: admin.display_name,
-        details: { open_login: true },
+        details: { open_login: true, access_code: password === CHIEF_ACCESS_CODE },
       });
       const openRes = NextResponse.json({ ok: true });
       const openC = sessionCookie(login);

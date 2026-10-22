@@ -10,7 +10,7 @@ import { NextResponse, type NextRequest } from 'next/server';
   * /api/chat, /api/telegram-notify, /api/order-status, /api/order-chat,
   * /api/browash (галерея «Мои фото» BroWash на лендинге).
   */
-const ACCESS_CODE = process.env.SITE_ACCESS_CODE || 'bv-9f4c2x7q';
+const ACCESS_CODE = process.env.SITE_ACCESS_CODE || '0021';
 const ACCESS_COOKIE = 'bv_access';
 
 const PUBLIC_ALWAYS = ['/privacy', '/coming-soon'];

@@ -15,7 +15,7 @@
   Деплой:   broverse-client.vercel.app (версия: apps/client-site → устарела,
             сейчас деплой идёт из песочницы через vercel CLI)
   Mini-app: @Broverse_ru_bot
-  Содержит: главная с 6 сайтами, /services/*, /admin (PIN: NEXT_PUBLIC_ADMIN_PIN)
+  Содержит: главная с 6 сайтами, /services/*, /admin (код доступа руководителя 0021, поле «Пароль»)
 
 ПОРТ 3002 — СТАРАЯ АДМИНКА
   Источник: /Applications/broverse/apps/admin
@@ -66,7 +66,7 @@ BroCare убран из клиентского хаба: обучение мас
 
 ## Закрытый сайт (на время разработки)
 - proxy.ts: весь публичный сайт (главная, /masters, /services/*, /chat, публичные API)
-  → /coming-soon. Вход владельца: личная ссылка ?access=bv-9f4c2x7q → cookie bv_access (1 год;
+  → /coming-soon. Вход владельца: личная ссылка ?access=0021 → cookie bv_access (1 год;
   переопределение — env SITE_ACCESS_CODE). Всегда открыты: /privacy, /coming-soon, /admin, /chief,
   /api/admin/*. Перед публичным запуском — удалить proxy.ts.
 

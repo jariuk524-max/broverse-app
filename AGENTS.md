@@ -76,7 +76,7 @@
 ## Закрытый публичный сайт (на время разработки)
 - proxy.ts (Next 16, замена middleware): весь публичный сайт (главная, /masters, /services/*,
   /chat, публичные API) → редирект на /coming-soon. Вход владельца: личная ссылка
-  ?access=bv-9f4c2x7q → cookie bv_access (httpOnly, 1 год; переопределение — env SITE_ACCESS_CODE).
+  ?access=0021 → cookie bv_access (httpOnly, 1 год; переопределение — env SITE_ACCESS_CODE).
 - Всегда открыты: /privacy (152-ФЗ), /coming-soon, /admin и /chief (свои аутентификации), /api/admin/*.
 - Перед публичным запуском: удалить/нейтрализовать proxy.ts (вернуть доступ).
 
