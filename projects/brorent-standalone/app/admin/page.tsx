@@ -46,9 +46,36 @@ const TABS: { id: TabId; label: string; role: string | null }[] = [
 /** Руководящие разделы — только в кабинете руководителя (/chief) */
 const CHIEF_ONLY: TabId[] = ['team', 'audit'];
 
+/** Доступ в кабинет руководителя: сам руководитель (admin) или кому он поделился (роль chief) */
+const hasChiefAccess = (s: { login: string; roles: string[] }): boolean =>
+  s.login === 'admin' || s.roles.includes('chief');
+
+/** Разделы навигации сгруппированы — проще понять, где рабочее, где управление */
+const TAB_GROUPS: { label: string; ids: TabId[] }[] = [
+  { label: 'Работа', ids: ['orders', 'chat', 'tasks', 'promos', 'finance'] },
+  { label: 'Контент', ids: ['catalog', 'mirror', 'masters', 'feedback'] },
+  { label: 'Управление', ids: ['team', 'audit'] },
+];
+
+/** Короткое описание каждого раздела — показывается под навигацией */
+const TAB_DESC: Record<TabId, string> = {
+  overview: 'Быстрая сводка проекта и переходы во все разделы',
+  orders: 'Заявки со всех 6 сайтов: принять, отклонить, статусы и контакты',
+  chat: 'Единые треды: сотрудники, клиенты, мастера и поддержка',
+  tasks: 'Задачи и поручения мастерам, их статусы',
+  promos: 'Рекламные акции-плашки на карте заказов мастеров',
+  finance: 'Финансы проекта',
+  masters: 'Анкеты и услуги мастеров: модерация и публикация',
+  feedback: 'Отзывы клиентов всех сайтов',
+  catalog: 'Услуги каталога: описания, цены, фото, добавление и удаление',
+  mirror: 'Как сайт видит клиент: порядок услуг и контент главной',
+  audit: 'История действий всех сотрудников',
+  team: 'Кабинеты сотрудников: доступы, роли, пароли, чаты',
+};
+
 /** Название вкладки: для сотрудника первый раздел — «Мой кабинет» */
 const tabLabel = (id: TabId, roles: string[], chief = false): string => {
-  if (id === 'overview') return chief && roles.includes('team') ? 'Хаб' : 'Мой кабинет';
+  if (id === 'overview') return chief ? 'Хаб' : 'Мой кабинет';
   const t = TABS.find((x) => x.id === id);
   return t ? t.label : '';
 };
@@ -63,6 +90,7 @@ const ROLE_LABEL: Record<string, string> = {
   masters: 'Мастера',
   mirror: 'Зеркало',
   team: 'Команда',
+  chief: 'Кабинет руководителя',
 };
 
 type CatalogService = { category: string; name: string; desc: string; price: string; time: string; image: string; deleted?: boolean; isNew?: boolean };
@@ -274,15 +302,15 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
 
   if (checking) {
     return (
-      <div className="min-h-[100dvh] bg-[#F2F2F7] flex items-center justify-center">
-        <Loader2 size={26} className="animate-spin text-zinc-600" />
+      <div className={`min-h-[100dvh] flex items-center justify-center ${chief ? 'chief-dark bg-[#0A0A0B]' : 'bg-[#F2F2F7]'}`}>
+        <Loader2 size={26} className={`animate-spin ${chief ? 'text-zinc-400' : 'text-zinc-600'}`} />
       </div>
     );
   }
 
   if (!session) {
     return (
-      <div className="min-h-[100dvh] bg-[#F2F2F7] flex items-center justify-center px-4">
+      <div className={`min-h-[100dvh] flex items-center justify-center px-4 ${chief ? 'chief-dark bg-[#0A0A0B]' : 'bg-[#F2F2F7]'}`}>
         <form
           onSubmit={submitAuth}
           className="w-full max-w-[360px] bg-white rounded-[24px] p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)]"
@@ -301,11 +329,13 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
           <div className="w-12 h-12 rounded-2xl bg-zinc-900 flex items-center justify-center mb-4">
             <Lock size={20} className="text-white" />
           </div>
-          <h1 className="text-lg font-bold text-zinc-900 mb-1">BroVerse Админ</h1>
+          <h1 className="text-lg font-bold text-zinc-900 mb-1">{chief ? 'Кабинет руководителя' : 'BroVerse Админ'}</h1>
           <p className="text-[12px] text-zinc-600 mb-4">
             {needSetup
               ? 'Пароль ещё не задан — придумайте свой (от 6 символов)'
-              : 'Вход для сотрудников. Пароль создаётся при первом входе.'}
+              : chief
+                ? 'Вход только для руководителя и сотрудников, с которыми поделились кабинетом.'
+                : 'Вход для сотрудников. Пароль создаётся при первом входе.'}
           </p>
           <input
             type="text"
@@ -355,6 +385,42 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
     );
   }
 
+  // Кабинет руководителя: вход только для руководителя (admin) и тех, с кем он поделился (роль chief)
+  if (chief && !hasChiefAccess(session)) {
+    return (
+      <div className="min-h-[100dvh] chief-dark bg-[#0A0A0B] flex items-center justify-center px-4">
+        <div className="w-full max-w-[360px] bg-[#141417] rounded-[24px] p-6 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-[#1E1E22] flex items-center justify-center mx-auto mb-4">
+            <Lock size={20} className="text-zinc-300" />
+          </div>
+          <h1 className="text-lg font-bold text-white mb-1">Доступ ограничен</h1>
+          <p className="text-[12px] text-zinc-400 mb-1">
+            Кабинет руководителя проекта — только для руководителя.
+          </p>
+          <p className="text-[12px] text-zinc-500 mb-5">
+            Если руководитель поделился с вами кабинетом — войдите под своим логином.
+            Сейчас вы вошли как {session.display_name || session.login}.
+          </p>
+          <div className="space-y-2">
+            <a
+              href="/admin"
+              className="block w-full py-3 rounded-2xl bg-white text-zinc-900 text-sm font-bold active:scale-[0.98] transition-transform"
+            >
+              Перейти в мой кабинет
+            </a>
+            <button
+              type="button"
+              onClick={logout}
+              className="w-full py-3 rounded-2xl bg-[#1E1E22] text-zinc-300 text-sm font-bold active:scale-[0.98] transition-transform"
+            >
+              Выйти
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const canSee = (t: (typeof TABS)[number]) => {
     if (CHIEF_ONLY.includes(t.id) && !chief) return false;
     return !t.role || session.roles.includes(t.role);
@@ -362,7 +428,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
   const visibleTabs = TABS; // все разделы видимы; закрытые — с замком
 
   return (
-    <div className="min-h-[100dvh] bg-[#F2F2F7]" style={{ fontFamily: onest.style.fontFamily }}>
+    <div className={`min-h-[100dvh] ${chief ? 'chief-dark bg-[#0A0A0B]' : 'bg-[#F2F2F7]'}`} style={{ fontFamily: onest.style.fontFamily }}>
       <header className="sticky top-0 z-10 bg-white/70 backdrop-blur-xl border-b border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -411,26 +477,46 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
             </button>
           </div>
         </div>
-        <div className="max-w-2xl mx-auto px-4 pb-3 flex gap-1 bg-zinc-100 rounded-none">
-          <div className="flex gap-1 bg-zinc-100 rounded-full p-1 overflow-x-auto">
-            {visibleTabs.map((t) => {
-              const locked = !canSee(t);
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => {
-                    if (locked) { setLockedTab(t.id); }
-                    else { setLockedTab(null); setTab(t.id); }
-                  }}
-                  className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors whitespace-nowrap inline-flex items-center gap-1 ${!locked && tab === t.id && !lockedTab ? 'bg-white shadow-sm text-zinc-900' : locked ? 'text-zinc-500' : 'text-zinc-500'}`}
-                >
-                  {locked && <Lock size={10} />}
-                  {tabLabel(t.id, session.roles, chief)}
-                </button>
-              );
-            })}
+        <div className="max-w-2xl mx-auto px-4 pb-3">
+          <div className="flex items-center gap-1 bg-zinc-100 rounded-full p-1 overflow-x-auto">
+            {visibleTabs.filter((t) => t.id === 'overview').map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => { setLockedTab(null); setTab(t.id); }}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors whitespace-nowrap inline-flex items-center gap-1 ${!lockedTab && tab === t.id ? (chief ? 'chief-active-pill' : 'bg-white shadow-sm text-zinc-900') : 'text-zinc-500'}`}
+              >
+                {tabLabel(t.id, session.roles, chief)}
+              </button>
+            ))}
+            {TAB_GROUPS.map((g) => (
+              <span key={g.label} className="flex items-center gap-1 shrink-0">
+                <span className="px-1 text-[9px] font-black uppercase tracking-wider text-zinc-400 select-none">{g.label}</span>
+                {g.ids.map((id) => {
+                  const t = visibleTabs.find((x) => x.id === id);
+                  if (!t) return null;
+                  const locked = !canSee(t);
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        if (locked) { setLockedTab(t.id); }
+                        else { setLockedTab(null); setTab(t.id); }
+                      }}
+                      className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors whitespace-nowrap inline-flex items-center gap-1 ${!locked && tab === t.id && !lockedTab ? (chief ? 'chief-active-pill' : 'bg-white shadow-sm text-zinc-900') : locked ? 'text-zinc-500' : 'text-zinc-500'}`}
+                    >
+                      {locked && <Lock size={10} />}
+                      {tabLabel(t.id, session.roles, chief)}
+                    </button>
+                  );
+                })}
+              </span>
+            ))}
           </div>
+          <p className="mt-1.5 px-1.5 text-[10px] leading-snug text-zinc-500">
+            {TAB_DESC[lockedTab || tab]}
+          </p>
         </div>
       </header>
 
@@ -438,7 +524,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
         {lockedTab ? (
           <LockedSection
             label={tabLabel(lockedTab, session.roles, chief)}
-            toChief={CHIEF_ONLY.includes(lockedTab) && session.roles.includes('team')}
+            toChief={CHIEF_ONLY.includes(lockedTab) && hasChiefAccess(session)}
             onBack={() => setLockedTab(null)}
             onAsk={async () => {
               const label = tabLabel(lockedTab, session.roles, chief);
@@ -451,7 +537,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
               setTab('chat');
             }}
           />
-        ) : tab === 'overview' ? (chief && session.roles.includes('team') ? <OverviewTab session={session} onOpenTab={setTab} /> : <MyCabinetTab session={session} onOpenTab={setTab} onAskLocked={setLockedTab} onEditProfile={() => setShowProfile(true)} chief={chief} />) : tab === 'orders' ? <OrdersTab /> : tab === 'chat' ? <ChatTab session={session} /> : tab === 'tasks' ? <TasksTab /> : tab === 'promos' ? <PromosTab /> : tab === 'finance' ? <FinanceTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : tab === 'catalog' ? <CatalogTab /> : tab === 'mirror' ? <MirrorTab /> : tab === 'team' ? <TeamTab session={session} /> : <AuditTab />}
+        ) : tab === 'overview' ? (chief ? <OverviewTab session={session} onOpenTab={setTab} /> : <MyCabinetTab session={session} onOpenTab={setTab} onAskLocked={setLockedTab} onEditProfile={() => setShowProfile(true)} chief={chief} />) : tab === 'orders' ? <OrdersTab /> : tab === 'chat' ? <ChatTab session={session} /> : tab === 'tasks' ? <TasksTab /> : tab === 'promos' ? <PromosTab /> : tab === 'finance' ? <FinanceTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : tab === 'catalog' ? <CatalogTab /> : tab === 'mirror' ? <MirrorTab /> : tab === 'team' ? <TeamTab session={session} /> : <AuditTab />}
       </main>
 
       {showProfile && (
@@ -1391,7 +1477,7 @@ function MyCabinetTab({ session, onOpenTab, onAskLocked, onEditProfile, chief = 
         </button>
       </div>
 
-      {session.roles.includes('team') && (
+      {hasChiefAccess(session) && (
         <a
           href="/chief"
           className="flex items-center justify-between gap-3 bg-zinc-900 rounded-[24px] p-5 shadow-sm active:scale-[0.98] transition-transform"
@@ -4341,7 +4427,7 @@ function ChatTab({ session }: { session: Session }) {
 /* ────────────────────────── КОМАНДА / ИНВАЙТЫ ────────────────────────── */
 
 const ROLE_TEMPLATES: { label: string; roles: string[] }[] = [
-  { label: 'Руководитель', roles: ['overview', 'requests', 'tasks', 'feedback', 'catalog', 'mirror', 'masters', 'team'] },
+  { label: 'Руководитель', roles: ['overview', 'requests', 'tasks', 'feedback', 'catalog', 'mirror', 'masters', 'team', 'chief'] },
   { label: 'Администратор', roles: ['overview', 'requests', 'feedback', 'tasks'] },
   { label: 'Бухгалтер', roles: ['overview', 'finance'] },
   { label: 'Дизайнер/контент', roles: ['overview', 'catalog', 'mirror'] },
@@ -4379,7 +4465,7 @@ const toLogin = (s: string): string =>
     .slice(0, 32);
 
 function TeamTab({ session }: { session: Session }) {
-  const canManage = session.roles.includes('team');
+  const canManage = session.login === 'admin' || session.roles.includes('team');
   const [admins, setAdmins] = useState<{ login: string; display_name: string; roles: string[]; password_set_at: string | null; last_login_at: string | null; avatar_url?: string | null; title?: string | null }[] | null>(null);
   const [newLogin, setNewLogin] = useState('');
   const [newName, setNewName] = useState('');
@@ -4546,6 +4632,14 @@ function TeamTab({ session }: { session: Session }) {
               );
             })}
           </div>
+          {a.roles.includes('chief') && (
+            <a
+              href="/chief"
+              className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-lg bg-zinc-100 text-[10px] font-bold text-zinc-700 hover:bg-zinc-200 transition-colors"
+            >
+              <ShieldCheck size={11} /> Доступ включён — открыть кабинет руководителя →
+            </a>
+          )}
           {activity[a.login]?.length > 0 && (
             <p className="text-[10px] text-zinc-600 mt-2">
               Действия: {activity[a.login].map((x) => `${x.action} · ${new Date(x.created_at).toLocaleDateString('ru-RU')}`).join(' | ')}

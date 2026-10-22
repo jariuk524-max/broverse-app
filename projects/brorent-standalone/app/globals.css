@@ -136,3 +136,66 @@ body {
     .sm\:text-\[15px\] { font-size: 16.5px; }
   }
 }
+
+/* ═══════════ КАБИНЕТ РУКОВОДИТЕЛЯ (/chief) — чёрная тема проекта ═══════════
+   Та же палитра zinc, что и во всём проекте, но со сдвигом в чёрное.
+   Правила вне @layer — перекрывают утилиты Tailwind без !important. */
+.chief-dark .bg-white { background-color: #141417; }
+.chief-dark .bg-white\/70 { background-color: rgba(20, 20, 23, 0.82); }
+.chief-dark .bg-white\/95 { background-color: rgba(20, 20, 23, 0.94); }
+.chief-dark .bg-zinc-50 { background-color: #101013; }
+.chief-dark .bg-zinc-100 { background-color: #1C1C21; }
+.chief-dark .bg-zinc-200 { background-color: #2A2A30; }
+.chief-dark .bg-zinc-700 { background-color: #3F3F46; }
+
+/* Чёрные акценты (кнопки, бейджи, плита «Кабинет руководителя») → светлые */
+.chief-dark .bg-zinc-900 { background-color: #F4F4F5; color: #0A0A0B; }
+.chief-dark .bg-zinc-900 .text-white,
+.chief-dark .bg-zinc-900.text-white { color: #0A0A0B; }
+.chief-dark .hover\:bg-zinc-800:hover { background-color: #E4E4E7; }
+.chief-dark .hover\:bg-zinc-200:hover { background-color: #33333A; }
+
+/* Текст */
+.chief-dark .text-zinc-900 { color: #F4F4F5; }
+.chief-dark .text-zinc-800 { color: #E4E4E7; }
+.chief-dark .text-zinc-700 { color: #D4D4D8; }
+.chief-dark .text-zinc-600 { color: #A1A1AA; }
+.chief-dark .text-zinc-500 { color: #8B8B93; }
+.chief-dark .text-zinc-400 { color: #71717A; }
+
+/* Границы и разделители */
+.chief-dark .border-zinc-50 { border-color: #1B1B20; }
+.chief-dark .border-zinc-100 { border-color: #232329; }
+.chief-dark .border-zinc-200 { border-color: #2C2C33; }
+.chief-dark .border-zinc-300 { border-color: #3A3A42; }
+.chief-dark .border-zinc-400 { border-color: #4B4B55; }
+.chief-dark .border-zinc-900 { border-color: #3F3F46; }
+
+/* Формы: текст в инпутах и плейсхолдеры на тёмном фоне */
+.chief-dark input,
+.chief-dark textarea,
+.chief-dark select {
+  color: #E4E4E7;
+}
+.chief-dark input::placeholder,
+.chief-dark textarea::placeholder {
+  color: #71717A;
+}
+.chief-dark input[type="text"],
+.chief-dark input[type="password"] {
+  -webkit-text-fill-color: #E4E4E7;
+  caret-color: #E4E4E7;
+}
+.chief-dark ::selection {
+  background: #3F3F46;
+  color: #FAFAFA;
+}
+
+/* Активная пилюля навигации — светлая на чёрном */
+.chief-dark .chief-active-pill {
+  background-color: #F4F4F5;
+  color: #0A0A0B;
+}
+
+/* Мягче тени на чёрном фоне */
+.chief-dark .shadow-sm { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }

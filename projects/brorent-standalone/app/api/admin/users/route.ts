@@ -86,7 +86,7 @@ export async function PATCH(req: Request) {
   if (action === 'set_profile') {
     const name = String(body.display_name || '').trim().slice(0, 80);
     if (!name) return NextResponse.json({ error: 'Имя не может быть пустым' }, { status: 400 });
-    if (login !== res.admin.login && !res.admin.roles.includes('team')) {
+    if (login !== res.admin.login && !res.admin.roles.includes('team') && res.admin.login !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     const ok = await updateAdminDisplayName(login, name);
@@ -108,7 +108,7 @@ export async function PATCH(req: Request) {
     if (url && !/^https:\/\/.+\/storage\/v1\/object\/public\/catalog-photos\//.test(url)) {
       return NextResponse.json({ error: 'Недопустимый адрес фото' }, { status: 400 });
     }
-    if (login !== res.admin.login && !res.admin.roles.includes('team')) {
+    if (login !== res.admin.login && !res.admin.roles.includes('team') && res.admin.login !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     await setAvatar(login, url);
@@ -124,7 +124,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  if (!res.admin.roles.includes('team')) {
+  if (!res.admin.roles.includes('team') && res.admin.login !== 'admin') {
     return NextResponse.json({ error: 'Forbidden: needs team' }, { status: 403 });
   }
 

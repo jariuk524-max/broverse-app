@@ -11,10 +11,11 @@ export type AdminRole =
   | 'overview'   // сводка руководителя
   | 'tasks'      // задачи мастерам
   | 'mirror'     // зеркало главной (порядок/контент)
-  | 'finance';   // финансы (бухгалтер)
+  | 'finance'    // финансы (бухгалтер)
+  | 'chief';     // доступ в кабинет руководителя (/chief) — выдаётся руководителем
 
 export const ADMIN_ROLES: AdminRole[] = [
-  'requests', 'feedback', 'catalog', 'masters', 'team', 'overview', 'tasks', 'mirror', 'finance',
+  'requests', 'feedback', 'catalog', 'masters', 'team', 'overview', 'tasks', 'mirror', 'finance', 'chief',
 ];
 
 export type AdminUser = {
