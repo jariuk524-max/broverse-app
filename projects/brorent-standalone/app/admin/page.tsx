@@ -1615,6 +1615,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
   const [pwBusy, setPwBusy] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [promoFor, setPromoFor] = useState<{ id?: string; name?: string } | null>(null);
+  const [confirmDel, setConfirmDel] = useState<{ login: string; name: string } | null>(null);
 
   const load = useCallback(async () => {
     const [o, a, au, ad, lay] = await Promise.all([
@@ -1875,7 +1876,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
   };
 
   const removeCabinet = async (login: string) => {
-    if (!window.confirm(`Удалить кабинет @${login}? Доступ пропадёт сразу.`)) return;
+    setConfirmDel(null);
     await fetch('/api/admin/users', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
@@ -1975,13 +1976,25 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                     {a.title || (a.login === 'admin' ? 'Руководитель проекта' : 'Руководство')} · @{a.login}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setChatWith(a.login)}
-                  className="shrink-0 px-3 py-1.5 rounded-full bg-zinc-100 text-zinc-700 text-[10.5px] font-bold active:scale-95 transition-transform"
-                >
-                  Чат
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setChatWith(a.login)}
+                    className="px-3 py-1.5 rounded-full bg-zinc-100 text-zinc-700 text-[10.5px] font-bold active:scale-95 transition-transform"
+                  >
+                    Чат
+                  </button>
+                  {a.login !== session.login && (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDel({ login: a.login, name: a.display_name || a.login })}
+                      className="px-3 py-1.5 rounded-full bg-white border border-zinc-200 text-red-500 text-[10.5px] font-bold active:scale-95 transition-transform"
+                      title="Удалить кабинет"
+                    >
+                      Удалить
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -2142,7 +2155,7 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                   </button>
                   <button
                     type="button"
-                    onClick={() => removeCabinet(a.login)}
+                    onClick={() => setConfirmDel({ login: a.login, name: a.display_name || a.login })}
                     className="py-1.5 px-2.5 rounded-lg bg-white border border-zinc-200 text-zinc-600 text-[10.5px] font-bold active:scale-95 transition-transform"
                   >
                     Удалить
@@ -2284,6 +2297,34 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
         <Stat label="Отзывов" value={feedbacks.length} sub={`средняя оценка: ${avgRating}`} />
         <Stat label="Не закрытых отзывов" value={unresolvedFb} sub={unresolvedFb ? 'нужна реакция' : 'всё в порядке'} />
       </div>
+
+      {confirmDel && (
+        <div className="fixed inset-0 z-[60] bg-black/40 flex items-end sm:items-center justify-center p-4" onClick={() => setConfirmDel(null)}>
+          <div className="w-full max-w-[360px] bg-white rounded-[24px] p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-[14px] font-bold text-zinc-900">Удалить кабинет?</p>
+            <p className="text-[12px] text-zinc-600 mt-1.5 leading-relaxed">
+              <span className="font-bold text-zinc-900">{confirmDel.name}</span> (@{confirmDel.login}) —
+              доступ пропадёт сразу, история переписки сохранится с пометкой «кабинет удалён».
+            </p>
+            <div className="flex gap-2 mt-4">
+              <button
+                type="button"
+                onClick={() => setConfirmDel(null)}
+                className="flex-1 py-2.5 rounded-xl bg-zinc-100 text-zinc-700 text-[12px] font-bold active:scale-95 transition-transform"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={() => void removeCabinet(confirmDel.login)}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-[12px] font-bold active:scale-95 transition-transform"
+              >
+                Удалить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <PromoEditor
         open={promoFor !== null}
@@ -2556,13 +2597,15 @@ function OverviewTab({ session, onOpenTab }: { session: Session; onOpenTab: (id:
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => { setOpenCabinet(null); removeCabinet(a.login); }}
-                  className="w-full py-2 rounded-xl bg-white border border-zinc-200 text-red-500 text-[11px] font-bold active:scale-95 transition-transform"
-                >
-                  Удалить кабинет
-                </button>
+                {a.login !== session.login && (
+                  <button
+                    type="button"
+                    onClick={() => { setOpenCabinet(null); setConfirmDel({ login: a.login, name: a.display_name || a.login }); }}
+                    className="w-full py-2 rounded-xl bg-white border border-zinc-200 text-red-500 text-[11px] font-bold active:scale-95 transition-transform"
+                  >
+                    Удалить кабинет
+                  </button>
+                )}
               </div>
             </div>
           </div>
