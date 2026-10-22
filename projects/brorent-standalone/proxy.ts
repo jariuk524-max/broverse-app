@@ -26,6 +26,7 @@ const OPEN_API = [
   '/api/order-chat',
   '/api/order-notify',
   '/api/browash',
+  '/api/assist',
 ];
 
 function isAlwaysOpen(pathname: string): boolean {

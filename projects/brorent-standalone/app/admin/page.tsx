@@ -13,6 +13,7 @@ import {
   STATUS_LABEL, orderPayPrice, type ServiceRequest, type RequestStatus,
 } from '@/lib/requests';
 import { unlockDirectionForMaster } from '@/lib/admin/unlock';
+import SupportChat from '@/components/SupportChat';
 import { Onest } from 'next/font/google';
 
 const onest = Onest({ subsets: ['latin', 'cyrillic'], display: 'swap' });
@@ -204,6 +205,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
   const [tab, setTab] = useState<TabId>('orders');
   const [lockedTab, setLockedTab] = useState<TabId | null>(null);
   const [showProfile, setShowProfile] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
   const [cabinetLink, setCabinetLink] = useState<string | null>(null);
   const [setupAvatar, setSetupAvatar] = useState<string | null>(null);
 
@@ -231,7 +233,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
         // ВРЕМЕННО: открытый вход руководителя — войти сразу без пароля.
         // Личные кабинеты (/admin/xxx и ?c=) не трогаем — там вход своим паролем.
         const c = new URLSearchParams(window.location.search).get('c')?.trim() || '';
-        if (cabinet || c) return;
+        if (cabinet || c || chief) return;
         const rr = await fetch('/api/admin/session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -309,6 +311,8 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
   }
 
   if (!session) {
+    // Кабинет руководителя закрыт для гостей — только сообщение руководителю/поддержка
+    if (chief) return <ChiefLockedScreen />;
     return (
       <div className={`min-h-[100dvh] flex items-center justify-center px-4 ${chief ? 'chief-dark bg-[#0A0A0B]' : 'bg-[#F2F2F7]'}`}>
         <form
@@ -524,7 +528,6 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
         {lockedTab ? (
           <LockedSection
             label={tabLabel(lockedTab, session.roles, chief)}
-            toChief={CHIEF_ONLY.includes(lockedTab) && hasChiefAccess(session)}
             onBack={() => setLockedTab(null)}
             onAsk={async () => {
               const label = tabLabel(lockedTab, session.roles, chief);
@@ -537,8 +540,10 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
               setTab('chat');
             }}
           />
-        ) : tab === 'overview' ? (chief ? <OverviewTab session={session} onOpenTab={setTab} /> : <MyCabinetTab session={session} onOpenTab={setTab} onAskLocked={setLockedTab} onEditProfile={() => setShowProfile(true)} chief={chief} />) : tab === 'orders' ? <OrdersTab /> : tab === 'chat' ? <ChatTab session={session} /> : tab === 'tasks' ? <TasksTab /> : tab === 'promos' ? <PromosTab /> : tab === 'finance' ? <FinanceTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : tab === 'catalog' ? <CatalogTab /> : tab === 'mirror' ? <MirrorTab /> : tab === 'team' ? <TeamTab session={session} /> : <AuditTab />}
+        ) : tab === 'overview' ? (chief ? <OverviewTab session={session} onOpenTab={setTab} /> : <MyCabinetTab session={session} onOpenTab={setTab} onAskLocked={setLockedTab} onEditProfile={() => setShowProfile(true)} onOpenSupport={() => setSupportOpen(true)} chief={chief} />) : tab === 'orders' ? <OrdersTab /> : tab === 'chat' ? <ChatTab session={session} /> : tab === 'tasks' ? <TasksTab /> : tab === 'promos' ? <PromosTab /> : tab === 'finance' ? <FinanceTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : tab === 'catalog' ? <CatalogTab /> : tab === 'mirror' ? <MirrorTab /> : tab === 'team' ? <TeamTab session={session} /> : <AuditTab />}
       </main>
+
+      <SupportChat open={supportOpen} onClose={() => setSupportOpen(false)} />
 
       {showProfile && (
         <ProfilePanel session={session} onClose={() => setShowProfile(false)} onLogout={logout} onAvatar={(url) => setSession((s) => (s ? { ...s, avatar_url: url } : s))} onName={(n) => setSession((s) => (s ? { ...s, display_name: n } : s))} />
@@ -1453,11 +1458,12 @@ const TAB_ICONS: Record<TabId, React.ComponentType<{ size?: number; className?: 
   mirror: LayoutGrid, audit: History, team: Users,
 };
 
-function MyCabinetTab({ session, onOpenTab, onAskLocked, onEditProfile, chief = false }: {
+function MyCabinetTab({ session, onOpenTab, onAskLocked, onEditProfile, onOpenSupport, chief = false }: {
   session: Session;
   onOpenTab: (id: TabId) => void;
   onAskLocked: (id: TabId) => void;
   onEditProfile: () => void;
+  onOpenSupport: () => void;
   chief?: boolean;
 }) {
   const sections = TABS.filter((t) => t.id !== 'overview' && (chief || !CHIEF_ONLY.includes(t.id)));
@@ -1485,19 +1491,18 @@ function MyCabinetTab({ session, onOpenTab, onAskLocked, onEditProfile, chief = 
         </button>
       </div>
 
-      {hasChiefAccess(session) && (
-        <a
-          href="/chief"
-          className="flex items-center justify-between gap-3 bg-zinc-900 rounded-[24px] p-5 shadow-sm active:scale-[0.98] transition-transform"
-        >
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">Для руководителя</p>
-            <p className="text-[15px] font-black text-white mt-0.5">Кабинет руководителя проекта</p>
-            <p className="text-[11px] text-zinc-600 mt-0.5">Создание кабинетов, доступы к навыкам, история работы</p>
-          </div>
-          <ChevronRight size={18} className="text-white shrink-0" />
-        </a>
-      )}
+      <button
+        type="button"
+        onClick={onOpenSupport}
+        className="w-full flex items-center justify-between gap-3 bg-zinc-900 rounded-[24px] p-5 shadow-sm active:scale-[0.98] transition-transform text-left"
+      >
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">Помощь</p>
+          <p className="text-[15px] font-black text-white mt-0.5">Поддержка BroVerse</p>
+          <p className="text-[11px] text-zinc-600 mt-0.5">Помощник подскажет по кабинету, заявкам и разделам</p>
+        </div>
+        <Sparkles size={18} className="text-white shrink-0" />
+      </button>
 
       <div>
         <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-2 px-1">Разделы</p>
@@ -4149,7 +4154,7 @@ function FinanceTab() {
 
 /* ────────────────────────── ЗАКРЫТЫЙ РАЗДЕЛ + ЧАТ ────────────────────────── */
 
-function LockedSection({ label, onAsk, onBack, toChief = false }: { label: string; onAsk: () => void; onBack: () => void; toChief?: boolean }) {
+function LockedSection({ label, onAsk, onBack }: { label: string; onAsk: () => void; onBack: () => void }) {
   const [sent, setSent] = useState(false);
   return (
     <div className="bg-white rounded-[24px] p-8 text-center shadow-sm">
@@ -4165,27 +4170,16 @@ function LockedSection({ label, onAsk, onBack, toChief = false }: { label: strin
       </div>
       <p className="text-[15px] font-bold text-zinc-900">Раздел «{label}» закрыт</p>
       <p className="text-[12px] text-zinc-600 mt-2 leading-relaxed max-w-[280px] mx-auto">
-        {toChief
-          ? 'Это руководящий раздел: создание кабинетов, доступы и история работы сотрудников — в кабинете руководителя.'
-          : 'Руководитель открывает разделы по мере необходимости. Можно сразу попросить — сообщение уйдёт в чат.'}
+        Руководитель открывает разделы по мере необходимости. Можно сразу попросить — сообщение уйдёт в чат.
       </p>
-      {toChief ? (
-        <a
-          href="/chief"
-          className="mt-5 px-5 py-3 rounded-2xl bg-zinc-900 text-white text-[13px] font-bold active:scale-95 transition-transform inline-flex items-center gap-1.5"
-        >
-          <Users size={14} /> Перейти в кабинет руководителя
-        </a>
-      ) : (
-        <button
-          type="button"
-          disabled={sent}
-          onClick={() => { onAsk(); setSent(true); }}
-          className="mt-5 px-5 py-3 rounded-2xl bg-zinc-900 text-white text-[13px] font-bold active:scale-95 transition-transform disabled:opacity-50 inline-flex items-center gap-1.5"
-        >
-          <Send size={14} /> {sent ? 'Отправлено руководителю' : 'Попросить открыть раздел'}
-        </button>
-      )}
+      <button
+        type="button"
+        disabled={sent}
+        onClick={() => { onAsk(); setSent(true); }}
+        className="mt-5 px-5 py-3 rounded-2xl bg-zinc-900 text-white text-[13px] font-bold active:scale-95 transition-transform disabled:opacity-50 inline-flex items-center gap-1.5"
+      >
+        <Send size={14} /> {sent ? 'Отправлено руководителю' : 'Попросить открыть раздел'}
+      </button>
     </div>
   );
 }
@@ -4707,14 +4701,6 @@ function TeamTab({ session }: { session: Session }) {
               );
             })}
           </div>
-          {a.roles.includes('chief') && (
-            <a
-              href="/chief"
-              className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-lg bg-zinc-100 text-[10px] font-bold text-zinc-700 hover:bg-zinc-200 transition-colors"
-            >
-              <ShieldCheck size={11} /> Доступ включён — открыть кабинет руководителя →
-            </a>
-          )}
           {activity[a.login]?.length > 0 && (
             <p className="text-[10px] text-zinc-600 mt-2">
               Действия: {activity[a.login].map((x) => `${x.action} · ${new Date(x.created_at).toLocaleDateString('ru-RU')}`).join(' | ')}
@@ -5059,6 +5045,118 @@ function ProfilePanel({ session, onClose, onLogout, onAvatar, onName }: { sessio
         >
           <LogOut size={13} /> Выйти
         </button>
+      </div>
+    </div>
+  );
+}
+
+
+/* ───────────────── ЗАКРЫТЫЙ КАБИНЕТ РУКОВОДИТЕЛЯ (для гостей) ───────────────── */
+
+function ChiefLockedScreen() {
+  const [name, setName] = useState('');
+  const [contact, setContact] = useState('');
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [err, setErr] = useState('');
+
+  const send = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (busy || !name.trim() || !text.trim()) return;
+    setBusy(true);
+    setErr('');
+    try {
+      const r = await fetch('/api/admin/chief-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, contact, text }),
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({} as { error?: string }));
+        setErr(d.error || 'Не удалось отправить');
+        return;
+      }
+      setSent(true);
+      setName(''); setContact(''); setText('');
+    } catch {
+      setErr('Сеть недоступна — попробуйте позже');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const D =
+    'w-full px-4 py-3 rounded-2xl bg-[#0F0F11] border border-white/10 text-[13px] text-white placeholder:text-zinc-500 outline-none focus:border-white/25 transition-colors';
+
+  return (
+    <div className="min-h-[100dvh] chief-dark bg-[#0A0A0B] flex items-center justify-center px-4">
+      <div className="w-full max-w-[380px] bg-[#141417] rounded-[24px] p-6 text-center">
+        <span className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center mx-auto">
+          <Lock size={20} className="text-zinc-400" />
+        </span>
+        <p className="text-[17px] font-black text-white mt-4">Кабинет руководителя закрыт</p>
+        <p className="text-[12.5px] text-zinc-500 mt-1.5 leading-relaxed">
+          Вход только для руководителя проекта. Если вам нужна помощь — напишите сообщение,
+          оно уйдёт руководителю и поддержке.
+        </p>
+
+        {sent ? (
+          <div className="mt-5 space-y-3">
+            <p className="text-[13px] text-white font-semibold">
+              Сообщение отправлено руководителю проекта
+            </p>
+            <button
+              type="button"
+              onClick={() => setSent(false)}
+              className="w-full py-3 rounded-2xl bg-white text-zinc-900 text-[13px] font-bold active:scale-95 transition-transform"
+            >
+              Написать ещё
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={send} className="mt-5 space-y-2.5 text-left">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ваше имя*"
+              maxLength={80}
+              className={D}
+            />
+            <input
+              value={contact}
+              onChange={(e) => setContact(e.target.value)}
+              placeholder="Телефон или Telegram (необязательно)"
+              maxLength={80}
+              className={D}
+            />
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Сообщение руководителю проекта*"
+              rows={3}
+              maxLength={1000}
+              className={D + ' resize-none'}
+            />
+            {err && <p className="text-[11.5px] font-semibold text-red-400">{err}</p>}
+            <button
+              type="submit"
+              disabled={busy || !name.trim() || !text.trim()}
+              className="w-full py-3 rounded-2xl bg-white text-zinc-900 text-[13px] font-bold active:scale-95 transition-transform disabled:opacity-40"
+            >
+              {busy ? 'Отправка…' : 'Отправить руководителю'}
+            </button>
+          </form>
+        )}
+
+        <div className="mt-4 pt-4 border-t border-white/10">
+          <a
+            href="/admin"
+            className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-zinc-400 hover:text-white transition-colors"
+          >
+            Поддержка и помощь →
+          </a>
+        </div>
       </div>
     </div>
   );
