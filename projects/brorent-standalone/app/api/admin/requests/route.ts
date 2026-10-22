@@ -42,7 +42,7 @@ export async function PATCH(req: Request) {
   }
 
   const db = supabase();
-  const { data: before } = await db.from('orders').select('status, service_name, metadata').eq('id', id).single();
+  const { data: before } = await db.from('orders').select('status, service_name, metadata, client_phone').eq('id', id).single();
   if (!before) return NextResponse.json({ error: 'Заявка не найдена' }, { status: 404 });
 
   const { error } = await db.from('orders').update({ status }).eq('id', id);
@@ -54,6 +54,26 @@ export async function PATCH(req: Request) {
       .from('orders')
       .update({ metadata: { ...(before.metadata || {}), decline_reason: comment } })
       .eq('id', id);
+  }
+
+  // Анкета мастера: одобрение/отклонение синхронизируем с кабинетом мастеров
+  // (таблица master_profiles — иначе у мастера висит pending и карта заказов закрыта)
+  const isMasterAnket = before.service_name === 'Анкета мастера' || (before.metadata as Record<string, unknown>)?.domain === 'master';
+  if (isMasterAnket && (status === 'approved' || status === 'rejected') && before.client_phone) {
+    const digits = String(before.client_phone).replace(/\D/g, '').slice(-10);
+    if (digits.length >= 10) {
+      const { data: profRows } = await db
+        .from('master_profiles')
+        .select('id, phone')
+        .or(`phone.eq.${before.client_phone},phone.eq.+7${digits}`)
+        .limit(5);
+      for (const row of profRows || []) {
+        const rowDigits = String(row.phone || '').replace(/\D/g, '').slice(-10);
+        if (rowDigits === digits) {
+          await db.from('master_profiles').update({ status }).eq('id', row.id);
+        }
+      }
+    }
   }
 
   await writeAudit({
