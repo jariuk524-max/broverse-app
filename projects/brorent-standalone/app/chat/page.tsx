@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2, MessageCircle, Send, Home, Paperclip } from 'lucide
 import ConsentCheckbox from '@/components/ConsentCheckbox';
 import DevStub from '@/components/DevStub';
 import { DATA_COLLECTION_LOCKED } from '@/lib/site-config';
+import { useDataUnlocked } from '@/lib/data-lock';
 import { useClientAuth } from '@/lib/use-client-auth';
 
 type ChatMsg = {
@@ -172,7 +173,8 @@ export default function ChatPage() {
   };
 
   // 152-ФЗ: на время разработки вход закрыт заглушкой — данные не собираются
-  if (DATA_COLLECTION_LOCKED) return <DevStub variant="page" title="Чат временно закрыт" />;
+  const dataUnlocked = useDataUnlocked();
+  if (DATA_COLLECTION_LOCKED && !dataUnlocked) return <DevStub variant="page" title="Чат временно закрыт" />;
 
   /* ── Вход по номеру ── */
   if (!profile) {

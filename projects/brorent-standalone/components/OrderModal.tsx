@@ -8,6 +8,7 @@ import { saveOrder } from '@/components/Header';
 import ConsentCheckbox from '@/components/ConsentCheckbox';
 import DevStub from '@/components/DevStub';
 import { DATA_COLLECTION_LOCKED } from '@/lib/site-config';
+import { isDataUnlockedNow } from '@/lib/data-lock';
 import { useClientAuth } from '@/lib/use-client-auth';
 
 export type OrderServiceItem = {
@@ -117,8 +118,9 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
     setTimeout(onClose, 300);
   }, [onClose]);
 
-  // 152-ФЗ: на время разработки вход закрыт заглушкой — данные не собираются
-  if (DATA_COLLECTION_LOCKED) return <DevStub variant="card" onClose={onClose} title="Заказы временно закрыты" />;
+  // 152-ФЗ: на время разработки вход закрыт заглушкой — данные не собираются.
+  // Владелец (вход по 0021 → cookie bv_owner) видит реальную форму.
+  if (DATA_COLLECTION_LOCKED && !isDataUnlockedNow()) return <DevStub variant="card" onClose={onClose} title="Заказы временно закрыты" />;
 
   const today = new Date();
   const tomorrow = new Date(today);

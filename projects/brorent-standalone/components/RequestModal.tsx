@@ -6,6 +6,7 @@ import { createServiceRequest } from '@/lib/requests';
 import ConsentCheckbox from '@/components/ConsentCheckbox';
 import DevStub from '@/components/DevStub';
 import { DATA_COLLECTION_LOCKED } from '@/lib/site-config';
+import { isDataUnlockedNow } from '@/lib/data-lock';
 import { useClientAuth } from '@/lib/use-client-auth';
 
 interface RequestModalProps {
@@ -47,7 +48,7 @@ export default function RequestModal({
   const auth = useClientAuth();
 
   // 152-ФЗ: на время разработки вход закрыт заглушкой — данные не собираются
-  if (DATA_COLLECTION_LOCKED) return <DevStub variant="card" onClose={onClose} title="Заявки временно закрыты" />;
+  if (DATA_COLLECTION_LOCKED && !isDataUnlockedNow()) return <DevStub variant="card" onClose={onClose} title="Заявки временно закрыты" />;
 
   const handlePhotoClick = () => fileInputRef.current?.click();
 

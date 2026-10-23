@@ -1,4 +1,5 @@
 import { Construction } from 'lucide-react';
+import AccessForm from './AccessForm';
 
 export const metadata = {
   title: 'BroVerse — проект в разработке',
@@ -19,6 +20,7 @@ export default function ComingSoonPage() {
         Проект BroVerse сейчас в стадии разработки и пока не работает —
         запустимся, когда всё будет готово.
       </p>
+      <AccessForm />
     </div>
   );
 }

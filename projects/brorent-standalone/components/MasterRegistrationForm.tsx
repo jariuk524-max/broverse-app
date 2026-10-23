@@ -7,6 +7,7 @@ import { createServiceRequest } from '@/lib/requests';
 import ConsentCheckbox from '@/components/ConsentCheckbox';
 import DevStub from '@/components/DevStub';
 import { DATA_COLLECTION_LOCKED } from '@/lib/site-config';
+import { useDataUnlocked } from '@/lib/data-lock';
 
 const SPECIALIZATIONS = [
   { id: 'wash', label: 'Химчистка мебели', emoji: '🛋️' },
@@ -86,7 +87,8 @@ export default function MasterRegistrationForm() {
   };
 
   // 152-ФЗ: на время разработки вход закрыт заглушкой — данные не собираются
-  if (DATA_COLLECTION_LOCKED) return <DevStub variant="page" title="Регистрация мастеров временно закрыта" />;
+  const dataUnlocked = useDataUnlocked();
+  if (DATA_COLLECTION_LOCKED && !dataUnlocked) return <DevStub variant="page" title="Регистрация мастеров временно закрыта" />;
 
   if (submitted) {
     return (

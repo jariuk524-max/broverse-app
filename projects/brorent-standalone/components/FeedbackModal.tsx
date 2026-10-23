@@ -6,6 +6,7 @@ import { findRequestsByPhone, submitFeedback, feedbackAccess, type ServiceReques
 import ConsentCheckbox from '@/components/ConsentCheckbox';
 import DevStub from '@/components/DevStub';
 import { DATA_COLLECTION_LOCKED } from '@/lib/site-config';
+import { isDataUnlockedNow } from '@/lib/data-lock';
 import { useClientAuth } from '@/lib/use-client-auth';
 
 interface FeedbackModalProps {
@@ -66,7 +67,7 @@ export default function FeedbackModal({ onClose }: FeedbackModalProps) {
   const handleClose = useCallback(() => onClose(), [onClose]);
 
   // 152-ФЗ: на время разработки вход закрыт заглушкой — данные не собираются
-  if (DATA_COLLECTION_LOCKED) return <DevStub variant="card" onClose={onClose} title="Отзывы временно закрыты" />;
+  if (DATA_COLLECTION_LOCKED && !isDataUnlockedNow()) return <DevStub variant="card" onClose={onClose} title="Отзывы временно закрыты" />;
 
   /* ── Успех ── */
   if (done) {

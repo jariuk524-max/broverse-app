@@ -2,8 +2,10 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 /**
  * ЗАКРЫТИЕ ПУБЛИЧНОГО САЙТА НА ВРЕМЯ РАЗРАБОТКИ.
- * Владелец входит один раз по личной ссылке ?access=<CODE> — ставится
- * cookie bv_access (httpOnly, 1 год), дальше сайт открыт.
+ * Владелец входит один раз по личной ссылке ?access=<CODE> или паролем
+ * на /coming-soon — ставится cookie bv_access (httpOnly, 1 год), дальше сайт
+ * открыт; параллельно ставится bv_owner=1 — JS с ней снимает заглушки
+ * публичных форм (DevStub), чтобы владелец видел реальные доработки.
  * Всегда открыты: /privacy (152-ФЗ), /coming-soon (сама заглушка),
  * /admin и /chief (свои аутентификации), /api/admin/*,
  * вход клиента и его точки: /api/client-* (в т.ч. Telegram-webhook бота),
@@ -12,6 +14,15 @@ import { NextResponse, type NextRequest } from 'next/server';
   */
 const ACCESS_CODE = process.env.SITE_ACCESS_CODE || '0021';
 const ACCESS_COOKIE = 'bv_access';
+/** Пара bv_owner (не httpOnly) — JS на странице снимает заглушки форм (DevStub) */
+const OWNER_COOKIE = 'bv_owner';
+
+const COOKIE_OPTS = {
+  sameSite: 'lax' as const,
+  secure: process.env.NODE_ENV === 'production',
+  path: '/',
+  maxAge: 60 * 60 * 24 * 365,
+};
 
 const PUBLIC_ALWAYS = ['/privacy', '/coming-soon'];
 
@@ -44,21 +55,22 @@ export function proxy(req: NextRequest) {
   if (isAlwaysOpen(pathname)) return NextResponse.next();
 
   if (req.cookies.get(ACCESS_COOKIE)?.value === ACCESS_CODE) {
-    return NextResponse.next();
+    // Владелец уже вошёл ранее — досылаем пару-флаг для снятия заглушек форм
+    const res = NextResponse.next();
+    res.cookies.set(OWNER_COOKIE, '1', { ...COOKIE_OPTS, httpOnly: false });
+    return res;
   }
 
   const given = req.nextUrl.searchParams.get('access');
-  if (given && given === ACCESS_CODE) {
+  if (given) {
+    if (given !== ACCESS_CODE) {
+      return NextResponse.redirect(new URL('/coming-soon?denied=1', req.url));
+    }
     const url = req.nextUrl.clone();
     url.searchParams.delete('access');
     const res = NextResponse.redirect(url);
-    res.cookies.set(ACCESS_COOKIE, ACCESS_CODE, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 365,
-    });
+    res.cookies.set(ACCESS_COOKIE, ACCESS_CODE, { ...COOKIE_OPTS, httpOnly: true });
+    res.cookies.set(OWNER_COOKIE, '1', { ...COOKIE_OPTS, httpOnly: false });
     return res;
   }
 
