@@ -6,7 +6,7 @@ import {
   ShieldCheck, Package, ImageIcon, Lock, Star, MessageSquare,
   LogOut, User, History, Plus, BarChart3, ListTodo, LayoutGrid,
   ChevronUp, ChevronDown, ChevronRight, Send, Search, Square, CheckSquare, X, Paperclip,
-  Eye, RefreshCw, KeyRound, Users, GripVertical, Trash2, Camera, ImagePlus, Sparkles,
+  Eye, RefreshCw, KeyRound, Users, GripVertical, Trash2, Camera, ImagePlus, Sparkles, Globe,
 } from 'lucide-react';
 import {
   listServiceRequests, getRequestSnapshot,
@@ -31,7 +31,7 @@ type Session = {
   avatar_url?: string | null;
 };
 
-type TabId = 'overview' | 'orders' | 'chat' | 'tasks' | 'promos' | 'finance' | 'masters' | 'feedback' | 'catalog' | 'mirror' | 'audit' | 'team';
+type TabId = 'overview' | 'orders' | 'chat' | 'tasks' | 'promos' | 'finance' | 'masters' | 'feedback' | 'catalog' | 'mirror' | 'audit' | 'team' | 'links';
 
 const TABS: { id: TabId; label: string; role: string | null }[] = [
   { id: 'overview', label: 'Обзор', role: null },
@@ -46,10 +46,11 @@ const TABS: { id: TabId; label: string; role: string | null }[] = [
   { id: 'mirror', label: 'Зеркало', role: 'mirror' },
   { id: 'audit', label: 'Аудит', role: 'team' },
   { id: 'team', label: 'Команда', role: 'team' },
+  { id: 'links', label: 'Ссылки', role: 'team' },
 ];
 
 /** Руководящие разделы — только в кабинете руководителя (/chief) */
-const CHIEF_ONLY: TabId[] = ['team', 'audit'];
+const CHIEF_ONLY: TabId[] = ['team', 'audit', 'links'];
 
 /** Доступ в кабинет руководителя: сам руководитель (admin) или кому он поделился (роль chief) */
 const hasChiefAccess = (s: { login: string; roles: string[] }): boolean =>
@@ -59,7 +60,7 @@ const hasChiefAccess = (s: { login: string; roles: string[] }): boolean =>
 const TAB_GROUPS: { label: string; ids: TabId[] }[] = [
   { label: 'Работа', ids: ['orders', 'chat', 'tasks', 'promos', 'finance'] },
   { label: 'Контент', ids: ['catalog', 'mirror', 'masters', 'feedback'] },
-  { label: 'Управление', ids: ['team', 'audit'] },
+  { label: 'Управление', ids: ['team', 'audit', 'links'] },
 ];
 
 /** Короткое описание каждого раздела — показывается под навигацией */
@@ -76,6 +77,7 @@ const TAB_DESC: Record<TabId, string> = {
   mirror: 'Как сайт видит клиент: порядок услуг и контент главной',
   audit: 'История действий всех сотрудников',
   team: 'Кабинеты сотрудников: доступы, роли, пароли, чаты',
+  links: 'Ссылки на проект без заглушки — вход по коду 0021',
 };
 
 /** Название вкладки: для сотрудника первый раздел — «Мой кабинет» */
@@ -546,7 +548,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
               setTab('chat');
             }}
           />
-        ) : tab === 'overview' ? (chief ? <OverviewTab session={session} onOpenTab={setTab} /> : <MyCabinetTab session={session} onOpenTab={setTab} onAskLocked={setLockedTab} onEditProfile={() => setShowProfile(true)} onOpenSupport={() => setSupportOpen(true)} chief={chief} />) : tab === 'orders' ? <OrdersTab /> : tab === 'chat' ? <ChatTab session={session} /> : tab === 'tasks' ? <TasksTab /> : tab === 'promos' ? <PromosTab /> : tab === 'finance' ? <FinanceTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : tab === 'catalog' ? <CatalogTab /> : tab === 'mirror' ? <MirrorTab /> : tab === 'team' ? <TeamTab session={session} /> : <AuditTab />}
+        ) : tab === 'overview' ? (chief ? <OverviewTab session={session} onOpenTab={setTab} /> : <MyCabinetTab session={session} onOpenTab={setTab} onAskLocked={setLockedTab} onEditProfile={() => setShowProfile(true)} onOpenSupport={() => setSupportOpen(true)} chief={chief} />) : tab === 'orders' ? <OrdersTab /> : tab === 'chat' ? <ChatTab session={session} /> : tab === 'tasks' ? <TasksTab /> : tab === 'promos' ? <PromosTab /> : tab === 'finance' ? <FinanceTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : tab === 'catalog' ? <CatalogTab /> : tab === 'mirror' ? <MirrorTab /> : tab === 'team' ? <TeamTab session={session} /> : tab === 'links' ? <LinksTab /> : <AuditTab />}
       </main>
 
       <SupportChat open={supportOpen} onClose={() => setSupportOpen(false)} session={session} />
@@ -1461,7 +1463,7 @@ const TAB_ICONS: Record<TabId, React.ComponentType<{ size?: number; className?: 
   overview: BarChart3, orders: Package, chat: MessageSquare, tasks: ListTodo,
   promos: Sparkles,
   finance: History, masters: Star, feedback: Star, catalog: ImageIcon,
-  mirror: LayoutGrid, audit: History, team: Users,
+  mirror: LayoutGrid, audit: History, team: Users, links: Globe,
 };
 
 function MyCabinetTab({ session, onOpenTab, onAskLocked, onEditProfile, onOpenSupport, chief = false }: {
@@ -5424,6 +5426,159 @@ function ChiefLockedScreen() {
           </a>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ────────────────────────── ССЫЛКИ НА ПРОЕКТ (руководитель) ────────────────────────── */
+
+/** Пароль раздела (тот же код доступа, что на закрытых сайтах) */
+const LINKS_ACCESS_CODE = '0021';
+
+type ProjectLink = { label: string; path: string; always?: boolean };
+
+const PROJECT_LINK_GROUPS: { title: string; note: string; base: string; items: ProjectLink[] }[] = [
+  {
+    title: 'Кабинет мастеров',
+    note: 'broverse-masters.vercel.app — вход мастеров по телефону, кабинет, сайты брендов',
+    base: 'https://broverse-masters.vercel.app',
+    items: [
+      { label: 'Кабинет (главная)', path: '/' },
+      { label: 'Лендинг кабинета', path: '/master' },
+      { label: 'BroRent', path: '/rent' },
+      { label: 'BroWash', path: '/wash' },
+      { label: 'BroMove', path: '/move' },
+      { label: 'BroFrame', path: '/frame' },
+      { label: 'BroBuild', path: '/build' },
+      { label: 'Политика ПДн (открыта всем)', path: '/privacy', always: true },
+      { label: 'Публичная заглушка', path: '/coming-soon', always: true },
+    ],
+  },
+  {
+    title: 'Песочница (клиентский хаб)',
+    note: 'broverse-client.vercel.app — хаб 6 сайтов, услуги, чат, кабинеты',
+    base: 'https://broverse-client.vercel.app',
+    items: [
+      { label: 'Главная', path: '/' },
+      { label: 'Мастера', path: '/masters' },
+      { label: 'Услуги BroWash', path: '/services/wash' },
+      { label: 'Услуги BroBuild', path: '/services/build' },
+      { label: 'Услуги BroFrame', path: '/services/frame' },
+      { label: 'Услуги BroMove', path: '/services/move' },
+      { label: 'Услуги BroRent', path: '/services/rent' },
+      { label: 'Услуги BroGarden', path: '/services/garden' },
+      { label: 'Услуги BroVerse', path: '/services/verse' },
+      { label: 'Чат', path: '/chat' },
+      { label: 'Политика ПДн (открыта всем)', path: '/privacy', always: true },
+      { label: 'Публичная заглушка', path: '/coming-soon', always: true },
+    ],
+  },
+];
+
+function projectLinkUrl(base: string, item: ProjectLink): string {
+  return item.always ? `${base}${item.path}` : `${base}${item.path}?access=${LINKS_ACCESS_CODE}`;
+}
+
+function LinksTab() {
+  const [unlocked, setUnlocked] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem('bv_links_unlocked') === '1';
+  });
+  const [pass, setPass] = useState('');
+  const [err, setErr] = useState('');
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const unlock = () => {
+    if (pass.trim() !== LINKS_ACCESS_CODE) {
+      setErr('Неверный пароль');
+      return;
+    }
+    window.localStorage.setItem('bv_links_unlocked', '1');
+    setUnlocked(true);
+    setErr('');
+    setPass('');
+  };
+
+  const copy = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(url);
+      setTimeout(() => setCopied(null), 1500);
+    } catch { /* clipboard недоступен */ }
+  };
+
+  if (!unlocked) {
+    return (
+      <div className="max-w-[420px] mx-auto mt-12 bg-white rounded-3xl border border-zinc-200 p-6 text-center shadow-sm">
+        <div className="w-12 h-12 rounded-2xl bg-zinc-100 flex items-center justify-center mx-auto mb-4">
+          <Lock size={20} className="text-zinc-500" />
+        </div>
+        <h2 className="text-lg font-bold text-zinc-900 mb-1">Ссылки на проект</h2>
+        <p className="text-[13px] text-zinc-500 mb-4">
+          Раздел закрыт — введите пароль доступа.
+        </p>
+        <input
+          type="password"
+          value={pass}
+          onChange={(e) => setPass(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') unlock(); }}
+          placeholder="Пароль"
+          className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-[15px] outline-none focus:border-zinc-400 mb-2"
+        />
+        {err && <p className="text-[12px] text-red-500 mb-2 text-left">{err}</p>}
+        <button
+          onClick={unlock}
+          className="w-full py-3 rounded-2xl bg-zinc-900 text-white text-sm font-bold active:scale-[0.98] transition-transform"
+        >
+          Открыть
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <p className="text-[12px] text-zinc-500">
+        Сайты проекта закрыты заглушкой на время разработки (152-ФЗ — публичный сбор ПДн остановлен).
+        Ссылки открывают проект с входом по коду доступа: cookie ставится на год,
+        после этого сайты открываются напрямую.
+      </p>
+      {PROJECT_LINK_GROUPS.map((g) => (
+        <div key={g.title} className="bg-white rounded-3xl border border-zinc-200 p-5">
+          <h3 className="text-[15px] font-bold text-zinc-900 mb-0.5">{g.title}</h3>
+          <p className="text-[12px] text-zinc-400 mb-3">{g.note}</p>
+          <div className="divide-y divide-zinc-100">
+            {g.items.map((item) => {
+              const url = projectLinkUrl(g.base, item);
+              return (
+                <div key={item.path} className="flex items-center gap-3 py-2.5">
+                  <span className="flex-1 text-[13px] font-medium text-zinc-800">{item.label}</span>
+                  <button
+                    onClick={() => copy(url)}
+                    className="w-[95px] text-right text-[12px] font-semibold text-zinc-400 active:text-zinc-600"
+                  >
+                    {copied === url ? 'Скопировано' : 'Копировать'}
+                  </button>
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-[80px] text-right text-[12px] font-bold text-[#4285F4]"
+                  >
+                    Открыть →
+                  </a>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      <button
+        onClick={() => { window.localStorage.removeItem('bv_links_unlocked'); setUnlocked(false); }}
+        className="text-[12px] font-semibold text-zinc-400 active:text-zinc-600"
+      >
+        Скрыть ссылки
+      </button>
     </div>
   );
 }
