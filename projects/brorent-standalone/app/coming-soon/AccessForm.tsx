@@ -22,9 +22,6 @@ export default function AccessForm() {
       style={{ fontFamily: 'Onest, -apple-system, system-ui, sans-serif' }}
       className="w-full max-w-[280px] mt-8"
     >
-      <label className="block text-[11px] font-bold uppercase tracking-wider text-zinc-600 mb-1.5 text-left">
-        Вход для владельца
-      </label>
       <div className="flex gap-2">
         <input
           type="password"
