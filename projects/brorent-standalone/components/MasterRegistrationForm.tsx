@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { ArrowLeft, Camera, CheckCircle2, Loader2, Lock, Send } from 'lucide-react';
 import Link from 'next/link';
 import { createServiceRequest } from '@/lib/requests';
+import { useRegions } from '@/lib/use-regions';
 import ConsentCheckbox from '@/components/ConsentCheckbox';
 import DevStub from '@/components/DevStub';
 import { DATA_COLLECTION_LOCKED } from '@/lib/site-config';
@@ -36,6 +37,7 @@ export default function MasterRegistrationForm() {
   const [specialization, setSpecialization] = useState('wash');
   const [experience, setExperience] = useState('middle');
   const [city, setCity] = useState('');
+  const { regions } = useRegions();
   const [about, setAbout] = useState('');
   const [pdConsent, setPdConsent] = useState(false);
 
@@ -225,13 +227,16 @@ export default function MasterRegistrationForm() {
                 );
               })}
             </div>
-            <input
-              type="text"
+            <select
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              placeholder="Город (необязательно)"
-              className="mt-3 w-full rounded-[14px] border border-[#E5E5EA] bg-[#F2F2F7]/80 px-4 py-3 text-[15px] text-[#1C1C1E] outline-none placeholder:text-[#C7C7CC] focus:border-[#007AFF]/40 focus:bg-white"
-            />
+              className="mt-3 w-full rounded-[14px] border border-[#E5E5EA] bg-[#F2F2F7]/80 px-4 py-3 text-[15px] text-[#1C1C1E] outline-none focus:border-[#007AFF]/40 focus:bg-white"
+            >
+              <option value="">Город (необязательно)</option>
+              {regions.map((r) => (
+                <option key={r.id} value={r.name}>{r.name}</option>
+              ))}
+            </select>
             <textarea
               value={about}
               onChange={(e) => setAbout(e.target.value)}

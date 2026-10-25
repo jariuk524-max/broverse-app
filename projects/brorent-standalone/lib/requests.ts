@@ -30,6 +30,9 @@ export type ServiceRequest = {
     description?: string;
     proposed_price?: string;
     domain?: string;
+    /** регион заявки из справочника «Города» кабинета руководителя */
+    city?: string;
+    city_id?: string;
     price?: number | string;
     comment?: string;
     feedback?: OrderFeedback;
@@ -89,6 +92,9 @@ export async function createServiceRequest(input: {
   description?: string;
   proposedPrice?: string;
   domain?: string;
+  /** регион из справочника «Города» — заявка показывается мастерам этого региона */
+  city?: string;
+  cityId?: string;
 }): Promise<ServiceRequest | null> {
   const { data, error } = await getSupabase()
     .from('orders')
@@ -103,6 +109,7 @@ export async function createServiceRequest(input: {
         description: input.description || '',
         proposed_price: input.proposedPrice || '',
         domain: input.domain || 'wash',
+        ...(input.city ? { city: input.city, city_id: input.cityId || '' } : {}),
         // 152-ФЗ: согласие получено чекбоксом до отправки формы
         consent: { personal_data: true, cookies: true, at: new Date().toISOString() },
       },

@@ -7,7 +7,7 @@ import {
   LogOut, User, History, Plus, BarChart3, ListTodo, LayoutGrid,
   ChevronUp, ChevronDown, ChevronRight, Send, Search, Square, CheckSquare, X, Paperclip,
   Eye, RefreshCw, KeyRound, Users, GripVertical, Trash2, Camera, ImagePlus, Sparkles, Globe,
-  GraduationCap, Lightbulb,
+  GraduationCap, Lightbulb, MapPin,
 } from 'lucide-react';
 import {
   listServiceRequests, getRequestSnapshot,
@@ -21,6 +21,7 @@ import FinanceChart, { type DailyPoint } from '@/components/FinanceChart';
 import OrderHistoryCard, { type StoredOrder, type OrderSnapshot, statusKeyFromSnapshot } from '@/components/OrderHistoryCard';
 import HintsTab from '@/components/admin/HintsTab';
 import LessonsTab from '@/components/admin/LessonsTab';
+import RegionsTab from '@/components/admin/RegionsTab';
 import { Onest } from 'next/font/google';
 
 const onest = Onest({ subsets: ['latin', 'cyrillic'], display: 'swap' });
@@ -34,7 +35,7 @@ type Session = {
   avatar_url?: string | null;
 };
 
-type TabId = 'overview' | 'orders' | 'chat' | 'tasks' | 'promos' | 'finance' | 'masters' | 'feedback' | 'catalog' | 'mirror' | 'hints' | 'lessons' | 'audit' | 'team' | 'links';
+type TabId = 'overview' | 'orders' | 'chat' | 'tasks' | 'promos' | 'finance' | 'masters' | 'feedback' | 'catalog' | 'mirror' | 'hints' | 'lessons' | 'regions' | 'audit' | 'team' | 'links';
 
 const TABS: { id: TabId; label: string; role: string | null }[] = [
   { id: 'overview', label: 'Обзор', role: null },
@@ -49,13 +50,14 @@ const TABS: { id: TabId; label: string; role: string | null }[] = [
   { id: 'mirror', label: 'Зеркало', role: 'mirror' },
   { id: 'hints', label: 'Подсказки', role: null },
   { id: 'lessons', label: 'Обучение', role: null },
+  { id: 'regions', label: 'Города', role: null },
   { id: 'audit', label: 'Аудит', role: 'team' },
   { id: 'team', label: 'Команда', role: 'team' },
   { id: 'links', label: 'Ссылки', role: 'team' },
 ];
 
 /** Руководящие разделы — только в кабинете руководителя (/chief) */
-const CHIEF_ONLY: TabId[] = ['team', 'audit', 'links', 'hints', 'lessons'];
+const CHIEF_ONLY: TabId[] = ['team', 'audit', 'links', 'hints', 'lessons', 'regions'];
 
 /** Доступ в кабинет руководителя: сам руководитель (admin) или кому он поделился (роль chief) */
 const hasChiefAccess = (s: { login: string; roles: string[] }): boolean =>
@@ -65,7 +67,7 @@ const hasChiefAccess = (s: { login: string; roles: string[] }): boolean =>
 const TAB_GROUPS: { label: string; ids: TabId[] }[] = [
   { label: 'Работа', ids: ['orders', 'chat', 'tasks', 'promos', 'finance'] },
   { label: 'Контент', ids: ['catalog', 'mirror', 'masters', 'feedback', 'hints', 'lessons'] },
-  { label: 'Управление', ids: ['team', 'audit', 'links'] },
+  { label: 'Управление', ids: ['regions', 'team', 'audit', 'links'] },
 ];
 
 /** Короткое описание каждого раздела — показывается под навигацией */
@@ -82,6 +84,7 @@ const TAB_DESC: Record<TabId, string> = {
   mirror: 'Как сайт видит клиент: порядок услуг и контент главной',
   hints: 'Карусель подсказок под поиском: подпись, запрос и фото чипа',
   lessons: 'Уроки обучения мастеров: правила, тесты и фото — редактируются здесь',
+  regions: 'Где работает BroVerse: включение и отключение городов и регионов',
   audit: 'История действий всех сотрудников',
   team: 'Кабинеты сотрудников: доступы, роли, пароли, чаты',
   links: 'Ссылки на проект без заглушки — вход по коду 0021',
@@ -555,7 +558,7 @@ export default function AdminPage({ cabinet, chief = false }: { cabinet?: string
               setTab('chat');
             }}
           />
-        ) : tab === 'overview' ? (chief ? <OverviewTab session={session} onOpenTab={setTab} /> : <MyCabinetTab session={session} onOpenTab={setTab} onAskLocked={setLockedTab} onEditProfile={() => setShowProfile(true)} onOpenSupport={() => setSupportOpen(true)} chief={chief} />) : tab === 'orders' ? <OrdersTab /> : tab === 'chat' ? <ChatTab session={session} /> : tab === 'tasks' ? <TasksTab /> : tab === 'promos' ? <PromosTab /> : tab === 'finance' ? <FinanceTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : tab === 'catalog' ? <CatalogTab /> : tab === 'mirror' ? <MirrorTab /> : tab === 'hints' ? <HintsTab /> : tab === 'lessons' ? <LessonsTab /> : tab === 'team' ? <TeamTab session={session} /> : tab === 'links' ? <LinksTab /> : <AuditTab />}
+        ) : tab === 'overview' ? (chief ? <OverviewTab session={session} onOpenTab={setTab} /> : <MyCabinetTab session={session} onOpenTab={setTab} onAskLocked={setLockedTab} onEditProfile={() => setShowProfile(true)} onOpenSupport={() => setSupportOpen(true)} chief={chief} />) : tab === 'orders' ? <OrdersTab /> : tab === 'chat' ? <ChatTab session={session} /> : tab === 'tasks' ? <TasksTab /> : tab === 'promos' ? <PromosTab /> : tab === 'finance' ? <FinanceTab /> : tab === 'masters' ? <MastersTab /> : tab === 'feedback' ? <FeedbackTab /> : tab === 'catalog' ? <CatalogTab /> : tab === 'mirror' ? <MirrorTab /> : tab === 'hints' ? <HintsTab /> : tab === 'lessons' ? <LessonsTab /> : tab === 'regions' ? <RegionsTab /> : tab === 'team' ? <TeamTab session={session} /> : tab === 'links' ? <LinksTab /> : <AuditTab />}
       </main>
 
       <SupportChat open={supportOpen} onClose={() => setSupportOpen(false)} session={session} />
@@ -824,6 +827,7 @@ function OrdersTab() {
                   <Row label="🎯 Направлено мастеру" value={`${meta.master_name || '—'}${meta.master_phone ? ` · ${meta.master_phone}` : ''}`} />
                 )}
                 {o.client_name && <Row label="👤 Имя" value={o.client_name} />}
+                {meta.city && <Row label="🏙 Город" value={String(meta.city)} />}
                 {o.address && <Row label="📍 Адрес" value={o.address} />}
                 {price && (
                   <Row
@@ -1470,7 +1474,7 @@ const TAB_ICONS: Record<TabId, React.ComponentType<{ size?: number; className?: 
   overview: BarChart3, orders: Package, chat: MessageSquare, tasks: ListTodo,
   promos: Sparkles,
   finance: History, masters: Star, feedback: Star, catalog: ImageIcon,
-  mirror: LayoutGrid, hints: Lightbulb, lessons: GraduationCap,
+  mirror: LayoutGrid, hints: Lightbulb, lessons: GraduationCap, regions: MapPin,
   audit: History, team: Users, links: Globe,
 };
 

@@ -43,6 +43,7 @@ const OPEN_API = [
   '/api/lessons',
   '/api/chips',
   '/api/search-index',
+  '/api/regions',
 ];
 
 function isAlwaysOpen(pathname: string): boolean {

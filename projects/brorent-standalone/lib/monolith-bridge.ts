@@ -29,6 +29,11 @@ export async function createOrderInSupabase(payload: {
   client_comment?: string;
   client_chat_id?: string;
   master?: { id?: string; name?: string; phone?: string; adId?: string; service?: string };
+  /** регион из справочника «Города» — заказ показывается мастерам этого региона */
+  city?: string;
+  cityId?: string;
+  cityLat?: number;
+  cityLng?: number;
   /** 152-ФЗ: момент согласия пользователя (форма без галочки не отправляется) */
   consentAt?: string;
 }) {
@@ -37,8 +42,8 @@ export async function createOrderInSupabase(payload: {
     .insert({
       service_name: payload.title,
       address: payload.address || '',
-      lat: payload.lat || 55.7558 + (Math.random() - 0.5) * 0.04,
-      lng: payload.lng || 37.6173 + (Math.random() - 0.5) * 0.04,
+      lat: payload.lat || (payload.cityLat || 55.7558) + (Math.random() - 0.5) * 0.04,
+      lng: payload.lng || (payload.cityLng || 37.6173) + (Math.random() - 0.5) * 0.04,
       client_name: payload.client_name || '',
       client_phone: payload.client_phone || '',
       status: 'new',
@@ -46,6 +51,7 @@ export async function createOrderInSupabase(payload: {
         price: payload.price || 0,
         comment: payload.client_comment || '',
         domain: payload.service || 'cleaning',
+        ...(payload.city ? { city: payload.city, city_id: payload.cityId || '' } : {}),
         ...(payload.master
           ? {
               master_id: payload.master.id || '',

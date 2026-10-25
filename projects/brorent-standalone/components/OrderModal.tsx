@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { CheckCircle2, X, Phone, MessageCircle, Zap, Minus, Plus, Truck, ChevronLeft, ShoppingCart } from 'lucide-react';
 import { createOrderInSupabase } from '@/lib/monolith-bridge';
+import { useRegions } from '@/lib/use-regions';
 import MasterOrderStatus from '@/components/MasterOrderStatus';
 import { saveOrder } from '@/components/Header';
 import ConsentCheckbox from '@/components/ConsentCheckbox';
@@ -113,6 +114,13 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
   const [closing, setClosing] = useState(false);
   const [pdConsent, setPdConsent] = useState(false);
 
+  // Где работает BroVerse — выбор региона из справочника руководителя
+  const { regions } = useRegions();
+  const [cityId, setCityId] = useState('');
+  const activeCity = cityId || regions[0]?.id || 'moscow';
+  const activeRegion = regions.find((r) => r.id === activeCity) || regions[0];
+  const activeCityName = activeRegion?.name || 'Москва';
+
   const handleClose = useCallback(() => {
     setClosing(true);
     setTimeout(onClose, 300);
@@ -169,7 +177,7 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
       // Мастер: настоящий домен услуги (wash/build/…) — чтобы заявку видно в /admin по сайту,
       // адресат задаётся через metadata.master_*; арендная заявка оставляет service='rental'
       service: service.isMaster ? (service.domain || 'verse') : 'rental',
-      address: address || `Москва, доставка`,
+      address: address.trim() ? `${activeCityName}, ${address.trim()}` : `${activeCityName}, доставка`,
       price: grandTotal,
       client_name: name,
       client_phone: phone,
@@ -179,6 +187,10 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
       master: service.isMaster
         ? { id: service.masterId || '', name: service.masterName || '', phone: service.masterPhone || '', adId: service.adId || '', service: service.name }
         : undefined,
+      city: activeCityName,
+      cityId: activeCity,
+      cityLat: activeRegion?.lat,
+      cityLng: activeRegion?.lng,
       consentAt: new Date().toISOString(),
     });
     if (created) {
@@ -207,7 +219,7 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
       createdAt: new Date().toISOString(),
     });
     setSubmitted(true);
-  }, [canSubmit, auth, service.name, service.brand, items, address, dateOption, customDate, timeSlot, rentDays, name, phone, comment, grandTotal, deliveryType, returnType, paymentMethod, selectedAddons]);
+  }, [canSubmit, auth, service.name, service.brand, items, address, dateOption, customDate, timeSlot, rentDays, name, phone, comment, grandTotal, deliveryType, returnType, paymentMethod, selectedAddons, activeCityName, activeCity, activeRegion]);
 
   if (submitted) {
     return (
@@ -513,6 +525,18 @@ export default function OrderModal({ service, cartItems, onClose }: OrderModalPr
                     <label className="text-[11px] font-semibold text-zinc-500 mb-1 block">Телефон</label>
                     <input type="tel" inputMode="tel" placeholder="+7 (___) ___-__-__" value={phone} onChange={(e) => setPhone(e.target.value)}
                       className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3.5 text-[15px] outline-none focus:border-[#00BCD4] focus:ring-2 focus:ring-[#00BCD4]/20 transition-all" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-zinc-500 mb-1 block">Город</label>
+                    <select
+                      value={activeCity}
+                      onChange={(e) => setCityId(e.target.value)}
+                      className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3.5 text-[15px] outline-none focus:border-[#00BCD4] focus:ring-2 focus:ring-[#00BCD4]/20 transition-all"
+                    >
+                      {regions.map((r) => (
+                        <option key={r.id} value={r.id}>{r.name}</option>
+                      ))}
+                    </select>
                   </div>
                   {(isMasterOrder || deliveryType === 'courier') && (
                     <div>

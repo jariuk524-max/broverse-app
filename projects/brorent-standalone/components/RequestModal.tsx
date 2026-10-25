@@ -8,6 +8,7 @@ import DevStub from '@/components/DevStub';
 import { DATA_COLLECTION_LOCKED } from '@/lib/site-config';
 import { isDataUnlockedNow } from '@/lib/data-lock';
 import { useClientAuth } from '@/lib/use-client-auth';
+import { useRegions } from '@/lib/use-regions';
 
 interface RequestModalProps {
   serviceName?: string;
@@ -47,6 +48,12 @@ export default function RequestModal({
   // Вход клиента: первая заявка требует телефон + код из бота
   const auth = useClientAuth();
 
+  // Где работает BroVerse — выбор региона из справочника руководителя
+  const { regions } = useRegions();
+  const [cityId, setCityId] = useState('');
+  const activeCity = cityId || regions[0]?.id || 'moscow';
+  const activeCityName = regions.find((r) => r.id === activeCity)?.name || regions[0]?.name || 'Москва';
+
   // 152-ФЗ: на время разработки вход закрыт заглушкой — данные не собираются
   if (DATA_COLLECTION_LOCKED && !isDataUnlockedNow()) return <DevStub variant="card" onClose={onClose} title="Заявки временно закрыты" />;
 
@@ -71,10 +78,12 @@ export default function RequestModal({
     const res = await createServiceRequest({
       serviceName: `${brand} — ${serviceName}`,
       clientPhone: phone.trim(),
-      address: address.trim(),
+      address: address.trim() ? `${activeCityName}, ${address.trim()}` : activeCityName,
       photo,
       description: description.trim(),
       domain,
+      city: activeCityName,
+      cityId: activeCity,
     });
     setSubmitting(false);
     if (res) {
@@ -87,7 +96,7 @@ export default function RequestModal({
     } else {
       setError('Не удалось отправить заявку. Попробуйте ещё раз.');
     }
-  }, [canSubmit, auth, brand, serviceName, domain, phone, address, photo, description]);
+  }, [canSubmit, auth, brand, serviceName, domain, phone, address, photo, description, activeCityName, activeCity]);
 
   if (submitted) {
     return (
@@ -181,6 +190,18 @@ export default function RequestModal({
                   onChange={(e) => setPhone(e.target.value)}
                   className={INPUT}
                 />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-zinc-500 mb-1 block">Город</label>
+                <select
+                  value={activeCity}
+                  onChange={(e) => setCityId(e.target.value)}
+                  className={INPUT}
+                >
+                  {regions.map((r) => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="text-[11px] font-semibold text-zinc-500 mb-1 block">Адрес</label>

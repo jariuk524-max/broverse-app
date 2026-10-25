@@ -135,11 +135,13 @@ export default function MoveRequestModal({ presetService, onClose }: MoveRequest
       description: breakdown,
       proposedPrice: `${estimate.low.toLocaleString('ru')}–${estimate.high.toLocaleString('ru')}`,
       domain: 'move',
+      city: city === 'Москва' ? 'Москва' : 'Московская область',
+      cityId: city === 'Москва' ? 'moscow' : 'moscow-oblast',
     });
     setSubmitting(false);
     if (res) setSubmitted(true);
     else setError('Не удалось отправить заявку. Попробуйте ещё раз.');
-  }, [submitting, stepValid, auth, presetService, name, phone, fromAddr, toAddr, breakdown, estimate]);
+  }, [submitting, stepValid, auth, presetService, name, phone, fromAddr, toAddr, breakdown, estimate, city]);
 
   const next = () => { if (stepValid && step < 3) setStep(step + 1); };
   const back = () => { if (step > 0) setStep(step - 1); };
