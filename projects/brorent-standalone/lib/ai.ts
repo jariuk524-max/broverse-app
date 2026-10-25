@@ -2,7 +2,7 @@
 // Ключ: LLM_API_KEY в .env.local (https://openrouter.ai/keys).
 // Модель: LLM_MODEL (по умолчанию openrouter/auto — OpenRouter сам выберет подходящую).
 
-import { BRO_DOMAINS } from '@/lib/domains';
+import { catalogContextText } from '@/lib/live-catalog';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
@@ -10,41 +10,41 @@ export function aiEnabled(): boolean {
   return Boolean(process.env.LLM_API_KEY);
 }
 
-/** Краткий контекст каталога для системного промпта */
-function catalogContext(): string {
-  const lines: string[] = [];
-  for (const d of BRO_DOMAINS) {
-    if (d.isHub) continue;
-    const services = d.categories
-      .map((c) => `${c.name}: ${c.items.map((i) => i.name).join(', ')}`)
-      .join(' | ');
-    lines.push(`- ${d.brand} (${d.id}) — ${d.tagline}. ${services}`);
+/** Краткий контекст живого каталога (код + правки из админки) для системного промпта */
+async function catalogContext(): Promise<string> {
+  try {
+    const text = await catalogContextText();
+    if (text.trim()) return text;
+  } catch {
+    /* живой каталог недоступен — помощник отвечает без перечня услуг */
   }
-  return lines.join('\n');
+  return '(каталог временно недоступен — порекомендуй оставить заявку через форму)';
 }
 
-const BASE_RULES = `Ты — «Помощник BroVerse», виртуальный консультант сервиса бытовых услуг BroVerse.
+async function baseRules(): Promise<string> {
+  return `Ты — «Помощник BroVerse», виртуальный консультант сервиса бытовых услуг BroVerse.
 Клиент описывает проблему (что сломалось, испачкалось, нужно сделать) и ждёт от тебя практичного совета.
 
 Что делать:
 1. Коротко ответь на вопрос и дай пошаговый совет, что можно сделать самому (безопасно).
 2. Оцени, нужен ли мастер, и порекомендуй подходящий сервис экосистемы из каталога:
-${catalogContext()}
+${await catalogContext()}
 3. В конце — одна строка: какую услугу BroVerse стоит заказать (если применимо) и куда нажать («Оставить заявку»).
 
 Правила:
 - Язык: только русский. Ответ: 80–150 слов, живо и по-человечески, без канцелярита.
-- Формат: обычный текст. Пустая строка — новый абзац. Список — строки, начинающиеся с «— ». Никаких символов markdown (#, *, |, ` + '`' + `).
+- Формат: обычный текст. Пустая строка — новый абзац. Список — строки, начинающиеся с «— ». Без markdown-символов (решётка, звёздочка, пайп, обратные кавычки).
 - Цены и сроки не выдумывай: «точную стоимость назовём в заявке».
 - Если вопрос не про услуги/быт/ремонт — вежливо верни к теме BroVerse в одном предложении и предложи помощь с бытовой задачей.
 - Опасное (газ, проводка под напряжением, химия без защиты) — не инструктируй, а сразу рекомендуй мастера.
 - Не выдавай себя за человека; не обещай гарантированного результата.`;
+}
 
 export type ChatMsg = { role: 'user' | 'assistant'; content: string };
 
-/** Системный промпт + безопасная валидация истории клиента */
-export function buildMessages(question: string, history?: unknown): ChatMsg[] {
-  const msgs: ChatMsg[] = [{ role: 'user' as const, content: BASE_RULES }];
+/** Системный промпт (с живым каталогом) + безопасная валидация истории клиента */
+export async function buildMessages(question: string, history?: unknown): Promise<ChatMsg[]> {
+  const msgs: ChatMsg[] = [{ role: 'user' as const, content: await baseRules() }];
   if (Array.isArray(history)) {
     for (const h of history.slice(-6)) {
       const role = h?.role === 'assistant' ? 'assistant' : 'user';

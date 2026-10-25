@@ -51,7 +51,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const upstream = await streamAssist(buildMessages(question, body?.history), req.signal);
+    const messages = await buildMessages(question, body?.history);
+    const upstream = await streamAssist(messages, req.signal);
     const encoder = new TextEncoder();
     const bytes = upstream.pipeThrough(
       new TransformStream<string, Uint8Array>({

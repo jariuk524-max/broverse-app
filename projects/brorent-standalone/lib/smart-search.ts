@@ -1,4 +1,5 @@
 import { BRO_DOMAINS, type BroDomain } from '@/lib/domains';
+import type { LiveService } from '@/lib/search-types';
 
 export type SearchResult = {
   domain: BroDomain;
@@ -274,7 +275,7 @@ function stemMatch(queryStem: string, textStem: string): boolean {
   );
 }
 
-export function getSearchResults(query: string): SearchResult[] {
+export function getSearchResults(query: string, live?: LiveService[]): SearchResult[] {
   const best = new Map<string, SearchResult>();
 
   const put = (r: SearchResult) => {
@@ -358,6 +359,54 @@ export function getSearchResults(query: string): SearchResult[] {
         });
       });
     });
+  }
+
+  // Живой каталог: услуги из правок админки и прошедшие модерацию услуги мастеров
+  if (live && live.length > 0) {
+    const liveItems = live.filter((s) => BRO_DOMAINS.some((d) => d.id === s.domain));
+    const qLive = normalize(query).trim();
+
+    if (qLive) {
+      for (const s of liveItems) {
+        if (normalize(s.name).includes(qLive) || normalize(s.desc || '').includes(qLive)) {
+          const domain = BRO_DOMAINS.find((d) => d.id === s.domain)!;
+          put({ domain, category: s.category, service: s.name, description: s.desc || '', confidence: 0.72 });
+        }
+      }
+    }
+
+    const qStemsLive = tokenize(query).filter((t) => t.length >= 4).map(stemWord);
+    if (qStemsLive.length > 0) {
+      const requiredLive = Math.min(2, qStemsLive.length);
+      for (const s of liveItems) {
+        const nameStems = tokenize(s.name).map(stemWord);
+        const textStems = new Set([
+          ...nameStems,
+          ...tokenize(s.category || '').map(stemWord),
+          ...tokenize(s.desc || '').map(stemWord),
+        ]);
+        let matched = 0;
+        let matchedInName = false;
+        for (const qs of qStemsLive) {
+          const inName = nameStems.some((ts) => stemMatch(qs, ts));
+          const inText = inName || [...textStems].some((ts) => stemMatch(qs, ts));
+          if (inText) {
+            matched += 1;
+            if (inName) matchedInName = true;
+          }
+        }
+        if (matched >= requiredLive) {
+          const domain = BRO_DOMAINS.find((d) => d.id === s.domain)!;
+          put({
+            domain,
+            category: s.category,
+            service: s.name,
+            description: s.desc || '',
+            confidence: Math.min(0.66, 0.42 + 0.08 * matched + (matchedInName ? 0.06 : 0)),
+          });
+        }
+      }
+    }
   }
 
   return [...best.values()]

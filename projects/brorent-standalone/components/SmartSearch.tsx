@@ -5,6 +5,7 @@ import { Search, X, ArrowRight, Camera, Sparkles, Loader2, ImageIcon, User } fro
 import Link from 'next/link';
 import { POPULAR_QUERIES } from '@/lib/popular-queries';
 import { getSearchResults } from '@/lib/smart-search';
+import type { Chip, LiveService, SearchIndex } from '@/lib/search-types';
 import type { MasterAd } from '@/lib/master-ads';
 
 export default function SmartSearch({ query: externalQuery, onQueryChange, onMasterAdClick }: { query?: string; onQueryChange?: (q: string) => void; onMasterAdClick?: (ad: MasterAd) => void } = {}) {
@@ -16,6 +17,11 @@ export default function SmartSearch({ query: externalQuery, onQueryChange, onMas
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
   const [masterAds, setMasterAds] = useState<MasterAd[]>([]);
+  /** Живой индекс: услуги из правок админки/модерации + чипы из кабинета руководителя */
+  const [liveServices, setLiveServices] = useState<LiveService[]>([]);
+  const [chips, setChips] = useState<Chip[]>(() =>
+    POPULAR_QUERIES.map((c) => ({ text: c.text, query: c.query, img: c.img }))
+  );
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -27,12 +33,20 @@ export default function SmartSearch({ query: externalQuery, onQueryChange, onMas
         if (Array.isArray(data)) setMasterAds(data as MasterAd[]);
       })
       .catch(() => {});
+    fetch('/api/search-index')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: SearchIndex | null) => {
+        if (!data) return;
+        if (Array.isArray(data.services) && data.services.length > 0) setLiveServices(data.services);
+        if (Array.isArray(data.chips) && data.chips.length > 0) setChips(data.chips);
+      })
+      .catch(() => {});
   }, []);
 
   const results = useMemo(() => {
     if (!query.trim()) return [];
-    return getSearchResults(query);
-  }, [query]);
+    return getSearchResults(query, liveServices);
+  }, [query, liveServices]);
 
   const masterResults = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -356,15 +370,19 @@ export default function SmartSearch({ query: externalQuery, onQueryChange, onMas
       {!query && !photoPreview && (
         <div className="px-4 sm:px-0 mt-3 mb-8">
           <div className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-1" style={{ scrollbarWidth: 'none' }}>
-            {POPULAR_QUERIES.map((s) => (
+            {chips.map((s) => (
               <button
-                key={s.query}
+                key={`${s.query}-${s.text}`}
                 type="button"
                 onClick={() => handleQuickClick(s.query)}
                 aria-label={`Подсказка: ${s.text}`}
                 className="group relative w-[152px] h-[104px] shrink-0 snap-start rounded-[18px] overflow-hidden shadow-sm ring-1 ring-black/5 active:scale-[0.97] transition-transform duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
               >
-                <img src={s.img} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+                {s.img ? (
+                  <img src={s.img} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-br from-zinc-700 to-zinc-900" />
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
                 <p className="absolute inset-x-3 bottom-2.5 text-left text-[13px] font-bold text-white leading-tight drop-shadow-sm">{s.text}</p>
                 <span className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">

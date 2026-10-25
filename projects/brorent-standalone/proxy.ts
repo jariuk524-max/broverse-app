@@ -10,7 +10,9 @@ import { NextResponse, type NextRequest } from 'next/server';
  * /admin и /chief (свои аутентификации), /api/admin/*,
  * вход клиента и его точки: /api/client-* (в т.ч. Telegram-webhook бота),
   * /api/chat, /api/telegram-notify, /api/order-status, /api/order-chat,
-  * /api/browash (галерея «Мои фото» BroWash на лендинге).
+  * /api/browash (галерея «Мои фото» BroWash на лендинге),
+  * /api/lessons, /api/chips, /api/search-index — уроки мастеров, подсказки
+  * и живой поисковый индекс (тянут кабинет мастеров и поисковая строка).
   */
 const ACCESS_CODE = process.env.SITE_ACCESS_CODE || '0021';
 const ACCESS_COOKIE = 'bv_access';
@@ -38,6 +40,9 @@ const OPEN_API = [
   '/api/order-notify',
   '/api/browash',
   '/api/assist',
+  '/api/lessons',
+  '/api/chips',
+  '/api/search-index',
 ];
 
 function isAlwaysOpen(pathname: string): boolean {
