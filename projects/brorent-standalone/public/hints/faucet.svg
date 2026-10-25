@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" width="320" height="220" role="img" aria-label="Сантехник на час">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F0FDFA"/>
+      <stop offset="1" stop-color="#5EEAD4"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F1F5F9"/>
+      <stop offset="1" stop-color="#94A3B8"/>
+    </linearGradient>
+    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#BAE6FD"/>
+      <stop offset="1" stop-color="#0EA5E9"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="220" fill="url(#bg)"/>
+  <circle cx="60" cy="52" r="54" fill="#FFFFFF" opacity="0.25"/>
+  <circle cx="268" cy="172" r="60" fill="#FFFFFF" opacity="0.18"/>
+  <!-- труба из стены -->
+  <rect x="0" y="66" width="70" height="22" rx="8" fill="url(#metal)"/>
+  <rect x="58" y="60" width="18" height="34" rx="6" fill="#64748B"/>
+  <!-- кран -->
+  <rect x="66" y="70" width="112" height="18" rx="9" fill="url(#metal)"/>
+  <rect x="162" y="70" width="18" height="52" rx="9" fill="url(#metal)"/>
+  <!-- вентиль -->
+  <rect x="88" y="46" width="14" height="26" rx="5" fill="#0EA5E9"/>
+  <rect x="74" y="40" width="42" height="12" rx="6" fill="#0284C7"/>
+  <!-- струя воды -->
+  <rect x="165" y="122" width="12" height="34" rx="6" fill="url(#water)" opacity="0.9"/>
+  <!-- лужа -->
+  <ellipse cx="171" cy="176" rx="52" ry="14" fill="#38BDF8" opacity="0.55"/>
+  <ellipse cx="171" cy="173" rx="34" ry="9" fill="#7DD3FC" opacity="0.8"/>
+  <!-- капли -->
+  <circle cx="150" cy="132" r="6" fill="#38BDF8"/>
+  <circle cx="196" cy="146" r="5" fill="#38BDF8" opacity="0.85"/>
+  <!-- гаечный ключ -->
+  <g transform="translate(232 84) rotate(24)">
+    <rect x="0" y="8" width="64" height="13" rx="6" fill="#64748B"/>
+    <path d="M0 14 a17 17 0 1 1 20 14 l-4 -7 a10 10 0 1 0 -8 -8 z" fill="#475569"/>
+    <circle cx="60" cy="14" r="4" fill="#E2E8F0"/>
+  </g>
+</svg>
